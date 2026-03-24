@@ -1,0 +1,13 @@
+node_modules/
+dist/
+playground/dist/
+.vite/
+coverage/
+*.log
+.DS_Store
+.idea/
+.vscode/
+.env
+.env.*
+!.env.example
+.claude

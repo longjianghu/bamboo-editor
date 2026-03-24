@@ -1,0 +1,55 @@
+.bamboo-content {
+  color: #1f2937;
+  font-size: 32rpx;
+  line-height: 1.8;
+}
+
+.bamboo-content h1,
+.bamboo-content h2,
+.bamboo-content h3 {
+  margin: 40rpx 0 20rpx;
+  color: #111827;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.bamboo-content h1 { font-size: 44rpx; }
+.bamboo-content h2 { font-size: 38rpx; }
+.bamboo-content h3 { font-size: 34rpx; }
+
+.bamboo-content p,
+.bamboo-content ul,
+.bamboo-content ol,
+.bamboo-content blockquote,
+.bamboo-content pre {
+  margin: 24rpx 0;
+}
+
+.bamboo-content ul,
+.bamboo-content ol {
+  padding-left: 40rpx;
+}
+
+.bamboo-content blockquote {
+  padding-left: 24rpx;
+  border-left: 8rpx solid #14b8a6;
+  color: #4b5563;
+}
+
+.bamboo-content pre {
+  padding: 24rpx;
+  border-radius: 16rpx;
+  background: #f3f4f6;
+}
+
+.bamboo-content code {
+  font-family: monospace;
+}
+
+.bamboo-content img {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 24rpx 0;
+  border-radius: 16rpx;
+}

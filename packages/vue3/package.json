@@ -1,0 +1,26 @@
+{
+  "name": "@bamboo-editor/vue3",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "style": "dist/index.css",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@bamboo-editor/core": "workspace:*",
+    "@tiptap/vue-3": "^2.11.5",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.1",
+    "vue-tsc": "^2.2.8"
+  }
+}
