@@ -7,10 +7,12 @@
         :disabled="disabled"
         :fullscreen="isFullscreen"
         @image-select="handleImageSelect"
+        @link-select="handleLinkSelect"
+        @remote-image-select="handleRemoteImageSelect"
         @toggle-fullscreen="toggleFullscreen"
       />
 
-      <div class="bamboo-editor__surface" :class="{ 'is-mobile': resolvedDevice === 'mobile' }">
+      <div class="bamboo-editor__surface" :class="{ 'is-mobile': resolvedDevice === 'mobile' }" :style="surfaceStyle">
         <EditorContent v-if="editor" :editor="editor" class="bamboo-editor__content" />
         <div v-else class="bamboo-editor__placeholder">Loading editor...</div>
       </div>
@@ -26,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref, toRef, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue'
 import { EditorContent } from '@tiptap/vue-3'
 import ToolbarPC from './ToolbarPC.vue'
 import ToolbarMobile from './ToolbarMobile.vue'
@@ -40,10 +42,12 @@ const props = withDefaults(defineProps<{
   placeholder?: string
   disabled?: boolean
   uploadHandler?: UploadHandler
+  height?: string
 }>(), {
   device: 'auto',
   placeholder: '请输入内容',
   disabled: false,
+  height: '50vh',
 })
 
 const emit = defineEmits<{
@@ -52,7 +56,17 @@ const emit = defineEmits<{
 
 const isFullscreen = ref(false)
 
-const { editor, resolvedDevice, insertImage } = useBambooEditor({
+const surfaceStyle = computed(() => {
+  if (isFullscreen.value) {
+    return undefined
+  }
+
+  return {
+    height: props.height,
+  }
+})
+
+const { editor, resolvedDevice, insertImage, setLink, unsetLink, insertRemoteImage } = useBambooEditor({
   modelValue: toRef(props, 'modelValue'),
   device: toRef(props, 'device'),
   placeholder: toRef(props, 'placeholder'),
@@ -63,6 +77,18 @@ const { editor, resolvedDevice, insertImage } = useBambooEditor({
 
 function handleImageSelect(file: File) {
   return insertImage(file)
+}
+
+function handleLinkSelect(url: string | null) {
+  if (url === null) {
+    return unsetLink()
+  }
+
+  return setLink(url)
+}
+
+function handleRemoteImageSelect(url: string) {
+  return insertRemoteImage(url)
 }
 
 function toggleFullscreen() {
@@ -155,6 +181,7 @@ onBeforeUnmount(() => {
 }
 
 .bamboo-editor__surface {
+  height: 50vh;
   min-height: 320px;
   border: 0;
   border-radius: 0;
@@ -166,6 +193,7 @@ onBeforeUnmount(() => {
 .bamboo-editor.is-fullscreen .bamboo-editor__surface {
   flex: 1;
   min-height: 0;
+  height: auto;
   border: 0;
   border-radius: 0;
   background: #fff;
@@ -178,20 +206,47 @@ onBeforeUnmount(() => {
 }
 
 .bamboo-editor__content {
-  min-height: 320px;
+  height: 100%;
+  min-height: 0;
 }
 
 .bamboo-editor__content :deep(.ProseMirror) {
-  min-height: 320px;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 100%;
   padding: 10px 12px;
   color: #18181b;
   font-size: 16px;
   line-height: 1.75;
   outline: none;
+  overflow-y: auto;
+}
+
+.bamboo-editor__content :deep(.ProseMirror[data-align='center']) {
+  text-align: center;
+}
+
+.bamboo-editor__content :deep(.ProseMirror[data-align='right']) {
+  text-align: right;
+}
+
+.bamboo-editor__content :deep(.ProseMirror h1[data-align='center']),
+.bamboo-editor__content :deep(.ProseMirror h2[data-align='center']),
+.bamboo-editor__content :deep(.ProseMirror h3[data-align='center']),
+.bamboo-editor__content :deep(.ProseMirror p[data-align='center']),
+.bamboo-editor__content :deep(.ProseMirror blockquote[data-align='center']) {
+  text-align: center;
+}
+
+.bamboo-editor__content :deep(.ProseMirror h1[data-align='right']),
+.bamboo-editor__content :deep(.ProseMirror h2[data-align='right']),
+.bamboo-editor__content :deep(.ProseMirror h3[data-align='right']),
+.bamboo-editor__content :deep(.ProseMirror p[data-align='right']),
+.bamboo-editor__content :deep(.ProseMirror blockquote[data-align='right']) {
+  text-align: right;
 }
 
 .bamboo-editor__surface.is-mobile .bamboo-editor__content :deep(.ProseMirror) {
-  min-height: 280px;
   padding: 14px 14px 18px;
 }
 
@@ -299,6 +354,7 @@ onBeforeUnmount(() => {
 
 .bamboo-editor__placeholder {
   min-height: 320px;
+  height: 100%;
   display: grid;
   place-items: center;
   color: #71717a;

@@ -14,10 +14,69 @@
       <ToolbarIcon :name="item.icon" />
     </button>
 
-    <label class="toolbar-pc__button toolbar-pc__upload" :class="{ 'is-disabled': disabled }" title="插入图片" aria-label="插入图片">
+    <button
+      type="button"
+      class="toolbar-pc__button"
+      :class="buttonClass('link')"
+      :disabled="disabled"
+      title="链接"
+      aria-label="链接"
+      @click="onLinkClick"
+    >
+      <ToolbarIcon name="link" />
+    </button>
+
+    <label class="toolbar-pc__button toolbar-pc__upload" :class="{ 'is-disabled': disabled }" title="上传图片" aria-label="上传图片">
       <input class="toolbar-pc__file" type="file" accept="image/*" :disabled="disabled" @change="onFileChange">
       <ToolbarIcon name="image" />
     </label>
+
+    <button
+      type="button"
+      class="toolbar-pc__button"
+      :disabled="disabled"
+      title="远程图片"
+      aria-label="远程图片"
+      @click="onRemoteImageClick"
+    >
+      <ToolbarIcon name="remote-image" />
+    </button>
+
+    <button
+      type="button"
+      class="toolbar-pc__button"
+      :class="{ 'is-active': isTextAlignActive('left') }"
+      :disabled="disabled"
+      title="左对齐"
+      aria-label="左对齐"
+      @click="setTextAlign('left')"
+    >
+      <ToolbarIcon name="align-left" />
+    </button>
+
+    <button
+      type="button"
+      class="toolbar-pc__button"
+      :class="{ 'is-active': isTextAlignActive('center') }"
+      :disabled="disabled"
+      title="居中对齐"
+      aria-label="居中对齐"
+      @click="setTextAlign('center')"
+    >
+      <ToolbarIcon name="align-center" />
+    </button>
+
+    <button
+      type="button"
+      class="toolbar-pc__button"
+      :class="{ 'is-active': isTextAlignActive('right') }"
+      :disabled="disabled"
+      title="右对齐"
+      aria-label="右对齐"
+      @click="setTextAlign('right')"
+    >
+      <ToolbarIcon name="align-right" />
+    </button>
 
     <button
       type="button"
@@ -37,6 +96,8 @@
 import type { Editor } from '@tiptap/vue-3'
 import ToolbarIcon from './ToolbarIcon.vue'
 
+declare const window: Window & typeof globalThis
+
 const props = defineProps<{
   editor: Editor | null
   disabled?: boolean
@@ -45,6 +106,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'image-select': [file: File]
+  'link-select': [url: string | null]
+  'remote-image-select': [url: string]
   'toggle-fullscreen': []
 }>()
 
@@ -89,6 +152,77 @@ function isDisabled(command: string, attrs?: Record<string, unknown>) {
 function buttonClass(name: string, attrs?: Record<string, unknown>) {
   const active = attrs ? props.editor?.isActive(name, attrs) : props.editor?.isActive(name)
   return { 'is-active': Boolean(active) }
+}
+
+function askUrl(message: string, initialValue = '') {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const value = window.prompt(message, initialValue)
+  if (value == null) {
+    return null
+  }
+
+  return value.trim()
+}
+
+function onLinkClick() {
+  if (props.disabled) {
+    return
+  }
+
+  if (props.editor?.isActive('link')) {
+    const shouldKeep = askUrl('请输入链接地址，留空可取消当前链接', props.editor.getAttributes('link').href ?? '')
+    if (shouldKeep === null) {
+      return
+    }
+
+    emit('link-select', shouldKeep || null)
+    return
+  }
+
+  const url = askUrl('请输入链接地址')
+  if (!url) {
+    return
+  }
+
+  emit('link-select', url)
+}
+
+function onRemoteImageClick() {
+  if (props.disabled) {
+    return
+  }
+
+  const url = askUrl('请输入远程图片地址')
+  if (!url) {
+    return
+  }
+
+  emit('remote-image-select', url)
+}
+
+function setTextAlign(align: 'left' | 'center' | 'right') {
+  if (props.disabled || !props.editor) {
+    return
+  }
+
+  const chain = props.editor.chain().focus()
+  const target = align === 'left' ? chain.unsetTextAlign() : chain.setTextAlign(align)
+  target.run()
+}
+
+function isTextAlignActive(align: 'left' | 'center' | 'right') {
+  if (!props.editor) {
+    return false
+  }
+
+  if (align === 'left') {
+    return !props.editor.isActive({ textAlign: 'center' }) && !props.editor.isActive({ textAlign: 'right' })
+  }
+
+  return props.editor.isActive({ textAlign: align })
 }
 
 function onFileChange(event: Event) {

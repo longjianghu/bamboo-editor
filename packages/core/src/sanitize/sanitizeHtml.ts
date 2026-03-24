@@ -8,6 +8,7 @@ const ALLOWED_TAGS = new Set([
   'em',
   'del',
   'code',
+  'a',
   'ul',
   'ol',
   'li',
@@ -17,11 +18,21 @@ const ALLOWED_TAGS = new Set([
 ])
 
 const ALLOWED_ATTRIBUTES: Record<string, Set<string>> = {
+  a: new Set(['href']),
+  h1: new Set(['data-align']),
+  h2: new Set(['data-align']),
+  h3: new Set(['data-align']),
+  p: new Set(['data-align']),
+  blockquote: new Set(['data-align']),
   img: new Set(['src', 'alt', 'data-width']),
 }
 
 function isDangerousUrl(value: string) {
   return /^\s*javascript:/i.test(value)
+}
+
+function isValidAlign(value: string) {
+  return value === 'center' || value === 'right'
 }
 
 function createContainer(html: string): HTMLDivElement | null {
@@ -62,6 +73,11 @@ export function sanitizeHtml(html: string): string {
         const value = attr.value
 
         if (!allowed.has(name) || isDangerousUrl(value) || name.startsWith('on')) {
+          element.removeAttribute(attr.name)
+          continue
+        }
+
+        if (name === 'data-align' && !isValidAlign(value)) {
           element.removeAttribute(attr.name)
         }
       }

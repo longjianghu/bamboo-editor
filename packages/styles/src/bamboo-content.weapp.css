@@ -36,6 +36,22 @@
   color: #4b5563;
 }
 
+.bamboo-content h1[data-align='center'],
+.bamboo-content h2[data-align='center'],
+.bamboo-content h3[data-align='center'],
+.bamboo-content p[data-align='center'],
+.bamboo-content blockquote[data-align='center'] {
+  text-align: center;
+}
+
+.bamboo-content h1[data-align='right'],
+.bamboo-content h2[data-align='right'],
+.bamboo-content h3[data-align='right'],
+.bamboo-content p[data-align='right'],
+.bamboo-content blockquote[data-align='right'] {
+  text-align: right;
+}
+
 .bamboo-content pre {
   padding: 24rpx;
   border-radius: 16rpx;

@@ -6,6 +6,8 @@ import { CleanImage, type CleanImageOptions } from './extensions/CleanImage'
 import { CleanBulletList, CleanListItem, CleanOrderedList } from './extensions/CleanList'
 import { CleanBlockquote } from './extensions/CleanBlockquote'
 import { CleanCodeBlock } from './extensions/CleanCodeBlock'
+import { CleanLink } from './extensions/CleanLink'
+import { CleanTextAlign } from './extensions/CleanTextAlign'
 import { sanitizeHtml } from './sanitize/sanitizeHtml'
 import { validateHtml } from './sanitize/validateHtml'
 import { sanitizePastedHtml } from './sanitize/pasteSanitizer'
@@ -32,6 +34,8 @@ export function getDefaultExtensions(options: BambooEditorOptions = {}): AnyExte
     }),
     CleanHeading,
     CleanImage.configure(options.image ?? {}),
+    CleanLink,
+    CleanTextAlign,
     CleanBulletList,
     CleanOrderedList,
     CleanListItem,
@@ -57,6 +61,8 @@ export function createBambooEditorOptions(options: BambooEditorOptions = {}): Pa
 export {
   CleanHeading,
   CleanImage,
+  CleanLink,
+  CleanTextAlign,
   CleanBulletList,
   CleanOrderedList,
   CleanListItem,

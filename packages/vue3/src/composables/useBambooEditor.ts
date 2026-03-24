@@ -108,10 +108,42 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
     })
   }
 
+  function setLink(rawUrl: string) {
+    const instance = editor.value
+    const href = normalizeUrl(rawUrl)
+    if (!instance || !href) {
+      return false
+    }
+
+    return instance.chain().focus().extendMarkRange('link').setLink({ href }).run()
+  }
+
+  function unsetLink() {
+    const instance = editor.value
+    if (!instance) {
+      return false
+    }
+
+    return instance.chain().focus().extendMarkRange('link').unsetLink().run()
+  }
+
+  function insertRemoteImage(rawUrl: string) {
+    const instance = editor.value
+    const src = normalizeUrl(rawUrl)
+    if (!instance || !src) {
+      return false
+    }
+
+    return instance.chain().focus().setImage({ src }).run()
+  }
+
   return {
     editor,
     resolvedDevice,
     insertImage,
+    setLink,
+    unsetLink,
+    insertRemoteImage,
   }
 }
 
@@ -152,4 +184,17 @@ function updateImageByLocalId(editor: Editor, localId: string, attrs: Record<str
     })
     return true
   })
+}
+
+function normalizeUrl(rawUrl: string) {
+  const value = rawUrl.trim()
+  if (!value || /^\s*javascript:/i.test(value)) {
+    return null
+  }
+
+  if (/^https?:\/\//i.test(value) || /^mailto:/i.test(value) || /^tel:/i.test(value) || /^data:image\//i.test(value)) {
+    return value
+  }
+
+  return `https://${value}`
 }

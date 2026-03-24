@@ -1,10 +1,16 @@
 import Heading from '@tiptap/extension-heading'
 
+function getAlignAttrs(textAlign: unknown) {
+  return textAlign === 'center' || textAlign === 'right'
+    ? { 'data-align': textAlign }
+    : {}
+}
+
 export const CleanHeading = Heading.extend({
   levels: [1, 2, 3],
 
   renderHTML({ node }) {
-    return [`h${node.attrs.level}`, 0]
+    return [`h${node.attrs.level}`, getAlignAttrs(node.attrs.textAlign), 0]
   },
 
   addAttributes() {

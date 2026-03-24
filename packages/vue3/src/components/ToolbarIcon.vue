@@ -77,10 +77,39 @@
       <path d="M15 10L17 12L15 14" />
     </g>
 
-    <g v-else-if="name === 'image'" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="4.5" y="5.5" width="15" height="13" rx="2" />
-      <circle cx="9" cy="10" r="1.2" />
-      <path d="M7.5 15.5L10.8 12.2L13.2 14.6L15.4 12.4L17.5 14.5" />
+    <g v-else-if="name === 'image'" fill="currentColor" stroke="none">
+      <path d="M828.708571 585.045333a48.761905 48.761905 0 0 0-48.737523 48.761905v18.529524l-72.143238-72.167619a135.972571 135.972571 0 0 0-191.585524 0l-34.133334 34.133333-120.880762-120.953905a138.898286 138.898286 0 0 0-191.585523 0l-72.167619 72.167619V292.400762a48.786286 48.786286 0 0 1 48.761904-48.761905h341.23581a48.737524 48.737524 0 0 0 34.474667-83.285333 48.737524 48.737524 0 0 0-34.474667-14.287238H146.236952A146.212571 146.212571 0 0 0 0 292.400762v585.289143A146.358857 146.358857 0 0 0 146.236952 1024h584.996572a146.212571 146.212571 0 0 0 146.236952-146.310095V633.807238a48.786286 48.786286 0 0 0-48.761905-48.761905zM146.261333 926.45181a48.737524 48.737524 0 0 1-48.761904-48.761905v-174.128762l141.409523-141.458286a38.497524 38.497524 0 0 1 53.126096 0l154.526476 154.624 209.627428 209.724953H146.236952z m633.734096-48.761905c-0.073143 9.337905-3.145143 18.383238-8.777143 25.843809l-219.843048-220.94019 34.133333-34.133334a37.546667 37.546667 0 0 1 53.613715 0l140.873143 141.897143V877.714286zM1009.615238 160.231619L863.329524 13.897143a48.737524 48.737524 0 0 0-16.091429-10.24c-11.849143-4.87619-25.161143-4.87619-37.059047 0a48.761905 48.761905 0 0 0-16.067048 10.24l-146.236952 146.334476a49.005714 49.005714 0 0 0 69.217523 69.241905l62.902858-63.390476v272.627809a48.761905 48.761905 0 1 0 97.475047 0V166.083048l62.902857 63.390476a48.737524 48.737524 0 0 0 69.217524 0 48.761905 48.761905 0 0 0 0-69.241905z" transform="scale(0.0234375)" />
+    </g>
+
+    <g v-else-if="name === 'remote-image'" fill="currentColor" stroke="none">
+      <path d="M959.877 128l0.123 0.123v767.775l-0.123 0.122H64.102l-0.122-0.122V128.123l0.122-0.123h895.775zM960 64H64C28.795 64 0 92.795 0 128v768c0 35.205 28.795 64 64 64h896c35.205 0 64-28.795 64-64V128c0-35.205-28.795-64-64-64zM832 288.01c0 53.023-42.988 96.01-96.01 96.01s-96.01-42.987-96.01-96.01S682.967 192 735.99 192 832 234.988 832 288.01zM896 832H128V704l224.01-384 256 320h64l224.01-192z" transform="scale(0.0234375)" />
+    </g>
+
+    <g v-else-if="name === 'align-left'" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 7H19" />
+      <path d="M5 10H15" />
+      <path d="M5 13H19" />
+      <path d="M5 16H15" />
+    </g>
+
+    <g v-else-if="name === 'align-center'" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 7H19" />
+      <path d="M7 10H17" />
+      <path d="M4 13H20" />
+      <path d="M7 16H17" />
+    </g>
+
+    <g v-else-if="name === 'align-right'" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 7H19" />
+      <path d="M11 10H19" />
+      <path d="M5 13H19" />
+      <path d="M11 16H19" />
+    </g>
+
+    <g v-else-if="name === 'link'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10.5 13.5L13.5 10.5" />
+      <path d="M7.5 16.5L5.5 18.5C4.12 19.88 4.12 22.12 5.5 23.5C6.88 24.88 9.12 24.88 10.5 23.5L12.5 21.5" transform="translate(0 -4)" />
+      <path d="M16.5 7.5L18.5 5.5C19.88 4.12 22.12 4.12 23.5 5.5C24.88 6.88 24.88 9.12 23.5 10.5L21.5 12.5" transform="translate(-4 0)" />
     </g>
 
     <g v-else-if="name === 'fullscreen-enter'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -117,6 +146,11 @@ type ToolbarIconName =
   | 'quote'
   | 'code-block'
   | 'image'
+  | 'remote-image'
+  | 'link'
+  | 'align-left'
+  | 'align-center'
+  | 'align-right'
   | 'fullscreen-enter'
   | 'fullscreen-exit'
 
