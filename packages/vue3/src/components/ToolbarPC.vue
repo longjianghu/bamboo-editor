@@ -93,8 +93,9 @@
 </template>
 
 <script setup lang="ts">
-import type { Editor } from '@tiptap/vue-3'
+import type { NodeSelection, Editor } from '@tiptap/vue-3'
 import ToolbarIcon from './ToolbarIcon.vue'
+
 
 declare const window: Window & typeof globalThis
 
@@ -133,6 +134,11 @@ function run(command: string, attrs?: Record<string, unknown>) {
 
   const target = attrs ? (chain as any)[command](attrs) : (chain as any)[command]()
   target?.run?.()
+}
+
+function isImageSelected() {
+  const selection = props.editor?.state.selection as NodeSelection | undefined
+  return selection?.node?.type.name === 'image'
 }
 
 function isDisabled(command: string, attrs?: Record<string, unknown>) {
@@ -208,6 +214,15 @@ function setTextAlign(align: 'left' | 'center' | 'right') {
     return
   }
 
+  if (isImageSelected()) {
+    props.editor
+      .chain()
+      .focus()
+      .updateAttributes('image', { 'data-align': align === 'left' ? null : align })
+      .run()
+    return
+  }
+
   const chain = props.editor.chain().focus()
   const target = align === 'left' ? chain.unsetTextAlign() : chain.setTextAlign(align)
   target.run()
@@ -216,6 +231,15 @@ function setTextAlign(align: 'left' | 'center' | 'right') {
 function isTextAlignActive(align: 'left' | 'center' | 'right') {
   if (!props.editor) {
     return false
+  }
+
+  if (isImageSelected()) {
+    const imageAlign = props.editor.getAttributes('image')['data-align']
+    if (align === 'left') {
+      return imageAlign !== 'center' && imageAlign !== 'right'
+    }
+
+    return imageAlign === align
   }
 
   if (align === 'left') {

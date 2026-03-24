@@ -344,6 +344,16 @@ onBeforeUnmount(() => {
   border-radius: 12px;
 }
 
+.bamboo-editor__content :deep(.ProseMirror img[data-align='center']) {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.bamboo-editor__content :deep(.ProseMirror img[data-align='right']) {
+  margin-left: auto;
+  margin-right: 0;
+}
+
 .bamboo-editor__content :deep(.ProseMirror p.is-editor-empty:first-child::before) {
   content: attr(data-placeholder);
   color: #a1a1aa;

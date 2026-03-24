@@ -69,3 +69,13 @@
   margin: 24rpx 0;
   border-radius: 16rpx;
 }
+
+.bamboo-content img[data-align='center'] {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.bamboo-content img[data-align='right'] {
+  margin-left: auto;
+  margin-right: 0;
+}

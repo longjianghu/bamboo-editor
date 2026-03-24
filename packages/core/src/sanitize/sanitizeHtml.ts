@@ -24,7 +24,7 @@ const ALLOWED_ATTRIBUTES: Record<string, Set<string>> = {
   h3: new Set(['data-align']),
   p: new Set(['data-align']),
   blockquote: new Set(['data-align']),
-  img: new Set(['src', 'alt', 'data-width']),
+  img: new Set(['src', 'alt', 'data-width', 'data-align']),
 }
 
 function isDangerousUrl(value: string) {
