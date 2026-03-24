@@ -1,15 +1,19 @@
 <template>
-  <div class="bamboo-editor">
-    <ToolbarPC
-      v-if="resolvedDevice === 'pc'"
-      :editor="editor"
-      :disabled="disabled"
-      @image-select="handleImageSelect"
-    />
+  <div class="bamboo-editor" :class="{ 'is-fullscreen': isFullscreen }">
+    <div class="bamboo-editor__main" :class="{ 'is-mobile': resolvedDevice === 'mobile' }">
+      <ToolbarPC
+        v-if="resolvedDevice === 'pc'"
+        :editor="editor"
+        :disabled="disabled"
+        :fullscreen="isFullscreen"
+        @image-select="handleImageSelect"
+        @toggle-fullscreen="toggleFullscreen"
+      />
 
-    <div class="bamboo-editor__surface" :class="{ 'is-mobile': resolvedDevice === 'mobile' }">
-      <EditorContent v-if="editor" :editor="editor" class="bamboo-editor__content" />
-      <div v-else class="bamboo-editor__placeholder">Loading editor...</div>
+      <div class="bamboo-editor__surface" :class="{ 'is-mobile': resolvedDevice === 'mobile' }">
+        <EditorContent v-if="editor" :editor="editor" class="bamboo-editor__content" />
+        <div v-else class="bamboo-editor__placeholder">Loading editor...</div>
+      </div>
     </div>
 
     <ToolbarMobile
@@ -22,11 +26,13 @@
 </template>
 
 <script setup lang="ts">
-import { toRef } from 'vue'
+import { onBeforeUnmount, ref, toRef, watch } from 'vue'
 import { EditorContent } from '@tiptap/vue-3'
 import ToolbarPC from './ToolbarPC.vue'
 import ToolbarMobile from './ToolbarMobile.vue'
 import { useBambooEditor, type BambooDevice, type UploadHandler } from '../composables/useBambooEditor'
+
+declare const window: Window & typeof globalThis
 
 const props = withDefaults(defineProps<{
   modelValue: string
@@ -44,6 +50,8 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
+const isFullscreen = ref(false)
+
 const { editor, resolvedDevice, insertImage } = useBambooEditor({
   modelValue: toRef(props, 'modelValue'),
   device: toRef(props, 'device'),
@@ -56,27 +64,121 @@ const { editor, resolvedDevice, insertImage } = useBambooEditor({
 function handleImageSelect(file: File) {
   return insertImage(file)
 }
+
+function toggleFullscreen() {
+  if (resolvedDevice.value !== 'pc') {
+    return
+  }
+
+  isFullscreen.value = !isFullscreen.value
+}
+
+function exitFullscreen() {
+  isFullscreen.value = false
+}
+
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && isFullscreen.value) {
+    exitFullscreen()
+  }
+}
+
+watch(isFullscreen, (value) => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document.body.style.overflow = value ? 'hidden' : ''
+
+  if (value) {
+    window.addEventListener('keydown', onKeydown)
+    return
+  }
+
+  window.removeEventListener('keydown', onKeydown)
+})
+
+watch(resolvedDevice, (value) => {
+  if (value !== 'pc' && isFullscreen.value) {
+    exitFullscreen()
+  }
+})
+
+onBeforeUnmount(() => {
+  if (typeof document !== 'undefined') {
+    document.body.style.overflow = ''
+  }
+
+  window.removeEventListener('keydown', onKeydown)
+})
 </script>
 
 <style scoped>
 .bamboo-editor {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
   width: 100%;
 }
 
-.bamboo-editor__surface {
-  min-height: 320px;
-  border: 1px solid #d4d4d8;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%);
+.bamboo-editor__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  border: 1px solid #dcdfe6;
+  border-radius: 12px;
+  background: #fff;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
   overflow: hidden;
 }
 
+.bamboo-editor.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  gap: 0;
+  background: #f5f7fb;
+}
+
+.bamboo-editor.is-fullscreen .bamboo-editor__main {
+  gap: 0;
+  min-height: 0;
+  margin: 18px 24px 0;
+  border: 1px solid #dcdfe6;
+  border-radius: 12px 12px 0 0;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.bamboo-editor__surface {
+  min-height: 320px;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.bamboo-editor.is-fullscreen .bamboo-editor__surface {
+  flex: 1;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  box-shadow: none;
+}
+
 .bamboo-editor__surface.is-mobile {
-  border-radius: 12px;
+  border-radius: 0;
+  background: #fff;
+}
+
+.bamboo-editor__content {
+  min-height: 320px;
 }
 
 .bamboo-editor__content :deep(.ProseMirror) {
@@ -86,6 +188,25 @@ function handleImageSelect(file: File) {
   font-size: 16px;
   line-height: 1.75;
   outline: none;
+}
+
+.bamboo-editor__surface.is-mobile .bamboo-editor__content :deep(.ProseMirror) {
+  min-height: 280px;
+  padding: 14px 14px 18px;
+}
+
+.bamboo-editor.is-fullscreen .bamboo-editor__content {
+  height: 100%;
+}
+
+.bamboo-editor.is-fullscreen .bamboo-editor__content :deep(.ProseMirror) {
+  box-sizing: border-box;
+  min-height: 100%;
+  height: 100%;
+  padding: 28px 40px 48px;
+  max-width: 920px;
+  margin: 0 auto;
+  overflow-y: auto;
 }
 
 .bamboo-editor__content :deep(.ProseMirror:focus) {

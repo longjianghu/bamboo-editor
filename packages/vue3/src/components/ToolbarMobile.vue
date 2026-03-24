@@ -87,19 +87,21 @@ function onFileChange(event: Event) {
   bottom: 0;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 5px;
-  padding: 6px;
-  border: 1px solid #d4d4d8;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-  backdrop-filter: blur(12px);
+  gap: 6px;
+  margin-top: -1px;
+  padding: 8px 10px 10px;
+  border: 0;
+  border-top: 1px solid #dcdfe63d;
+  border-radius: 0 0 12px 12px;
+  background: #dcdfe63d;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .toolbar-mobile__button {
-  min-height: 36px;
+  min-height: 38px;
   padding: 0;
-  border: 1px solid #d4d4d8;
+  border: 1px solid #dcdfe6;
   border-radius: 9px;
   background: #fff;
   color: #3f3f46;

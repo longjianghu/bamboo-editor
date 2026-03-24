@@ -18,6 +18,18 @@
       <input class="toolbar-pc__file" type="file" accept="image/*" :disabled="disabled" @change="onFileChange">
       <ToolbarIcon name="image" />
     </label>
+
+    <button
+      type="button"
+      class="toolbar-pc__button toolbar-pc__fullscreen"
+      :class="{ 'is-active': fullscreen }"
+      :title="fullscreen ? '退出全屏' : '全屏编辑'"
+      :aria-label="fullscreen ? '退出全屏' : '全屏编辑'"
+      :disabled="disabled"
+      @click="emit('toggle-fullscreen')"
+    >
+      <ToolbarIcon :name="fullscreen ? 'fullscreen-exit' : 'fullscreen-enter'" />
+    </button>
   </div>
 </template>
 
@@ -28,10 +40,12 @@ import ToolbarIcon from './ToolbarIcon.vue'
 const props = defineProps<{
   editor: Editor | null
   disabled?: boolean
+  fullscreen?: boolean
 }>()
 
 const emit = defineEmits<{
   'image-select': [file: File]
+  'toggle-fullscreen': []
 }>()
 
 const items = [
@@ -92,13 +106,34 @@ function onFileChange(event: Event) {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
+  padding: 5px;
+  background-color: #dcdfe63d;
+  border-bottom: 1px solid #dcdfe63d;
+}
+
+:global(.bamboo-editor.is-fullscreen) .toolbar-pc {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 5px;
+  border: 0;
+  border-bottom: 1px solid #dcdfe63d;
+  border-radius: 0;
+  background: #dcdfe63d;
+  box-shadow: none;
+  overflow-x: auto;
 }
 
 .toolbar-pc__button {
   width: 34px;
   height: 34px;
   padding: 0;
-  border: 1px solid #d4d4d8;
+  border: 1px solid #dcdfe6;
   border-radius: 8px;
   background: #fff;
   color: #3f3f46;
@@ -107,6 +142,7 @@ function onFileChange(event: Event) {
   align-items: center;
   justify-content: center;
   transition: all 0.18s ease;
+  flex: none;
 }
 
 .toolbar-pc__button:hover {
@@ -129,6 +165,14 @@ function onFileChange(event: Event) {
 
 .toolbar-pc__upload {
   position: relative;
+}
+
+.toolbar-pc__fullscreen {
+  margin-left: 4px;
+}
+
+:global(.bamboo-editor.is-fullscreen) .toolbar-pc__fullscreen {
+  margin-left: auto;
 }
 
 .toolbar-pc__file {

@@ -82,6 +82,24 @@
       <circle cx="9" cy="10" r="1.2" />
       <path d="M7.5 15.5L10.8 12.2L13.2 14.6L15.4 12.4L17.5 14.5" />
     </g>
+
+    <g v-else-if="name === 'fullscreen-enter'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 4H4V8" />
+      <path d="M16 4H20V8" />
+      <path d="M20 16V20H16" />
+      <path d="M8 20H4V16" />
+    </g>
+
+    <g v-else-if="name === 'fullscreen-exit'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 4H4V9" />
+      <path d="M15 4H20V9" />
+      <path d="M20 15V20H15" />
+      <path d="M9 20H4V15" />
+      <path d="M9 9L4 4" />
+      <path d="M15 9L20 4" />
+      <path d="M15 15L20 20" />
+      <path d="M9 15L4 20" />
+    </g>
   </svg>
 </template>
 
@@ -99,6 +117,8 @@ type ToolbarIconName =
   | 'quote'
   | 'code-block'
   | 'image'
+  | 'fullscreen-enter'
+  | 'fullscreen-exit'
 
 defineProps<{
   name: ToolbarIconName
