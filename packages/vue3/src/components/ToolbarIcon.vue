@@ -112,6 +112,23 @@
       <path d="M16.5 7.5L18.5 5.5C19.88 4.12 22.12 4.12 23.5 5.5C24.88 6.88 24.88 9.12 23.5 10.5L21.5 12.5" transform="translate(-4 0)" />
     </g>
 
+    <g v-else-if="name === 'text-color'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 18L12 6L16 18" />
+      <path d="M9.5 14H14.5" />
+      <path d="M6 20H18" />
+    </g>
+
+    <g v-else-if="name === 'text-color-clear'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 18L12 6L16 18" />
+      <path d="M9.5 14H14.5" />
+      <path d="M6 20H18" />
+      <path d="M6 6L18 18" />
+    </g>
+
+    <g v-else-if="name === 'chevron-down'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M7 10L12 15L17 10" />
+    </g>
+
     <g v-else-if="name === 'fullscreen-enter'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M8 4H4V8" />
       <path d="M16 4H20V8" />
@@ -148,6 +165,9 @@ type ToolbarIconName =
   | 'image'
   | 'remote-image'
   | 'link'
+  | 'text-color'
+  | 'text-color-clear'
+  | 'chevron-down'
   | 'align-left'
   | 'align-center'
   | 'align-right'

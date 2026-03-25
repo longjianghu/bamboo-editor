@@ -75,7 +75,26 @@
   margin-right: auto;
 }
 
-.bamboo-content img[data-align='right'] {
-  margin-left: auto;
-  margin-right: 0;
+.bamboo-content span[data-color='primary'] {
+  color: #18181b;
+}
+
+.bamboo-content span[data-color='success'] {
+  color: #16a34a;
+}
+
+.bamboo-content span[data-color='warning'] {
+  color: #ea580c;
+}
+
+.bamboo-content span[data-color='danger'] {
+  color: #dc2626;
+}
+
+.bamboo-content span[data-color='muted'] {
+  color: #71717a;
+}
+
+.bamboo-content span[data-color='purple'] {
+  color: #7c3aed;
 }

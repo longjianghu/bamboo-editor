@@ -1,4 +1,5 @@
-import type { ValidationError, ValidationResult } from './types'
+import { isValidColorToken, normalizeColorTokens } from '../colors'
+import type { SanitizeOptions, ValidationError, ValidationResult } from './types'
 
 const ALLOWED_TAGS = new Set([
   'h1',
@@ -17,6 +18,7 @@ const ALLOWED_TAGS = new Set([
   'img',
   'pre',
   'blockquote',
+  'span',
 ])
 
 const ALLOWED_ATTRIBUTES: Record<string, Set<string>> = {
@@ -27,6 +29,7 @@ const ALLOWED_ATTRIBUTES: Record<string, Set<string>> = {
   p: new Set(['data-align']),
   blockquote: new Set(['data-align']),
   img: new Set(['src', 'alt', 'data-width', 'data-align']),
+  span: new Set(['data-color']),
 }
 
 const FORBIDDEN_TAGS = new Set(['script', 'iframe', 'video', 'style'])
@@ -49,14 +52,14 @@ function createContainer(html: string): HTMLDivElement | null {
   return container
 }
 
-export function validateHtml(html: string): ValidationResult {
+export function validateHtml(html: string, options?: SanitizeOptions): ValidationResult {
   const container = createContainer(html)
   if (!container) {
     return { valid: true, errors: [] }
   }
 
   const errors: ValidationError[] = []
-
+  const colorTokens = normalizeColorTokens(options?.colorTokens)
   const elements = Array.from(container.querySelectorAll('*'))
 
   for (const element of elements) {
@@ -84,6 +87,14 @@ export function validateHtml(html: string): ValidationResult {
       if (name === 'data-align' && !isValidAlign(value)) {
         errors.push({ type: 'forbidden_attribute', tag, attr: name, value })
       }
+
+      if (name === 'data-color' && !isValidColorToken(value, colorTokens)) {
+        errors.push({ type: 'forbidden_color', tag, attr: name, value })
+      }
+    }
+
+    if (tag === 'span' && !element.hasAttribute('data-color')) {
+      errors.push({ type: 'forbidden_attribute', tag, attr: 'data-color' })
     }
   }
 

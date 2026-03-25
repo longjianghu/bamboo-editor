@@ -78,6 +78,58 @@
       <ToolbarIcon name="align-right" />
     </button>
 
+    <div class="toolbar-pc__dropdown" :class="{ 'is-open': isColorMenuOpen }" ref="colorMenuRef">
+      <button
+        type="button"
+        class="toolbar-pc__button toolbar-pc__dropdown-trigger"
+        :class="{ 'is-active': !isColorCleared() || isColorMenuOpen }"
+        :disabled="disabled"
+        :title="currentColorLabel"
+        :aria-label="currentColorLabel"
+        ref="colorTriggerRef"
+        @click="toggleColorMenu"
+      >
+        <span class="toolbar-pc__color-chip" :style="{ backgroundColor: currentColorValue }"></span>
+        <ToolbarIcon name="chevron-down" />
+      </button>
+
+      <div
+        v-if="isColorMenuOpen"
+        class="toolbar-pc__dropdown-menu"
+        :class="{
+          'is-align-right': dropdownPlacement.horizontal === 'right',
+          'is-drop-up': dropdownPlacement.vertical === 'up',
+        }"
+        :style="dropdownMenuStyle"
+      >
+        <div class="toolbar-pc__palette-grid">
+          <button
+            type="button"
+            class="toolbar-pc__palette-swatch"
+            :class="{ 'is-active': isColorCleared() }"
+            title="默认颜色"
+            aria-label="默认颜色"
+            @click="selectTextColor(null)"
+          >
+            <span class="toolbar-pc__palette-swatch-color" :style="{ backgroundColor: '#18181b' }"></span>
+          </button>
+
+          <button
+            v-for="item in colorPalette"
+            :key="item.token"
+            type="button"
+            class="toolbar-pc__palette-swatch"
+            :class="{ 'is-active': isTextColorActive(item.token) }"
+            :title="item.label"
+            :aria-label="item.label"
+            @click="selectTextColor(item.token)"
+          >
+            <span class="toolbar-pc__palette-swatch-color" :style="{ backgroundColor: item.value }"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <button
       type="button"
       class="toolbar-pc__button toolbar-pc__fullscreen"
@@ -93,9 +145,10 @@
 </template>
 
 <script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { NodeSelection, Editor } from '@tiptap/vue-3'
+import type { BambooColorOption } from '../composables/useBambooEditor'
 import ToolbarIcon from './ToolbarIcon.vue'
-
 
 declare const window: Window & typeof globalThis
 
@@ -103,12 +156,14 @@ const props = defineProps<{
   editor: Editor | null
   disabled?: boolean
   fullscreen?: boolean
+  colorPalette?: readonly BambooColorOption[]
 }>()
 
 const emit = defineEmits<{
   'image-select': [file: File]
   'link-select': [url: string | null]
   'remote-image-select': [url: string]
+  'text-color-select': [token: string | null]
   'toggle-fullscreen': []
 }>()
 
@@ -125,6 +180,18 @@ const items = [
   { label: '引用', icon: 'quote', command: 'toggleBlockquote', active: 'blockquote' },
   { label: '代码块', icon: 'code-block', command: 'toggleCodeBlock', active: 'codeBlock' },
 ] as const
+
+const colorPalette = props.colorPalette ?? []
+const isColorMenuOpen = ref(false)
+const colorMenuRef = ref<HTMLElement | null>(null)
+const colorTriggerRef = ref<HTMLElement | null>(null)
+const hoveredColorToken = ref<string | null>(null)
+const dropdownPlacement = ref({ horizontal: 'left', vertical: 'down' } as { horizontal: 'left' | 'right'; vertical: 'down' | 'up' })
+const dropdownMenuStyle = ref<Record<string, string>>({})
+
+const activeColor = computed(() => colorPalette.find((item) => isTextColorActive(item.token)) ?? null)
+const currentColorValue = computed(() => activeColor.value?.value ?? '#18181b')
+const currentColorLabel = computed(() => activeColor.value ? `文字颜色：${activeColor.value.label}` : '文字颜色')
 
 function run(command: string, attrs?: Record<string, unknown>) {
   const chain = props.editor?.chain().focus()
@@ -249,6 +316,85 @@ function isTextAlignActive(align: 'left' | 'center' | 'right') {
   return props.editor.isActive({ textAlign: align })
 }
 
+function isTextColorActive(token: string) {
+  return props.editor?.isActive('textColor', { 'data-color': token }) ?? false
+}
+
+function isColorCleared() {
+  if (!props.editor) {
+    return false
+  }
+
+  return !colorPalette.some((item) => isTextColorActive(item.token))
+}
+
+function toggleColorMenu() {
+  if (props.disabled) {
+    return
+  }
+
+  isColorMenuOpen.value = !isColorMenuOpen.value
+  if (!isColorMenuOpen.value) {
+    hoveredColorToken.value = null
+    return
+  }
+
+  nextTick(updateDropdownPosition)
+}
+
+function selectTextColor(token: string | null) {
+  emit('text-color-select', token)
+  hoveredColorToken.value = null
+  isColorMenuOpen.value = false
+}
+
+function updateDropdownPosition() {
+  const trigger = colorTriggerRef.value
+  const container = colorMenuRef.value
+  if (!trigger || !container || typeof window === 'undefined') {
+    return
+  }
+
+  const viewportPadding = 12
+  const triggerRect = trigger.getBoundingClientRect()
+  const toolbarRect = container.closest('.toolbar-pc')?.getBoundingClientRect() ?? null
+  const menuWidth = Math.min(240, Math.max(168, 4 * 28 + 3 * 8 + 16))
+  const boundaryLeft = toolbarRect ? Math.max(viewportPadding, toolbarRect.left) : viewportPadding
+  const boundaryRight = toolbarRect ? Math.min(window.innerWidth - viewportPadding, toolbarRect.right) : window.innerWidth - viewportPadding
+  const availableRight = Math.max(0, boundaryRight - triggerRect.left)
+  const availableLeft = Math.max(0, triggerRect.right - boundaryLeft)
+  const width = Math.max(168, Math.min(menuWidth, Math.max(availableRight, availableLeft, 168)))
+  const wouldOverflowToolbarRight = triggerRect.left + width > boundaryRight
+  const alignRight = wouldOverflowToolbarRight && availableLeft >= width
+  const dropUp = window.innerHeight - triggerRect.bottom < 220 && triggerRect.top > window.innerHeight / 2
+
+  dropdownPlacement.value = {
+    horizontal: alignRight ? 'right' : 'left',
+    vertical: dropUp ? 'up' : 'down',
+  }
+  dropdownMenuStyle.value = {
+    width: `${Math.floor(width)}px`,
+    maxWidth: `${Math.max(168, Math.floor(boundaryRight - boundaryLeft))}px`,
+  }
+}
+
+function onClickOutside(event: MouseEvent) {
+  if (!colorMenuRef.value) {
+    return
+  }
+
+  if (event.target instanceof Node && !colorMenuRef.value.contains(event.target)) {
+    hoveredColorToken.value = null
+    isColorMenuOpen.value = false
+  }
+}
+
+function onViewportChange() {
+  if (isColorMenuOpen.value) {
+    updateDropdownPosition()
+  }
+}
+
 function onFileChange(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -257,6 +403,18 @@ function onFileChange(event: Event) {
   }
   input.value = ''
 }
+
+onMounted(() => {
+  document.addEventListener('mousedown', onClickOutside)
+  window.addEventListener('resize', onViewportChange)
+  window.addEventListener('scroll', onViewportChange, true)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', onClickOutside)
+  window.removeEventListener('resize', onViewportChange)
+  window.removeEventListener('scroll', onViewportChange, true)
+})
 </script>
 
 <style scoped>
@@ -299,6 +457,7 @@ function onFileChange(event: Event) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 3px;
   transition: all 0.18s ease;
   flex: none;
 }
@@ -325,12 +484,114 @@ function onFileChange(event: Event) {
   position: relative;
 }
 
+.toolbar-pc__dropdown {
+  position: relative;
+}
+
+.toolbar-pc__dropdown-trigger {
+  width: auto;
+  min-width: 42px;
+  padding: 0 7px;
+}
+
+ .toolbar-pc__dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  padding: 8px;
+  border: 1px solid #dcdfe6;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 10;
+}
+
+.toolbar-pc__dropdown-menu.is-align-right {
+  left: auto;
+  right: 0;
+}
+
+.toolbar-pc__dropdown-menu.is-drop-up {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+.toolbar-pc__dropdown-header {
+  padding: 0 2px;
+  color: #71717a;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.toolbar-pc__palette-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.toolbar-pc__palette-swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #e4e4e7;
+  border-radius: 10px;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.toolbar-pc__palette-swatch:hover {
+  border-color: #14b8a6;
+  background: #f0fdfa;
+  transform: translateY(-1px);
+}
+
+.toolbar-pc__palette-swatch.is-active {
+  border-color: #14b8a6;
+  background: #e6fffb;
+  box-shadow: inset 0 0 0 1px rgba(20, 184, 166, 0.2);
+}
+
+.toolbar-pc__palette-swatch-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.toolbar-pc__color-chip {
+  width: 16px;
+  height: 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  flex: none;
+}
+
 .toolbar-pc__fullscreen {
   margin-left: 4px;
 }
 
 :global(.bamboo-editor.is-fullscreen) .toolbar-pc__fullscreen {
   margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .toolbar-pc__dropdown-menu,
+  .toolbar-pc__dropdown-menu.is-align-right {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+
+  .toolbar-pc__palette-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .toolbar-pc__file {

@@ -4,6 +4,12 @@ import { createBambooEditorOptions, sanitizeHtml } from '@bamboo-editor/core'
 
 export type BambooDevice = 'pc' | 'mobile' | 'auto'
 
+export interface BambooColorOption {
+  token: string
+  label: string
+  value: string
+}
+
 export interface UploadResult {
   src: string
   alt?: string
@@ -18,6 +24,7 @@ export interface UseBambooEditorOptions {
   placeholder?: MaybeRefOrGetter<string | undefined>
   disabled?: MaybeRefOrGetter<boolean | undefined>
   uploadHandler?: MaybeRefOrGetter<UploadHandler | undefined>
+  colorPalette?: MaybeRefOrGetter<readonly BambooColorOption[] | undefined>
   onUpdate?: (html: string) => void
 }
 
@@ -38,17 +45,22 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
     windowWidth.value = window.innerWidth
   }
 
+  const sanitizeOptions = () => ({
+    colorTokens: resolveColorTokens(toValue(options.colorPalette)),
+  })
+
   onMounted(() => {
     window.addEventListener('resize', handleResize)
 
     editor.value = new Editor({
       ...createBambooEditorOptions({
         placeholder: toValue(options.placeholder),
+        colorTokens: resolveColorTokens(toValue(options.colorPalette)),
       }),
-      content: sanitizeHtml(toValue(options.modelValue) ?? ''),
+      content: sanitizeHtml(toValue(options.modelValue) ?? '', sanitizeOptions()),
       editable: !toValue(options.disabled),
       onUpdate: ({ editor: instance }) => {
-        options.onUpdate?.(sanitizeHtml(instance.getHTML()))
+        options.onUpdate?.(sanitizeHtml(instance.getHTML(), sanitizeOptions()))
       },
     })
   })
@@ -67,8 +79,8 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
         return
       }
 
-      const nextValue = sanitizeHtml(value ?? '')
-      if (nextValue !== sanitizeHtml(instance.getHTML())) {
+      const nextValue = sanitizeHtml(value ?? '', sanitizeOptions())
+      if (nextValue !== sanitizeHtml(instance.getHTML(), sanitizeOptions())) {
         instance.commands.setContent(nextValue, false)
       }
     },
@@ -145,6 +157,10 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
     unsetLink,
     insertRemoteImage,
   }
+}
+
+function resolveColorTokens(colorPalette?: readonly BambooColorOption[]) {
+  return colorPalette?.map((item) => item.token).filter(Boolean)
 }
 
 function readAsDataUrl(file: File) {

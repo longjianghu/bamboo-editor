@@ -1,3 +1,6 @@
+import { isValidColorToken, normalizeColorTokens } from '../colors'
+import type { SanitizeOptions } from './types'
+
 const ALLOWED_TAGS = new Set([
   'h1',
   'h2',
@@ -15,6 +18,7 @@ const ALLOWED_TAGS = new Set([
   'img',
   'pre',
   'blockquote',
+  'span',
 ])
 
 const ALLOWED_ATTRIBUTES: Record<string, Set<string>> = {
@@ -25,6 +29,7 @@ const ALLOWED_ATTRIBUTES: Record<string, Set<string>> = {
   p: new Set(['data-align']),
   blockquote: new Set(['data-align']),
   img: new Set(['src', 'alt', 'data-width', 'data-align']),
+  span: new Set(['data-color']),
 }
 
 function isDangerousUrl(value: string) {
@@ -45,11 +50,13 @@ function createContainer(html: string): HTMLDivElement | null {
   return container
 }
 
-export function sanitizeHtml(html: string): string {
+export function sanitizeHtml(html: string, options?: SanitizeOptions): string {
   const container = createContainer(html)
   if (!container) {
     return html
   }
+
+  const colorTokens = normalizeColorTokens(options?.colorTokens)
 
   const walk = (node: Node) => {
     if (node.nodeType === Node.ELEMENT_NODE) {
@@ -79,7 +86,23 @@ export function sanitizeHtml(html: string): string {
 
         if (name === 'data-align' && !isValidAlign(value)) {
           element.removeAttribute(attr.name)
+          continue
         }
+
+        if (name === 'data-color' && !isValidColorToken(value, colorTokens)) {
+          element.removeAttribute(attr.name)
+        }
+      }
+
+      if (tag === 'span' && !element.hasAttribute('data-color')) {
+        const parent = element.parentNode
+        if (parent) {
+          while (element.firstChild) {
+            parent.insertBefore(element.firstChild, element)
+          }
+          parent.removeChild(element)
+        }
+        return
       }
     }
 

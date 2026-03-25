@@ -1,14 +1,16 @@
 <template>
-  <div class="bamboo-editor" :class="{ 'is-fullscreen': isFullscreen }">
+  <div class="bamboo-editor" :class="{ 'is-fullscreen': isFullscreen }" :data-editor-scope="editorScopeId">
     <div class="bamboo-editor__main" :class="{ 'is-mobile': resolvedDevice === 'mobile' }">
       <ToolbarPC
         v-if="resolvedDevice === 'pc'"
         :editor="editor"
         :disabled="disabled"
         :fullscreen="isFullscreen"
+        :color-palette="resolvedColorPalette"
         @image-select="handleImageSelect"
         @link-select="handleLinkSelect"
         @remote-image-select="handleRemoteImageSelect"
+        @text-color-select="handleTextColorSelect"
         @toggle-fullscreen="toggleFullscreen"
       />
 
@@ -32,9 +34,18 @@ import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue'
 import { EditorContent } from '@tiptap/vue-3'
 import ToolbarPC from './ToolbarPC.vue'
 import ToolbarMobile from './ToolbarMobile.vue'
-import { useBambooEditor, type BambooDevice, type UploadHandler } from '../composables/useBambooEditor'
+import { useBambooEditor, type BambooColorOption, type BambooDevice, type UploadHandler } from '../composables/useBambooEditor'
 
 declare const window: Window & typeof globalThis
+
+const DEFAULT_COLOR_PALETTE: BambooColorOption[] = [
+  { token: 'primary', label: '主色', value: '#18181b' },
+  { token: 'success', label: '绿色', value: '#16a34a' },
+  { token: 'warning', label: '橙色', value: '#ea580c' },
+  { token: 'danger', label: '红色', value: '#dc2626' },
+  { token: 'muted', label: '灰色', value: '#71717a' },
+  { token: 'purple', label: '紫色', value: '#7c3aed' },
+]
 
 const props = withDefaults(defineProps<{
   modelValue: string
@@ -43,6 +54,7 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   uploadHandler?: UploadHandler
   height?: string
+  colorPalette?: BambooColorOption[]
 }>(), {
   device: 'auto',
   placeholder: '请输入内容',
@@ -55,6 +67,10 @@ const emit = defineEmits<{
 }>()
 
 const isFullscreen = ref(false)
+const editorScopeId = `bamboo-editor-${Math.random().toString(36).slice(2)}`
+
+const resolvedColorPalette = computed(() => props.colorPalette?.length ? props.colorPalette : DEFAULT_COLOR_PALETTE)
+const editorColorCss = computed(() => buildEditorColorCss(editorScopeId, resolvedColorPalette.value))
 
 const surfaceStyle = computed(() => {
   if (isFullscreen.value) {
@@ -72,6 +88,7 @@ const { editor, resolvedDevice, insertImage, setLink, unsetLink, insertRemoteIma
   placeholder: toRef(props, 'placeholder'),
   disabled: toRef(props, 'disabled'),
   uploadHandler: toRef(props, 'uploadHandler'),
+  colorPalette: resolvedColorPalette,
   onUpdate: (html) => emit('update:modelValue', html),
 })
 
@@ -89,6 +106,15 @@ function handleLinkSelect(url: string | null) {
 
 function handleRemoteImageSelect(url: string) {
   return insertRemoteImage(url)
+}
+
+function handleTextColorSelect(token: string | null) {
+  if (!editor.value) {
+    return false
+  }
+
+  const chain = editor.value.chain().focus()
+  return (token ? chain.setTextColor(token) : chain.unsetTextColor()).run()
 }
 
 function toggleFullscreen() {
@@ -133,10 +159,48 @@ watch(resolvedDevice, (value) => {
 onBeforeUnmount(() => {
   if (typeof document !== 'undefined') {
     document.body.style.overflow = ''
+    removeEditorColorStyle(editorScopeId)
   }
 
   window.removeEventListener('keydown', onKeydown)
 })
+
+watch(editorColorCss, (value) => {
+  applyEditorColorStyle(editorScopeId, value)
+}, { immediate: true })
+
+function buildEditorColorCss(scopeId: string, colorPalette: readonly BambooColorOption[]) {
+  return colorPalette
+    .map((item) => `[data-editor-scope='${escapeCssValue(scopeId)}'] .bamboo-editor__content .ProseMirror span[data-color='${escapeCssValue(item.token)}']{color:${item.value};}`)
+    .join('\n')
+}
+
+function applyEditorColorStyle(scopeId: string, cssText: string) {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  let styleElement = document.getElementById(scopeId) as HTMLStyleElement | null
+  if (!styleElement) {
+    styleElement = document.createElement('style')
+    styleElement.id = scopeId
+    document.head.appendChild(styleElement)
+  }
+
+  styleElement.textContent = cssText
+}
+
+function removeEditorColorStyle(scopeId: string) {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document.getElementById(scopeId)?.remove()
+}
+
+function escapeCssValue(value: string) {
+  return value.replace(/['\\]/g, '\\$&')
+}
 </script>
 
 <style scoped>
@@ -158,7 +222,7 @@ onBeforeUnmount(() => {
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .bamboo-editor.is-fullscreen {
@@ -177,7 +241,7 @@ onBeforeUnmount(() => {
   border-radius: 12px 12px 0 0;
   background: #fff;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .bamboo-editor__surface {
@@ -244,6 +308,30 @@ onBeforeUnmount(() => {
 .bamboo-editor__content :deep(.ProseMirror p[data-align='right']),
 .bamboo-editor__content :deep(.ProseMirror blockquote[data-align='right']) {
   text-align: right;
+}
+
+.bamboo-editor__content :deep(.ProseMirror span[data-color='primary']) {
+  color: var(--bamboo-editor-color-primary, #18181b);
+}
+
+.bamboo-editor__content :deep(.ProseMirror span[data-color='success']) {
+  color: var(--bamboo-editor-color-success, #16a34a);
+}
+
+.bamboo-editor__content :deep(.ProseMirror span[data-color='warning']) {
+  color: var(--bamboo-editor-color-warning, #ea580c);
+}
+
+.bamboo-editor__content :deep(.ProseMirror span[data-color='danger']) {
+  color: var(--bamboo-editor-color-danger, #dc2626);
+}
+
+.bamboo-editor__content :deep(.ProseMirror span[data-color='muted']) {
+  color: var(--bamboo-editor-color-muted, #71717a);
+}
+
+.bamboo-editor__content :deep(.ProseMirror span[data-color='purple']) {
+  color: var(--bamboo-editor-color-purple, #7c3aed);
 }
 
 .bamboo-editor__surface.is-mobile .bamboo-editor__content :deep(.ProseMirror) {
