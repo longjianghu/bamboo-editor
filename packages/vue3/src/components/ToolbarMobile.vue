@@ -232,11 +232,10 @@
         </div>
       </div>
 
-      <div class="toolbar-mobile__dropdown toolbar-mobile__dropdown--plus" ref="plusMenuRef">
+      <div class="toolbar-mobile__dropdown" ref="plusMenuRef">
         <button
           type="button"
-          class="toolbar-mobile__button toolbar-mobile__dropdown-trigger"
-          :class="{ 'is-active': isPlusPanelOpen || isPlusPanelActive }"
+          class="toolbar-mobile__button toolbar-mobile__dropdown-trigger toolbar-mobile__button--plus"
           :disabled="disabled"
           title="更多"
           aria-label="更多"
@@ -683,8 +682,8 @@ onBeforeUnmount(() => {
 }
 
 .toolbar-mobile :deep(.toolbar-icon) {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
 }
 
 .toolbar-mobile__button {
@@ -726,14 +725,17 @@ onBeforeUnmount(() => {
 .toolbar-mobile__dropdown-trigger {
   width: 100%;
   min-width: 0;
-  padding: 0 6px;
+  padding: 0 4px;
 }
 
 .toolbar-mobile__dropdown-trigger--text {
   gap: 2px;
+  flex-wrap: nowrap;
 }
 
 .toolbar-mobile__trigger-text {
+  min-width: 0;
+  white-space: nowrap;
   font-size: 12px;
   font-weight: 600;
   line-height: 1;
@@ -788,6 +790,13 @@ onBeforeUnmount(() => {
 
 .toolbar-mobile__dropdown--plus {
   position: static;
+}
+
+.toolbar-mobile__button--plus.is-active,
+.toolbar-mobile__button--plus:active {
+  border-color: transparent;
+  background: transparent;
+  color: #3f3f46;
 }
 
 .toolbar-mobile__panel {
