@@ -366,7 +366,7 @@ function escapeCssValue(value: string) {
   box-sizing: border-box;
   min-height: 100%;
   height: 100%;
-  padding: 16px 24px 28px;
+  padding: 10px 12px;
   max-width: 920px;
   margin: 0 auto;
   overflow-y: auto;

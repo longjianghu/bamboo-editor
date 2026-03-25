@@ -1063,9 +1063,6 @@ onBeforeUnmount(() => {
 
 .toolbar-pc__fullscreen {
   margin-left: 4px;
-  background: #fff;
-  border-color: #e4e7ec;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 :global(.bamboo-editor.is-fullscreen) .toolbar-pc__fullscreen {
