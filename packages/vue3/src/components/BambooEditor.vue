@@ -22,14 +22,20 @@
         <EditorContent v-if="editor" :editor="editor" class="bamboo-editor__content" />
         <div v-else class="bamboo-editor__placeholder">Loading editor...</div>
       </div>
-    </div>
 
-    <ToolbarMobile
-      v-if="resolvedDevice === 'mobile'"
-      :editor="editor"
-      :disabled="disabled"
-      @image-select="handleImageSelect"
-    />
+      <ToolbarMobile
+        v-if="resolvedDevice === 'mobile'"
+        :editor="editor"
+        :disabled="disabled"
+        :color-palette="resolvedColorPalette"
+        @image-select="handleImageSelect"
+        @link-select="handleLinkSelect"
+        @remote-image-select="handleRemoteImageSelect"
+        @text-color-select="handleTextColorSelect"
+        @clear-formatting="handleClearFormatting"
+        @insert-horizontal-rule="handleInsertHorizontalRule"
+      />
+    </div>
   </div>
 </template>
 
@@ -243,6 +249,10 @@ function escapeCssValue(value: string) {
   background: #fff;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
   overflow: hidden;
+}
+
+.bamboo-editor__main.is-mobile {
+  overflow: visible;
 }
 
 .bamboo-editor.is-fullscreen {

@@ -151,6 +151,11 @@
       <path d="M7 10L12 15L17 10" />
     </g>
 
+    <g v-else-if="name === 'plus'" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 5V19" />
+      <path d="M5 12H19" />
+    </g>
+
     <g v-else-if="name === 'fullscreen-enter'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M8 4H4V8" />
       <path d="M16 4H20V8" />
@@ -194,6 +199,7 @@ type ToolbarIconName =
   | 'text-color'
   | 'text-color-clear'
   | 'chevron-down'
+  | 'plus'
   | 'align-left'
   | 'align-center'
   | 'align-right'
