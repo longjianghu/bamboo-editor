@@ -19,6 +19,7 @@ const ALLOWED_TAGS = new Set([
   'pre',
   'blockquote',
   'span',
+  'hr',
 ])
 
 const ALLOWED_ATTRIBUTES: Record<string, Set<string>> = {

@@ -5,11 +5,11 @@
       :key="item.label"
       type="button"
       class="toolbar-pc__button"
-      :class="buttonClass(item.active, item.attrs)"
-      :disabled="isDisabled(item.command, item.attrs)"
+      :class="item.active ? buttonClass(item.active, item.attrs) : undefined"
+      :disabled="item.command ? isDisabled(item.command, item.attrs) : disabled"
       :title="item.label"
       :aria-label="item.label"
-      @click="run(item.command, item.attrs)"
+      @click="item.action ? handleAction(item.action) : run(item.command, item.attrs)"
     >
       <ToolbarIcon :name="item.icon" />
     </button>
@@ -164,10 +164,18 @@ const emit = defineEmits<{
   'link-select': [url: string | null]
   'remote-image-select': [url: string]
   'text-color-select': [token: string | null]
+  'undo': []
+  'redo': []
+  'clear-formatting': []
+  'insert-horizontal-rule': []
   'toggle-fullscreen': []
 }>()
 
 const items = [
+  { label: '撤销', icon: 'undo', command: 'undo' },
+  { label: '重做', icon: 'redo', command: 'redo' },
+  { label: '清除格式', icon: 'clear-format', action: 'clearFormatting' },
+  { label: '分割线', icon: 'horizontal-rule', action: 'insertHorizontalRule' },
   { label: '标题 1', icon: 'heading1', command: 'toggleHeading', active: 'heading', attrs: { level: 1 } },
   { label: '标题 2', icon: 'heading2', command: 'toggleHeading', active: 'heading', attrs: { level: 2 } },
   { label: '标题 3', icon: 'heading3', command: 'toggleHeading', active: 'heading', attrs: { level: 3 } },
@@ -179,7 +187,14 @@ const items = [
   { label: '有序列表', icon: 'ordered-list', command: 'toggleOrderedList', active: 'orderedList' },
   { label: '引用', icon: 'quote', command: 'toggleBlockquote', active: 'blockquote' },
   { label: '代码块', icon: 'code-block', command: 'toggleCodeBlock', active: 'codeBlock' },
-] as const
+] as const satisfies ReadonlyArray<{
+  label: string
+  icon: any
+  command?: string
+  active?: string
+  attrs?: Record<string, unknown>
+  action?: 'clearFormatting' | 'insertHorizontalRule'
+}>
 
 const colorPalette = props.colorPalette ?? []
 const isColorMenuOpen = ref(false)
@@ -201,6 +216,19 @@ function run(command: string, attrs?: Record<string, unknown>) {
 
   const target = attrs ? (chain as any)[command](attrs) : (chain as any)[command]()
   target?.run?.()
+}
+
+function handleAction(action: 'clearFormatting' | 'insertHorizontalRule') {
+  if (props.disabled) {
+    return
+  }
+
+  if (action === 'clearFormatting') {
+    emit('clear-formatting')
+    return
+  }
+
+  emit('insert-horizontal-rule')
 }
 
 function isImageSelected() {

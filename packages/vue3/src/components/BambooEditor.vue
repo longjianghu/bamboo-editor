@@ -11,6 +11,10 @@
         @link-select="handleLinkSelect"
         @remote-image-select="handleRemoteImageSelect"
         @text-color-select="handleTextColorSelect"
+        @undo="handleUndo"
+        @redo="handleRedo"
+        @clear-formatting="handleClearFormatting"
+        @insert-horizontal-rule="handleInsertHorizontalRule"
         @toggle-fullscreen="toggleFullscreen"
       />
 
@@ -82,7 +86,7 @@ const surfaceStyle = computed(() => {
   }
 })
 
-const { editor, resolvedDevice, insertImage, setLink, unsetLink, insertRemoteImage } = useBambooEditor({
+const { editor, resolvedDevice, insertImage, setLink, unsetLink, insertRemoteImage, undo, redo, insertHorizontalRule, clearFormatting } = useBambooEditor({
   modelValue: toRef(props, 'modelValue'),
   device: toRef(props, 'device'),
   placeholder: toRef(props, 'placeholder'),
@@ -115,6 +119,22 @@ function handleTextColorSelect(token: string | null) {
 
   const chain = editor.value.chain().focus()
   return (token ? chain.setTextColor(token) : chain.unsetTextColor()).run()
+}
+
+function handleUndo() {
+  return undo()
+}
+
+function handleRedo() {
+  return redo()
+}
+
+function handleClearFormatting() {
+  return clearFormatting()
+}
+
+function handleInsertHorizontalRule() {
+  return insertHorizontalRule()
 }
 
 function toggleFullscreen() {

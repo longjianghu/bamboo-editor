@@ -17,9 +17,9 @@
         <BambooEditor v-model="html" :device="device" :upload-handler="uploadHandler" :color-palette="colorPalette" />
       </article>
 
-      <article class="panel">
+      <article class="panel panel--code">
         <h2>HTML</h2>
-        <pre>{{ html }}</pre>
+        <pre class="panel__code"><code>{{ html }}</code></pre>
       </article>
 
       <article class="panel">
@@ -112,10 +112,45 @@ body {
 }
 
 .panel {
+  min-width: 0;
   background: #fff;
   border: 1px solid #e4e4e7;
   border-radius: 16px;
   padding: 16px;
+  overflow: hidden;
+}
+
+.panel--code {
+  display: flex;
+  flex-direction: column;
+}
+
+.panel--code h2 {
+  flex: none;
+}
+
+.panel__code {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  box-sizing: border-box;
+  background: #fafafa;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+}
+
+.panel__code code {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  white-space: inherit;
 }
 
 .bamboo-content span[data-color='primary'] {
@@ -144,5 +179,10 @@ body {
 
 .bamboo-content span[data-color='brand-blue'] {
   color: var(--preview-color-brand-blue, #2563eb);
+}
+
+.panel :where(.bamboo-content, .bamboo-content *) {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 </style>

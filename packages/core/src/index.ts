@@ -1,5 +1,6 @@
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
+import HorizontalRule from '@tiptap/extension-horizontal-rule'
 import type { AnyExtension, EditorOptions } from '@tiptap/core'
 import { DEFAULT_COLOR_TOKENS } from './colors'
 import { CleanHeading } from './extensions/CleanHeading'
@@ -30,7 +31,9 @@ export function getDefaultExtensions(options: BambooEditorOptions = {}): AnyExte
       bulletList: false,
       orderedList: false,
       listItem: false,
+      horizontalRule: false,
     }),
+    HorizontalRule,
     Placeholder.configure({
       placeholder: options.placeholder ?? '开始输入内容…',
       emptyEditorClass: 'is-editor-empty',

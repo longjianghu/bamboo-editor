@@ -149,6 +149,42 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
     return instance.chain().focus().setImage({ src }).run()
   }
 
+  function undo() {
+    const instance = editor.value
+    if (!instance) {
+      return false
+    }
+
+    return instance.chain().focus().undo().run()
+  }
+
+  function redo() {
+    const instance = editor.value
+    if (!instance) {
+      return false
+    }
+
+    return instance.chain().focus().redo().run()
+  }
+
+  function insertHorizontalRule() {
+    const instance = editor.value
+    if (!instance) {
+      return false
+    }
+
+    return instance.chain().focus().setHorizontalRule().run()
+  }
+
+  function clearFormatting() {
+    const instance = editor.value
+    if (!instance) {
+      return false
+    }
+
+    return instance.chain().focus().unsetAllMarks().clearNodes().run()
+  }
+
   return {
     editor,
     resolvedDevice,
@@ -156,6 +192,10 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
     setLink,
     unsetLink,
     insertRemoteImage,
+    undo,
+    redo,
+    insertHorizontalRule,
+    clearFormatting,
   }
 }
 

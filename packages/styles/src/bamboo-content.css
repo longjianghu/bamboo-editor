@@ -27,7 +27,8 @@
 .bamboo-content ul,
 .bamboo-content ol,
 .bamboo-content blockquote,
-.bamboo-content pre {
+.bamboo-content pre,
+.bamboo-content hr {
   margin: 0.875em 0;
 }
 
@@ -76,6 +77,15 @@
 .bamboo-content pre code {
   padding: 0;
   background: transparent;
+}
+
+.bamboo-content hr {
+  display: block;
+  width: 100%;
+  height: 0;
+  margin: 1.25em 0;
+  border: 0;
+  border-top: 2px solid #cbd5e1;
 }
 
 .bamboo-content img {

@@ -112,6 +112,28 @@
       <path d="M16.5 7.5L18.5 5.5C19.88 4.12 22.12 4.12 23.5 5.5C24.88 6.88 24.88 9.12 23.5 10.5L21.5 12.5" transform="translate(-4 0)" />
     </g>
 
+    <g v-else-if="name === 'undo'" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 7H16C18.761 7 21 9.239 21 12C21 14.761 18.761 17 16 17H7" />
+      <path d="M8 4L4 7L8 10" />
+    </g>
+
+    <g v-else-if="name === 'redo'" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 7H8C5.239 7 3 9.239 3 12C3 14.761 5.239 17 8 17H17" />
+      <path d="M16 4L20 7L16 10" />
+    </g>
+
+    <g v-else-if="name === 'clear-format'" fill="currentColor" stroke="none">
+      <path d="M554.3 850.7L981 424c12.5-12.5 12.5-32.8 0-45.3L636.7 34.6c-12.5-12.5-32.8-12.5-45.3 0L90.5 535.5c-50 50-50 131 0 181l272.1 270.3c24 23.8 56.4 37.2 90.2 37.2H864c17.7 0 32-14.3 32-32s-14.3-32-32-32H599.5c-57 0-85.6-68.9-45.2-109.3z m71.1-736.9l276.4 276.4c6.2 6.2 6.2 16.4 0 22.6L607.9 706.6l-299-299 293.8-293.9c6.3-6.2 16.4-6.2 22.7 0.1zM135.8 580.7l127.9-127.9 299 299-127.9 127.9c-25 25-65.5 25-90.5 0L135.8 671.3c-25-25-25-65.6 0-90.6z" transform="scale(0.0234375)" />
+    </g>
+
+    <g v-else-if="name === 'horizontal-rule'" fill="currentColor" stroke="none">
+      <path d="M0 51.2m51.2 0l989.866667 0q51.2 0 51.2 51.2l0 0q0 51.2-51.2 51.2l-989.866667 0q-51.2 0-51.2-51.2l0 0q0-51.2 51.2-51.2Z" transform="scale(0.021978 0.0234375)" />
+      <path d="M0 460.8m51.2 0l170.666667 0q51.2 0 51.2 51.2l0 0q0 51.2-51.2 51.2l-170.666667 0q-51.2 0-51.2-51.2l0 0q0-51.2 51.2-51.2Z" transform="scale(0.021978 0.0234375)" />
+      <path d="M819.2 460.8m51.2 0l170.666667 0q51.2 0 51.2 51.2l0 0q0 51.2-51.2 51.2l-170.666667 0q-51.2 0-51.2-51.2l0 0q0-51.2 51.2-51.2Z" transform="scale(0.021978 0.0234375)" />
+      <path d="M409.6 460.8m51.2 0l170.666667 0q51.2 0 51.2 51.2l0 0q0 51.2-51.2 51.2l-170.666667 0q-51.2 0-51.2-51.2l0 0q0-51.2 51.2-51.2Z" transform="scale(0.021978 0.0234375)" />
+      <path d="M0 870.4m51.2 0l989.866667 0q51.2 0 51.2 51.2l0 0q0 51.2-51.2 51.2l-989.866667 0q-51.2 0-51.2-51.2l0 0q0-51.2 51.2-51.2Z" transform="scale(0.021978 0.0234375)" />
+    </g>
+
     <g v-else-if="name === 'text-color'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M8 18L12 6L16 18" />
       <path d="M9.5 14H14.5" />
@@ -158,6 +180,10 @@ type ToolbarIconName =
   | 'italic'
   | 'strike'
   | 'code'
+  | 'undo'
+  | 'redo'
+  | 'clear-format'
+  | 'horizontal-rule'
   | 'bullet-list'
   | 'ordered-list'
   | 'quote'

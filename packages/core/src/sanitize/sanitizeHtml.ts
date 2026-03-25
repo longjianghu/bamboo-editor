@@ -19,6 +19,7 @@ const ALLOWED_TAGS = new Set([
   'pre',
   'blockquote',
   'span',
+  'hr',
 ])
 
 const ALLOWED_ATTRIBUTES: Record<string, Set<string>> = {
@@ -115,7 +116,7 @@ export function sanitizeHtml(html: string, options?: SanitizeOptions): string {
 
   for (const element of Array.from(container.querySelectorAll('*'))) {
     const tag = element.tagName.toLowerCase()
-    if (tag !== 'br' && tag !== 'img' && element.childNodes.length === 0 && !element.textContent?.trim()) {
+    if (tag !== 'br' && tag !== 'img' && tag !== 'hr' && element.childNodes.length === 0 && !element.textContent?.trim()) {
       element.remove()
     }
   }
