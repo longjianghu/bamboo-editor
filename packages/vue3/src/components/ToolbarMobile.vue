@@ -21,55 +21,12 @@
           <button
             type="button"
             class="toolbar-mobile__panel-button"
-            :disabled="disabled"
-            @click="emitActionAndClosePanel('insert-horizontal-rule')"
-          >
-            <ToolbarIcon name="horizontal-rule" />
-            <span>分割线</span>
-          </button>
-
-          <button
-            type="button"
-            class="toolbar-mobile__panel-button"
             :class="buttonClass('codeBlock')"
             :disabled="isDisabled('toggleCodeBlock')"
             @click="runAndClosePanel('toggleCodeBlock')"
           >
             <ToolbarIcon name="code-block" />
             <span>代码块</span>
-          </button>
-
-          <button
-            type="button"
-            class="toolbar-mobile__panel-button"
-            :class="{ 'is-active': isTextAlignActive('left') }"
-            :disabled="disabled"
-            @click="applyAlign('left')"
-          >
-            <ToolbarIcon name="align-left" />
-            <span>左对齐</span>
-          </button>
-
-          <button
-            type="button"
-            class="toolbar-mobile__panel-button"
-            :class="{ 'is-active': isTextAlignActive('center') }"
-            :disabled="disabled"
-            @click="applyAlign('center')"
-          >
-            <ToolbarIcon name="align-center" />
-            <span>居中对齐</span>
-          </button>
-
-          <button
-            type="button"
-            class="toolbar-mobile__panel-button"
-            :class="{ 'is-active': isTextAlignActive('right') }"
-            :disabled="disabled"
-            @click="applyAlign('right')"
-          >
-            <ToolbarIcon name="align-right" />
-            <span>右对齐</span>
           </button>
 
           <button
@@ -106,51 +63,15 @@
         <ToolbarIcon name="undo" />
       </button>
 
-      <div class="toolbar-mobile__dropdown" :class="{ 'is-open': isHeadingMenuOpen }" ref="headingMenuRef">
-        <button
-          type="button"
-          class="toolbar-mobile__button toolbar-mobile__dropdown-trigger toolbar-mobile__dropdown-trigger--text"
-          :class="{ 'is-active': isHeadingMenuOpen || !isParagraphActive() }"
-          :disabled="disabled"
-          :title="currentHeadingLabel"
-          :aria-label="currentHeadingLabel"
-          ref="headingTriggerRef"
-          @click="toggleMenu('heading')"
-        >
-          <span class="toolbar-mobile__trigger-text">{{ currentHeadingShortLabel }}</span>
-          <ToolbarIcon name="chevron-down" />
-        </button>
-
-        <div
-          v-if="isHeadingMenuOpen"
-          class="toolbar-mobile__dropdown-menu toolbar-mobile__option-list"
-          :class="menuPlacementClass(headingDropdownPlacement)"
-          :style="headingDropdownMenuStyle"
-        >
-          <button
-            v-for="option in headingOptions"
-            :key="option.label"
-            type="button"
-            class="toolbar-mobile__option-button"
-            :class="{ 'is-active': isHeadingOptionActive(option) }"
-            :disabled="option.command ? isDisabled(option.command, option.attrs) : disabled"
-            @click="selectHeading(option)"
-          >
-            <span class="toolbar-mobile__option-label">{{ option.label }}</span>
-          </button>
-        </div>
-      </div>
-
       <button
         type="button"
         class="toolbar-mobile__button"
-        :class="buttonClass('bold')"
-        :disabled="isDisabled('toggleBold')"
-        title="加粗"
-        aria-label="加粗"
-        @click="run('toggleBold')"
+        :disabled="disabled"
+        title="分割线"
+        aria-label="分割线"
+        @click="emit('insert-horizontal-rule')"
       >
-        <ToolbarIcon name="bold" />
+        <ToolbarIcon name="horizontal-rule" />
       </button>
 
       <div class="toolbar-mobile__dropdown" :class="{ 'is-open': isListMenuOpen }" ref="listMenuRef">
@@ -253,20 +174,11 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import type { NodeSelection, Editor } from '@tiptap/vue-3'
+import type { Editor } from '@tiptap/vue-3'
 import type { BambooColorOption } from '../composables/useBambooEditor'
 import ToolbarIcon from './ToolbarIcon.vue'
 
 declare const window: Window & typeof globalThis
-
-type ToolbarCommand = string
-
-type HeadingOption = {
-  label: string
-  shortLabel: string
-  command: ToolbarCommand
-  attrs?: Record<string, unknown>
-}
 
 type ListOption = {
   label: string
@@ -280,12 +192,11 @@ type DropdownPlacement = {
   vertical: 'up'
 }
 
-type MenuKind = 'heading' | 'list' | 'image'
+type MenuKind = 'list' | 'image'
 
 type ToolbarEmitAction = 'clear-formatting' | 'insert-horizontal-rule'
 
 const OPEN_DELAY_MS = 100
-const OPEN_ANIMATION_MS = 300
 const CLOSE_ANIMATION_MS = 200
 
 const props = defineProps<{
@@ -303,26 +214,16 @@ const emit = defineEmits<{
   'insert-horizontal-rule': []
 }>()
 
-const headingOptions = [
-  { label: '正文', shortLabel: '正文', command: 'setParagraph' },
-  { label: '标题 1', shortLabel: 'H1', command: 'toggleHeading', attrs: { level: 1 } },
-  { label: '标题 2', shortLabel: 'H2', command: 'toggleHeading', attrs: { level: 2 } },
-  { label: '标题 3', shortLabel: 'H3', command: 'toggleHeading', attrs: { level: 3 } },
-] as const satisfies readonly HeadingOption[]
-
 const listOptions = [
   { label: '无序列表', command: 'toggleBulletList', active: 'bulletList', icon: 'bullet-list' },
   { label: '有序列表', command: 'toggleOrderedList', active: 'orderedList', icon: 'ordered-list' },
 ] as const satisfies readonly ListOption[]
 
-const isHeadingMenuOpen = ref(false)
 const isListMenuOpen = ref(false)
 const isImageMenuOpen = ref(false)
 const isPlusPanelVisible = ref(false)
 const isPlusPanelOpen = ref(false)
 
-const headingMenuRef = ref<HTMLElement | null>(null)
-const headingTriggerRef = ref<HTMLElement | null>(null)
 const listMenuRef = ref<HTMLElement | null>(null)
 const listTriggerRef = ref<HTMLElement | null>(null)
 const imageMenuRef = ref<HTMLElement | null>(null)
@@ -333,38 +234,18 @@ const shellRef = ref<HTMLElement | null>(null)
 const imageFileInputRef = ref<HTMLInputElement | null>(null)
 
 const panelWrapStyle = ref<Record<string, string>>({})
-
-const headingDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'up' })
 const listDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'up' })
 const imageDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'up' })
-
-const headingDropdownMenuStyle = ref<Record<string, string>>({})
 const listDropdownMenuStyle = ref<Record<string, string>>({})
 const imageDropdownMenuStyle = ref<Record<string, string>>({})
 
 let openTimer: number | null = null
 let closeTimer: number | null = null
 
-const currentHeadingOption = computed(() => {
-  if (props.editor?.isActive('heading', { level: 1 })) return headingOptions[1]
-  if (props.editor?.isActive('heading', { level: 2 })) return headingOptions[2]
-  if (props.editor?.isActive('heading', { level: 3 })) return headingOptions[3]
-  return headingOptions[0]
-})
-
-const currentHeadingLabel = computed(() => currentHeadingOption.value.label)
-const currentHeadingShortLabel = computed(() => currentHeadingOption.value.shortLabel)
 const currentListOption = computed(() => props.editor?.isActive('orderedList') ? listOptions[1] : listOptions[0])
 const currentListLabel = computed(() => currentListOption.value.label)
 const currentListIcon = computed(() => currentListOption.value.icon)
 const isListMenuActive = computed(() => Boolean(props.editor?.isActive('bulletList') || props.editor?.isActive('orderedList')))
-const isPlusPanelActive = computed(() => Boolean(
-  props.editor?.isActive('blockquote')
-  || props.editor?.isActive('codeBlock')
-  || isTextAlignActive('left')
-  || isTextAlignActive('center')
-  || isTextAlignActive('right')
-))
 
 function clearPanelTimers() {
   if (openTimer !== null) {
@@ -410,21 +291,6 @@ function buttonClass(name: string, attrs?: Record<string, unknown>) {
   return { 'is-active': Boolean(active) }
 }
 
-function isParagraphActive() {
-  return props.editor?.isActive('paragraph') ?? false
-}
-
-function isHeadingOptionActive(option: HeadingOption) {
-  if (option.command === 'setParagraph') return isParagraphActive()
-  return props.editor?.isActive('heading', option.attrs) ?? false
-}
-
-function selectHeading(option: HeadingOption) {
-  if (props.disabled) return
-  run(option.command, option.attrs)
-  closeMenus()
-}
-
 function selectList(option: ListOption) {
   run(option.command)
   closeMenus()
@@ -457,37 +323,6 @@ function onImageTriggerClick() {
   nextTick(() => imageFileInputRef.value?.click())
 }
 
-function isImageSelected() {
-  const selection = props.editor?.state.selection as NodeSelection | undefined
-  return selection?.node?.type.name === 'image'
-}
-
-function setTextAlign(align: 'left' | 'center' | 'right') {
-  if (props.disabled || !props.editor) return
-  if (isImageSelected()) {
-    props.editor.chain().focus().updateAttributes('image', { 'data-align': align === 'left' ? null : align }).run()
-    return
-  }
-  const chain = props.editor.chain().focus()
-  const target = align === 'left' ? chain.unsetTextAlign() : chain.setTextAlign(align)
-  target.run()
-}
-
-function applyAlign(align: 'left' | 'center' | 'right') {
-  setTextAlign(align)
-}
-
-function isTextAlignActive(align: 'left' | 'center' | 'right') {
-  if (!props.editor) return false
-  if (isImageSelected()) {
-    const imageAlign = props.editor.getAttributes('image')['data-align']
-    if (align === 'left') return imageAlign !== 'center' && imageAlign !== 'right'
-    return imageAlign === align
-  }
-  if (align === 'left') return !props.editor.isActive({ textAlign: 'center' }) && !props.editor.isActive({ textAlign: 'right' })
-  return props.editor.isActive({ textAlign: align })
-}
-
 function updatePanelPosition() {
   const shell = shellRef.value
   if (!shell || typeof window === 'undefined') return
@@ -505,19 +340,16 @@ function updatePanelPosition() {
 }
 
 function getMenuState(kind: MenuKind) {
-  if (kind === 'heading') return isHeadingMenuOpen
   if (kind === 'list') return isListMenuOpen
   return isImageMenuOpen
 }
 
 function getMenuElements(kind: MenuKind) {
-  if (kind === 'heading') return { menuRef: headingMenuRef, triggerRef: headingTriggerRef, placementRef: headingDropdownPlacement, styleRef: headingDropdownMenuStyle, width: 168 }
   if (kind === 'list') return { menuRef: listMenuRef, triggerRef: listTriggerRef, placementRef: listDropdownPlacement, styleRef: listDropdownMenuStyle, width: 160 }
   return { menuRef: imageMenuRef, triggerRef: imageTriggerRef, placementRef: imageDropdownPlacement, styleRef: imageDropdownMenuStyle, width: 176 }
 }
 
 function closeMenus() {
-  isHeadingMenuOpen.value = false
   isListMenuOpen.value = false
   isImageMenuOpen.value = false
 }
@@ -604,13 +436,12 @@ function menuPlacementClass(placement: DropdownPlacement) {
 }
 
 function onClickOutside(event: MouseEvent) {
-  const targets = [headingMenuRef.value, listMenuRef.value, imageMenuRef.value].filter(Boolean)
+  const targets = [listMenuRef.value, imageMenuRef.value].filter(Boolean)
   if (!targets.length) return
   if (event.target instanceof Node && !targets.some((target) => target?.contains(event.target))) closeMenus()
 }
 
 function onViewportChange() {
-  if (isHeadingMenuOpen.value) updateDropdownPosition('heading')
   if (isListMenuOpen.value) updateDropdownPosition('list')
   if (isImageMenuOpen.value) updateDropdownPosition('image')
   if (isPlusPanelVisible.value || isPlusPanelOpen.value) updatePanelPosition()
@@ -672,7 +503,7 @@ onBeforeUnmount(() => {
   position: relative;
   z-index: 3;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
   min-height: calc(48px + env(safe-area-inset-bottom, 0px));
   padding: 4px 10px calc(4px + env(safe-area-inset-bottom, 0px));

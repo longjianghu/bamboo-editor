@@ -23,6 +23,18 @@
         <div v-else class="bamboo-editor__placeholder">Loading editor...</div>
       </div>
 
+      <FloatingToolbarPC
+        v-if="resolvedDevice === 'mobile'"
+        :editor="editor"
+        :disabled="disabled"
+        :visible="floatingToolbarVisible"
+        :position="floatingToolbarPosition"
+        :color-palette="resolvedColorPalette"
+        @link-select="handleLinkSelect"
+        @text-color-select="handleTextColorSelect"
+        @clear-formatting="handleClearFormatting"
+      />
+
       <ToolbarMobile
         v-if="resolvedDevice === 'mobile'"
         :editor="editor"
@@ -44,6 +56,7 @@ import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue'
 import { EditorContent } from '@tiptap/vue-3'
 import ToolbarPC from './ToolbarPC.vue'
 import ToolbarMobile from './ToolbarMobile.vue'
+import FloatingToolbarPC from './FloatingToolbarPC.vue'
 import { useBambooEditor, type BambooColorOption, type BambooDevice, type UploadHandler } from '../composables/useBambooEditor'
 
 declare const window: Window & typeof globalThis
@@ -78,6 +91,8 @@ const emit = defineEmits<{
 
 const isFullscreen = ref(false)
 const editorScopeId = `bamboo-editor-${Math.random().toString(36).slice(2)}`
+const floatingToolbarVisible = ref(false)
+const floatingToolbarPosition = ref({ top: 0, left: 0 })
 
 const resolvedColorPalette = computed(() => props.colorPalette?.length ? props.colorPalette : DEFAULT_COLOR_PALETTE)
 const editorColorCss = computed(() => buildEditorColorCss(editorScopeId, resolvedColorPalette.value))
@@ -143,6 +158,97 @@ function handleInsertHorizontalRule() {
   return insertHorizontalRule()
 }
 
+function hideFloatingToolbar() {
+  floatingToolbarVisible.value = false
+}
+
+function updateFloatingToolbar() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    hideFloatingToolbar()
+    return
+  }
+
+  const instance = editor.value
+  if (!instance || resolvedDevice.value !== 'mobile' || props.disabled) {
+    hideFloatingToolbar()
+    return
+  }
+
+  const selection = instance.state.selection as typeof instance.state.selection & { node?: { type?: { name?: string } } }
+  const isImageSelection = selection.node?.type?.name === 'image'
+  const editorElement = document.querySelector(`[data-editor-scope='${editorScopeId}'] .bamboo-editor__content .ProseMirror`) as HTMLElement | null
+  if (!editorElement) {
+    hideFloatingToolbar()
+    return
+  }
+
+  let rect: DOMRect | null = null
+
+  if (isImageSelection) {
+    const imageNode = instance.view.nodeDOM(selection.from) as HTMLElement | null
+    if (!imageNode || !editorElement.contains(imageNode)) {
+      hideFloatingToolbar()
+      return
+    }
+
+    const imageRect = imageNode.getBoundingClientRect()
+    if (!imageRect.width && !imageRect.height) {
+      hideFloatingToolbar()
+      return
+    }
+
+    rect = imageRect
+  }
+  else {
+    const { from, to, empty } = selection
+    if (empty || from === to) {
+      hideFloatingToolbar()
+      return
+    }
+
+    if (!selection.$from.parent.isTextblock) {
+      hideFloatingToolbar()
+      return
+    }
+
+    const domSelection = window.getSelection()
+    if (!domSelection || domSelection.rangeCount === 0 || domSelection.isCollapsed) {
+      hideFloatingToolbar()
+      return
+    }
+
+    const range = domSelection.getRangeAt(0)
+    if (!editorElement.contains(range.commonAncestorContainer)) {
+      hideFloatingToolbar()
+      return
+    }
+
+    const rangeRect = range.getBoundingClientRect()
+    if (!rangeRect.width && !rangeRect.height) {
+      hideFloatingToolbar()
+      return
+    }
+
+    rect = rangeRect
+  }
+
+  const editorRect = editorElement.getBoundingClientRect()
+  const toolbarWidth = 420
+  const toolbarHeight = 52
+  const gap = 10
+  const minLeft = editorRect.left + toolbarWidth / 2
+  const maxLeft = editorRect.right - toolbarWidth / 2
+  const centeredLeft = rect.left + rect.width / 2
+  const left = clamp(centeredLeft, minLeft, maxLeft)
+  const placeAboveTop = rect.top - gap
+  const top = placeAboveTop - toolbarHeight >= editorRect.top
+    ? placeAboveTop
+    : Math.min(editorRect.bottom - gap, rect.bottom + toolbarHeight + gap)
+
+  floatingToolbarPosition.value = { top, left }
+  floatingToolbarVisible.value = true
+}
+
 function toggleFullscreen() {
   if (resolvedDevice.value !== 'pc') {
     return
@@ -159,6 +265,14 @@ function onKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape' && isFullscreen.value) {
     exitFullscreen()
   }
+}
+
+function clamp(value: number, min: number, max: number) {
+  if (min > max) {
+    return value
+  }
+
+  return Math.min(Math.max(value, min), max)
 }
 
 watch(isFullscreen, (value) => {
@@ -180,9 +294,52 @@ watch(resolvedDevice, (value) => {
   if (value !== 'pc' && isFullscreen.value) {
     exitFullscreen()
   }
+
+  if (value !== 'mobile') {
+    hideFloatingToolbar()
+  }
 })
 
+watch([editor, resolvedDevice, () => props.disabled], (_, __, onCleanup) => {
+  const instance = editor.value
+  if (!instance) {
+    hideFloatingToolbar()
+    return
+  }
+
+  const handleSelectionChange = () => updateFloatingToolbar()
+  const handleBlur = ({ event }: { event?: FocusEvent }) => {
+    const relatedTarget = event?.relatedTarget
+    if (relatedTarget instanceof Node && relatedTarget.closest('.floating-toolbar-pc')) {
+      return
+    }
+
+    window.setTimeout(() => updateFloatingToolbar(), 0)
+  }
+
+  const handleFocus = () => updateFloatingToolbar()
+
+  instance.on('selectionUpdate', handleSelectionChange)
+  instance.on('transaction', handleSelectionChange)
+  instance.on('focus', handleFocus)
+  instance.on('blur', handleBlur)
+  window.addEventListener('resize', handleSelectionChange)
+  window.addEventListener('scroll', handleSelectionChange, true)
+  updateFloatingToolbar()
+
+  onCleanup(() => {
+    instance.off('selectionUpdate', handleSelectionChange)
+    instance.off('transaction', handleSelectionChange)
+    instance.off('focus', handleFocus)
+    instance.off('blur', handleBlur)
+    window.removeEventListener('resize', handleSelectionChange)
+    window.removeEventListener('scroll', handleSelectionChange, true)
+  })
+}, { immediate: true })
+
 onBeforeUnmount(() => {
+  hideFloatingToolbar()
+
   if (typeof document !== 'undefined') {
     document.body.style.overflow = ''
     removeEditorColorStyle(editorScopeId)
