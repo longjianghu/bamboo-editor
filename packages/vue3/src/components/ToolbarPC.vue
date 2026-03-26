@@ -339,8 +339,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'image-select': [file: File]
-  'link-select': [url: string | null]
-  'remote-image-select': [url: string]
+  'open-link-dialog': [payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }]
+  'open-remote-image-dialog': [payload?: { initialValue?: string }]
   'text-color-select': [token: string | null]
   'undo': []
   'redo': []
@@ -545,19 +545,6 @@ function selectHeading(option: HeadingOption) {
   closeMenus()
 }
 
-function askUrl(message: string, initialValue = '') {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  const value = window.prompt(message, initialValue)
-  if (value == null) {
-    return null
-  }
-
-  return value.trim()
-}
-
 function onLinkClick() {
   if (props.disabled) {
     return
@@ -566,21 +553,19 @@ function onLinkClick() {
   closeMenus()
 
   if (props.editor?.isActive('link')) {
-    const shouldKeep = askUrl('请输入链接地址，留空可取消当前链接', props.editor.getAttributes('link').href ?? '')
-    if (shouldKeep === null) {
-      return
-    }
-
-    emit('link-select', shouldKeep || null)
+    emit('open-link-dialog', {
+      initialValue: props.editor.getAttributes('link').href ?? '',
+      mode: 'edit',
+      allowRemove: true,
+    })
     return
   }
 
-  const url = askUrl('请输入链接地址')
-  if (!url) {
-    return
-  }
-
-  emit('link-select', url)
+  emit('open-link-dialog', {
+    mode: 'create',
+    initialValue: '',
+    allowRemove: false,
+  })
 }
 
 function onRemoteImageClick() {
@@ -589,13 +574,7 @@ function onRemoteImageClick() {
   }
 
   closeMenus()
-
-  const url = askUrl('请输入远程图片地址')
-  if (!url) {
-    return
-  }
-
-  emit('remote-image-select', url)
+  emit('open-remote-image-dialog', { initialValue: '' })
 }
 
 function onImageTriggerClick() {

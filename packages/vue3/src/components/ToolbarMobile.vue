@@ -207,8 +207,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'image-select': [file: File]
-  'link-select': [url: string | null]
-  'remote-image-select': [url: string]
+  'open-link-dialog': [payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }]
+  'open-remote-image-dialog': [payload?: { initialValue?: string }]
   'text-color-select': [token: string | null]
   'clear-formatting': []
   'insert-horizontal-rule': []
@@ -302,19 +302,10 @@ function emitActionAndClosePanel(action: ToolbarEmitAction) {
   closePlusPanel()
 }
 
-function askUrl(message: string, initialValue = '') {
-  if (typeof window === 'undefined') return null
-  const value = window.prompt(message, initialValue)
-  if (value == null) return null
-  return value.trim()
-}
-
 function onRemoteImageClick() {
   if (props.disabled) return
   closeMenus()
-  const url = askUrl('请输入远程图片地址')
-  if (!url) return
-  emit('remote-image-select', url)
+  emit('open-remote-image-dialog', { initialValue: '' })
 }
 
 function onImageTriggerClick() {

@@ -219,7 +219,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'link-select': [url: string | null]
+  'open-link-dialog': [payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }]
   'text-color-select': [token: string | null]
   'clear-formatting': []
 }>()
@@ -509,19 +509,6 @@ function getMenuPlacement(kind: MenuKind) {
   return colorMenuPlacement
 }
 
-function askUrl(message: string, initialValue = '') {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  const value = window.prompt(message, initialValue)
-  if (value == null) {
-    return null
-  }
-
-  return value.trim()
-}
-
 function onLinkClick() {
   if (props.disabled) {
     return
@@ -530,21 +517,19 @@ function onLinkClick() {
   closeMenus()
 
   if (props.editor?.isActive('link')) {
-    const shouldKeep = askUrl('请输入链接地址，留空可取消当前链接', props.editor.getAttributes('link').href ?? '')
-    if (shouldKeep === null) {
-      return
-    }
-
-    emit('link-select', shouldKeep || null)
+    emit('open-link-dialog', {
+      initialValue: props.editor.getAttributes('link').href ?? '',
+      mode: 'edit',
+      allowRemove: true,
+    })
     return
   }
 
-  const url = askUrl('请输入链接地址')
-  if (!url) {
-    return
-  }
-
-  emit('link-select', url)
+  emit('open-link-dialog', {
+    mode: 'create',
+    initialValue: '',
+    allowRemove: false,
+  })
 }
 
 function getMenuState(kind: MenuKind) {

@@ -8,8 +8,8 @@
         :fullscreen="isFullscreen"
         :color-palette="resolvedColorPalette"
         @image-select="handleImageSelect"
-        @link-select="handleLinkSelect"
-        @remote-image-select="handleRemoteImageSelect"
+        @open-link-dialog="handleOpenLinkDialog"
+        @open-remote-image-dialog="handleOpenRemoteImageDialog"
         @text-color-select="handleTextColorSelect"
         @undo="handleUndo"
         @redo="handleRedo"
@@ -30,7 +30,7 @@
         :visible="floatingToolbarVisible"
         :position="floatingToolbarPosition"
         :color-palette="resolvedColorPalette"
-        @link-select="handleLinkSelect"
+        @open-link-dialog="handleOpenLinkDialog"
         @text-color-select="handleTextColorSelect"
         @clear-formatting="handleClearFormatting"
       />
@@ -41,11 +41,22 @@
         :disabled="disabled"
         :color-palette="resolvedColorPalette"
         @image-select="handleImageSelect"
-        @link-select="handleLinkSelect"
-        @remote-image-select="handleRemoteImageSelect"
+        @open-remote-image-dialog="handleOpenRemoteImageDialog"
         @text-color-select="handleTextColorSelect"
         @clear-formatting="handleClearFormatting"
         @insert-horizontal-rule="handleInsertHorizontalRule"
+      />
+
+      <EditorUrlDialog
+        :visible="urlDialogVisible"
+        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
+        :type="urlDialogState.type"
+        :mode="urlDialogState.mode"
+        :initial-value="urlDialogState.initialValue"
+        :allow-remove="urlDialogState.allowRemove"
+        @confirm="handleUrlDialogConfirm"
+        @remove="handleUrlDialogRemove"
+        @cancel="closeUrlDialog"
       />
     </div>
   </div>
@@ -57,6 +68,7 @@ import { EditorContent } from '@tiptap/vue-3'
 import ToolbarPC from './ToolbarPC.vue'
 import ToolbarMobile from './ToolbarMobile.vue'
 import FloatingToolbarPC from './FloatingToolbarPC.vue'
+import EditorUrlDialog from './EditorUrlDialog.vue'
 import { useBambooEditor, type BambooColorOption, type BambooDevice, type UploadHandler } from '../composables/useBambooEditor'
 
 declare const window: Window & typeof globalThis
@@ -93,6 +105,18 @@ const isFullscreen = ref(false)
 const editorScopeId = `bamboo-editor-${Math.random().toString(36).slice(2)}`
 const floatingToolbarVisible = ref(false)
 const floatingToolbarPosition = ref({ top: 0, left: 0 })
+const urlDialogVisible = ref(false)
+const urlDialogState = ref<{
+  type: 'link' | 'remote-image'
+  mode: 'create' | 'edit'
+  initialValue: string
+  allowRemove: boolean
+}>({
+  type: 'link',
+  mode: 'create',
+  initialValue: '',
+  allowRemove: false,
+})
 
 const resolvedColorPalette = computed(() => props.colorPalette?.length ? props.colorPalette : DEFAULT_COLOR_PALETTE)
 const editorColorCss = computed(() => buildEditorColorCss(editorScopeId, resolvedColorPalette.value))
@@ -131,6 +155,58 @@ function handleLinkSelect(url: string | null) {
 
 function handleRemoteImageSelect(url: string) {
   return insertRemoteImage(url)
+}
+
+function handleOpenLinkDialog(payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }) {
+  if (props.disabled) {
+    return
+  }
+
+  urlDialogState.value = {
+    type: 'link',
+    mode: payload?.mode ?? 'create',
+    initialValue: payload?.initialValue ?? '',
+    allowRemove: payload?.allowRemove ?? false,
+  }
+  urlDialogVisible.value = true
+}
+
+function handleOpenRemoteImageDialog(payload?: { initialValue?: string }) {
+  if (props.disabled) {
+    return
+  }
+
+  urlDialogState.value = {
+    type: 'remote-image',
+    mode: 'create',
+    initialValue: payload?.initialValue ?? '',
+    allowRemove: false,
+  }
+  urlDialogVisible.value = true
+}
+
+function closeUrlDialog() {
+  urlDialogVisible.value = false
+  window.setTimeout(() => editor.value?.commands.focus(), 0)
+}
+
+function handleUrlDialogConfirm(url: string) {
+  if (urlDialogState.value.type === 'remote-image') {
+    handleRemoteImageSelect(url)
+  }
+  else {
+    handleLinkSelect(url)
+  }
+
+  closeUrlDialog()
+}
+
+function handleUrlDialogRemove() {
+  if (urlDialogState.value.type === 'link') {
+    handleLinkSelect(null)
+  }
+
+  closeUrlDialog()
 }
 
 function handleTextColorSelect(token: string | null) {
