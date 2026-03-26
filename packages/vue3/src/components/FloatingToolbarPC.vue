@@ -1,6 +1,7 @@
 <template>
   <div
     v-if="visible"
+    ref="toolbarRef"
     class="floating-toolbar-pc"
     :style="toolbarStyle"
     role="toolbar"
@@ -21,7 +22,7 @@
         <ToolbarIcon name="chevron-down" />
       </button>
 
-      <div v-if="isHeadingMenuOpen" class="floating-toolbar-pc__dropdown-menu floating-toolbar-pc__option-list">
+      <div v-if="isHeadingMenuOpen" class="floating-toolbar-pc__dropdown-menu floating-toolbar-pc__option-list" :class="headingMenuClass" :style="headingMenuStyle">
         <button
           v-for="option in headingOptions"
           :key="option.label"
@@ -62,7 +63,7 @@
         <ToolbarIcon name="chevron-down" />
       </button>
 
-      <div v-if="isAlignMenuOpen" class="floating-toolbar-pc__dropdown-menu floating-toolbar-pc__option-list">
+      <div v-if="isAlignMenuOpen" class="floating-toolbar-pc__dropdown-menu floating-toolbar-pc__option-list" :class="alignMenuClass" :style="alignMenuStyle">
         <button
           v-for="option in alignOptions"
           :key="option.label"
@@ -92,7 +93,12 @@
         <ToolbarIcon name="chevron-down" />
       </button>
 
-      <div v-if="isColorMenuOpen" class="floating-toolbar-pc__dropdown-menu floating-toolbar-pc__dropdown-menu--palette">
+      <div
+        v-if="isColorMenuOpen"
+        class="floating-toolbar-pc__dropdown-menu floating-toolbar-pc__dropdown-menu--palette"
+        :class="colorMenuClass"
+        :style="colorMenuStyle"
+      >
         <div class="floating-toolbar-pc__palette-grid">
           <button
             type="button"
@@ -171,6 +177,15 @@ declare const window: Window & typeof globalThis
 type FloatingPosition = {
   top: number
   left: number
+  editorTop?: number
+  editorBottom?: number
+  editorLeft?: number
+  editorRight?: number
+}
+
+type DropdownPlacement = {
+  horizontal: 'left' | 'right'
+  vertical: 'up' | 'down'
 }
 
 type ToolbarButtonItem = {
@@ -231,9 +246,16 @@ const extraInlineStyleItems = [
 const headingMenuRef = ref<HTMLElement | null>(null)
 const alignMenuRef = ref<HTMLElement | null>(null)
 const colorMenuRef = ref<HTMLElement | null>(null)
+const toolbarRef = ref<HTMLElement | null>(null)
 const isHeadingMenuOpen = ref(false)
 const isAlignMenuOpen = ref(false)
 const isColorMenuOpen = ref(false)
+const headingMenuPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'up' })
+const alignMenuPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'up' })
+const colorMenuPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'up' })
+const headingMenuStyle = ref<Record<string, string>>({})
+const alignMenuStyle = ref<Record<string, string>>({})
+const colorMenuStyle = ref<Record<string, string>>({})
 const colorPalette = computed(() => props.colorPalette ?? [])
 const activeColor = computed(() => colorPalette.value.find((item) => isTextColorActive(item.token)) ?? null)
 const currentColorValue = computed(() => activeColor.value?.value ?? '#18181b')
@@ -268,6 +290,9 @@ const currentAlignOption = computed(() => {
 })
 const currentAlignLabel = computed(() => currentAlignOption.value.label)
 const currentAlignIcon = computed(() => currentAlignOption.value.icon)
+const headingMenuClass = computed(() => menuPlacementClass(headingMenuPlacement.value))
+const alignMenuClass = computed(() => menuPlacementClass(alignMenuPlacement.value))
+const colorMenuClass = computed(() => menuPlacementClass(colorMenuPlacement.value))
 const toolbarStyle = computed(() => ({
   top: `${props.position.top}px`,
   left: `${props.position.left}px`,
@@ -390,6 +415,100 @@ function selectTextColor(token: string | null) {
   closeMenus()
 }
 
+function menuPlacementClass(placement: DropdownPlacement) {
+  return {
+    'is-down': placement.vertical === 'down',
+  }
+}
+
+function updateMenuPosition(kind: MenuKind) {
+  const menuRef = getMenuRef(kind)
+  const triggerRef = getTriggerRef(kind)
+  const menuStyle = getMenuStyle(kind)
+  const menuPlacement = getMenuPlacement(kind)
+  const toolbarElement = toolbarRef.value
+
+  if (!menuRef || !triggerRef || !toolbarElement) {
+    return
+  }
+
+  const editorTop = props.position.editorTop ?? Number.NEGATIVE_INFINITY
+  const editorBottom = props.position.editorBottom ?? Number.POSITIVE_INFINITY
+  const editorLeft = props.position.editorLeft ?? Number.NEGATIVE_INFINITY
+  const editorRight = props.position.editorRight ?? Number.POSITIVE_INFINITY
+  const gap = 8
+
+  const toolbarRect = toolbarElement.getBoundingClientRect()
+  const triggerRect = triggerRef.getBoundingClientRect()
+  const menuRect = menuRef.getBoundingClientRect()
+  const dropdownRect = triggerRef.parentElement?.getBoundingClientRect() ?? triggerRect
+
+  const spaceAbove = toolbarRect.top - editorTop
+  const spaceBelow = editorBottom - toolbarRect.bottom
+  const openDown = spaceAbove < menuRect.height + gap && spaceBelow > spaceAbove
+
+  const preferredLeft = 0
+  const minLeft = editorLeft - dropdownRect.left
+  const maxLeft = editorRight - dropdownRect.left - menuRect.width
+  const nextLeft = clamp(preferredLeft, minLeft, maxLeft)
+
+  menuPlacement.value = {
+    horizontal: 'left',
+    vertical: openDown ? 'down' : 'up',
+  }
+  menuStyle.value = {
+    left: `${nextLeft}px`,
+  }
+}
+
+function getMenuRef(kind: MenuKind) {
+  if (kind === 'heading') {
+    return headingMenuRef.value?.querySelector('.floating-toolbar-pc__dropdown-menu') as HTMLElement | null
+  }
+
+  if (kind === 'align') {
+    return alignMenuRef.value?.querySelector('.floating-toolbar-pc__dropdown-menu') as HTMLElement | null
+  }
+
+  return colorMenuRef.value?.querySelector('.floating-toolbar-pc__dropdown-menu') as HTMLElement | null
+}
+
+function getTriggerRef(kind: MenuKind) {
+  if (kind === 'heading') {
+    return headingMenuRef.value?.querySelector('.floating-toolbar-pc__dropdown-trigger') as HTMLElement | null
+  }
+
+  if (kind === 'align') {
+    return alignMenuRef.value?.querySelector('.floating-toolbar-pc__dropdown-trigger') as HTMLElement | null
+  }
+
+  return colorMenuRef.value?.querySelector('.floating-toolbar-pc__dropdown-trigger') as HTMLElement | null
+}
+
+function getMenuStyle(kind: MenuKind) {
+  if (kind === 'heading') {
+    return headingMenuStyle
+  }
+
+  if (kind === 'align') {
+    return alignMenuStyle
+  }
+
+  return colorMenuStyle
+}
+
+function getMenuPlacement(kind: MenuKind) {
+  if (kind === 'heading') {
+    return headingMenuPlacement
+  }
+
+  if (kind === 'align') {
+    return alignMenuPlacement
+  }
+
+  return colorMenuPlacement
+}
+
 function askUrl(message: string, initialValue = '') {
   if (typeof window === 'undefined') {
     return null
@@ -455,6 +574,10 @@ function toggleMenu(kind: MenuKind) {
   const nextState = !state.value
   closeMenus()
   state.value = nextState
+
+  if (nextState) {
+    window.requestAnimationFrame(() => updateMenuPosition(kind))
+  }
 }
 
 function onClickOutside(event: MouseEvent) {
@@ -468,12 +591,38 @@ function onClickOutside(event: MouseEvent) {
   }
 }
 
+function onWindowChange() {
+  if (isHeadingMenuOpen.value) {
+    updateMenuPosition('heading')
+  }
+
+  if (isAlignMenuOpen.value) {
+    updateMenuPosition('align')
+  }
+
+  if (isColorMenuOpen.value) {
+    updateMenuPosition('color')
+  }
+}
+
+function clamp(value: number, min: number, max: number) {
+  if (min > max) {
+    return value
+  }
+
+  return Math.min(Math.max(value, min), max)
+}
+
 onMounted(() => {
   document.addEventListener('mousedown', onClickOutside)
+  window.addEventListener('resize', onWindowChange)
+  window.addEventListener('scroll', onWindowChange, true)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('mousedown', onClickOutside)
+  window.removeEventListener('resize', onWindowChange)
+  window.removeEventListener('scroll', onWindowChange, true)
 })
 </script>
 
@@ -559,6 +708,11 @@ onBeforeUnmount(() => {
   background: #fff;
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
   z-index: 1;
+}
+
+.floating-toolbar-pc__dropdown-menu.is-down {
+  top: calc(100% + 8px);
+  bottom: auto;
 }
 
 .floating-toolbar-pc__dropdown-menu--palette {

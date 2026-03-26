@@ -245,7 +245,14 @@ function updateFloatingToolbar() {
     ? placeAboveTop
     : Math.min(editorRect.bottom - gap, rect.bottom + toolbarHeight + gap)
 
-  floatingToolbarPosition.value = { top, left }
+  floatingToolbarPosition.value = {
+    top,
+    left,
+    editorTop: editorRect.top,
+    editorBottom: editorRect.bottom,
+    editorLeft: editorRect.left,
+    editorRight: editorRect.right,
+  }
   floatingToolbarVisible.value = true
 }
 
