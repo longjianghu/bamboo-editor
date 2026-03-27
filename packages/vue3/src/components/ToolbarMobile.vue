@@ -341,7 +341,12 @@ function selectList(option: ListOption) {
 
 function emitActionAndClosePanel(action: ToolbarEmitAction) {
   if (props.disabled) return
-  emit(action)
+  if (action === 'clear-formatting') {
+    emit('clear-formatting')
+  }
+  else {
+    emit('insert-horizontal-rule')
+  }
   closePlusPanel()
 }
 
@@ -472,7 +477,8 @@ function menuPlacementClass(placement: DropdownPlacement) {
 function onClickOutside(event: MouseEvent) {
   const targets = [listMenuRef.value, imageMenuRef.value].filter(Boolean)
   if (!targets.length) return
-  if (event.target instanceof Node && !targets.some((target) => target?.contains(event.target))) closeMenus()
+  const eventTarget = event.target
+  if (eventTarget instanceof Node && !targets.some((target) => target?.contains(eventTarget))) closeMenus()
 }
 
 function onViewportChange() {

@@ -35,7 +35,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { BambooEditor } from '@bamboo-editor/vue3'
-import '@bamboo-editor/styles/src/bamboo-content.css'
+import '@bamboo-editor/styles/bamboo-content.css'
 
 const device = ref<'pc' | 'mobile'>('pc')
 const maxLength = ref<number | undefined>(50)

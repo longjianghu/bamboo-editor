@@ -1,11 +1,43 @@
 {
   "name": "@bamboo-editor/styles",
   "version": "0.1.0",
+  "description": "Display styles for Bamboo Editor content on web and WeChat Mini Program.",
+  "license": "MIT",
   "type": "module",
+  "style": "src/bamboo-content.css",
+  "exports": {
+    "./bamboo-content.css": "./src/bamboo-content.css",
+    "./weapp.css": "./src/bamboo-content.weapp.css",
+    "./theme.css": "./src/themes/default.css",
+    "./src/bamboo-content.css": "./src/bamboo-content.css",
+    "./src/bamboo-content.weapp.css": "./src/bamboo-content.weapp.css",
+    "./src/themes/default.css": "./src/themes/default.css",
+    "./package.json": "./package.json"
+  },
   "files": [
     "src"
   ],
+  "keywords": [
+    "bamboo-editor",
+    "css",
+    "styles",
+    "html",
+    "mp-html",
+    "weapp"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/longjianghu/bamboo-editor.git"
+  },
+  "homepage": "https://github.com/longjianghu/bamboo-editor#readme",
+  "bugs": {
+    "url": "https://github.com/longjianghu/bamboo-editor/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "node -e \"console.log('styles package: no build step yet')\""
+    "build": "node -e \"console.log('styles package: no build step yet')\"",
+    "prepack": "pnpm run build"
   }
 }

@@ -91,8 +91,8 @@ pnpm add @bamboo-editor/core
 <script setup lang="ts">
 import { ref } from 'vue'
 import { BambooEditor } from '@bamboo-editor/vue3'
-import '@bamboo-editor/vue3/dist/index.css'
-import '@bamboo-editor/styles/src/bamboo-content.css'
+import '@bamboo-editor/vue3/style.css'
+import '@bamboo-editor/styles/bamboo-content.css'
 
 const html = ref('<p>请输入内容</p>')
 
@@ -376,4 +376,4 @@ import '@bamboo-editor/styles/src/bamboo-content.css'
 
 ## License
 
-待定
+MIT

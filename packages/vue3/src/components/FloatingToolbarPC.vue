@@ -168,13 +168,13 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import type { NodeSelection, Editor } from '@tiptap/vue-3'
+import type { Editor } from '@tiptap/vue-3'
 import type { BambooColorOption } from '../composables/useBambooEditor'
 import ToolbarIcon from './ToolbarIcon.vue'
 
 declare const window: Window & typeof globalThis
 
-type FloatingPosition = {
+export type FloatingPosition = {
   top: number
   left: number
   editorTop?: number
@@ -224,24 +224,24 @@ const emit = defineEmits<{
   'clear-formatting': []
 }>()
 
-const headingOptions = [
+const headingOptions: readonly HeadingOption[] = [
   { label: '正文', shortLabel: '正文', command: 'setParagraph' },
   { label: '标题 1', shortLabel: 'H1', command: 'toggleHeading', attrs: { level: 1 } },
   { label: '标题 2', shortLabel: 'H2', command: 'toggleHeading', attrs: { level: 2 } },
   { label: '标题 3', shortLabel: 'H3', command: 'toggleHeading', attrs: { level: 3 } },
-] as const satisfies readonly HeadingOption[]
+]
 
-const alignOptions = [
+const alignOptions: readonly AlignOption[] = [
   { label: '左对齐', value: 'left', icon: 'align-left' },
   { label: '居中对齐', value: 'center', icon: 'align-center' },
   { label: '右对齐', value: 'right', icon: 'align-right' },
-] as const satisfies readonly AlignOption[]
+]
 
-const extraInlineStyleItems = [
+const extraInlineStyleItems: readonly ToolbarButtonItem[] = [
   { label: '斜体', icon: 'italic', command: 'toggleItalic', active: 'italic' },
   { label: '删除线', icon: 'strike', command: 'toggleStrike', active: 'strike' },
   { label: '行内代码', icon: 'code', command: 'toggleCode', active: 'code' },
-] as const satisfies readonly ToolbarButtonItem[]
+]
 
 const headingMenuRef = ref<HTMLElement | null>(null)
 const alignMenuRef = ref<HTMLElement | null>(null)
@@ -349,8 +349,13 @@ function selectHeading(option: HeadingOption) {
 }
 
 function isImageSelected() {
-  const selection = props.editor?.state.selection as NodeSelection | undefined
-  return selection?.node?.type.name === 'image'
+  const selection = props.editor?.state.selection
+  if (!selection) {
+    return false
+  }
+
+  const nodeSelection = selection as typeof selection & { node?: { type?: { name?: string } } }
+  return nodeSelection.node?.type?.name === 'image'
 }
 
 function setTextAlign(align: 'left' | 'center' | 'right') {
@@ -571,7 +576,8 @@ function onClickOutside(event: MouseEvent) {
     return
   }
 
-  if (event.target instanceof Node && !targets.some((target) => target?.contains(event.target))) {
+  const eventTarget = event.target
+  if (eventTarget instanceof Node && !targets.some((target) => target?.contains(eventTarget))) {
     closeMenus()
   }
 }

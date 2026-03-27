@@ -5,6 +5,8 @@
   "packageManager": "pnpm@10.0.0",
   "scripts": {
     "build": "pnpm -r build",
-    "dev": "pnpm --filter @bamboo-editor/playground dev"
+    "dev": "pnpm --filter @bamboo-editor/playground dev",
+    "pack:check": "pnpm --dir packages/core pack && pnpm --dir packages/vue3 pack && pnpm --dir packages/styles pack",
+    "release:check": "pnpm build && pnpm pack:check"
   }
 }

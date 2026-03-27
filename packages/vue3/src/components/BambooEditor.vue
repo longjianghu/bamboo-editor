@@ -147,9 +147,19 @@ import ToolbarPC from './ToolbarPC.vue'
 import ToolbarMobile from './ToolbarMobile.vue'
 import FloatingToolbarPC from './FloatingToolbarPC.vue'
 import EditorUrlDialog from './EditorUrlDialog.vue'
-import { useBambooEditor, type BambooColorOption, type BambooDevice, type UploadHandler } from '../composables/useBambooEditor'
+import { useBambooEditor } from '../composables/useBambooEditor'
+import type { BambooColorOption, BambooDevice, UploadHandler } from '../composables/useBambooEditor'
 
 declare const window: Window & typeof globalThis
+
+type FloatingPosition = {
+  top: number
+  left: number
+  editorTop?: number
+  editorBottom?: number
+  editorLeft?: number
+  editorRight?: number
+}
 
 const WORD_COUNT_DEBOUNCE_MS = 300
 const WORD_COUNT_TOOLTIP_DELAY_MS = 200
@@ -207,7 +217,7 @@ const isFullscreen = ref(false)
 const editorScopeId = `bamboo-editor-${Math.random().toString(36).slice(2)}`
 const surfaceRef = ref<HTMLElement | null>(null)
 const floatingToolbarVisible = ref(false)
-const floatingToolbarPosition = ref({ top: 0, left: 0 })
+const floatingToolbarPosition = ref<FloatingPosition>({ top: 0, left: 0 })
 const wordCountState = ref<WordCountState>({ ...DEFAULT_WORD_COUNT_STATE })
 const surfaceWidth = ref(0)
 const isWordCountTooltipVisible = ref(false)
@@ -783,7 +793,7 @@ watch([editor, resolvedDevice, () => props.disabled], (_, __, onCleanup) => {
   const handleWordCountChange = () => scheduleWordCountRefresh()
   const handleBlur = ({ event }: { event?: FocusEvent }) => {
     const relatedTarget = event?.relatedTarget
-    if (relatedTarget instanceof Node && relatedTarget.closest('.floating-toolbar-pc')) {
+    if (relatedTarget instanceof Element && relatedTarget.closest('.floating-toolbar-pc')) {
       return
     }
 

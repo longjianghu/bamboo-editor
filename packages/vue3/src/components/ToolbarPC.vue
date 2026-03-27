@@ -5,10 +5,10 @@
       :key="item.label"
       type="button"
       class="toolbar-pc__button"
-      :disabled="item.command ? isDisabled(item.command, item.attrs) : disabled"
+      :disabled="item.command ? isDisabled(item.command!, item.attrs) : disabled"
       :title="item.label"
       :aria-label="item.label"
-      @click="item.action ? handleAction(item.action) : run(item.command, item.attrs)"
+      @click="item.action ? handleAction(item.action) : run(item.command!, item.attrs)"
     >
       <ToolbarIcon :name="item.icon" />
     </button>
@@ -139,10 +139,10 @@
       type="button"
       class="toolbar-pc__button"
       :class="item.active ? buttonClass(item.active, item.attrs) : undefined"
-      :disabled="item.command ? isDisabled(item.command, item.attrs) : disabled"
+      :disabled="item.command ? isDisabled(item.command!, item.attrs) : disabled"
       :title="item.label"
       :aria-label="item.label"
-      @click="item.action ? handleAction(item.action) : run(item.command, item.attrs)"
+      @click="item.action ? handleAction(item.action) : run(item.command!, item.attrs)"
     >
       <ToolbarIcon :name="item.icon" />
     </button>
@@ -208,10 +208,10 @@
       type="button"
       class="toolbar-pc__button"
       :class="item.active ? buttonClass(item.active, item.attrs) : undefined"
-      :disabled="item.command ? isDisabled(item.command, item.attrs) : disabled"
+      :disabled="item.command ? isDisabled(item.command!, item.attrs) : disabled"
       :title="item.label"
       :aria-label="item.label"
-      @click="item.action ? handleAction(item.action) : run(item.command, item.attrs)"
+      @click="item.action ? handleAction(item.action) : run(item.command!, item.attrs)"
     >
       <ToolbarIcon :name="item.icon" />
     </button>
@@ -258,10 +258,10 @@
       type="button"
       class="toolbar-pc__button"
       :class="item.active ? buttonClass(item.active, item.attrs) : undefined"
-      :disabled="item.command ? isDisabled(item.command, item.attrs) : disabled"
+      :disabled="item.command ? isDisabled(item.command!, item.attrs) : disabled"
       :title="item.label"
       :aria-label="item.label"
-      @click="item.action ? handleAction(item.action) : run(item.command, item.attrs)"
+      @click="item.action ? handleAction(item.action) : run(item.command!, item.attrs)"
     >
       <ToolbarIcon :name="item.icon" />
     </button>
@@ -284,7 +284,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import type { NodeSelection, Editor } from '@tiptap/vue-3'
+import type { Editor } from '@tiptap/vue-3'
 import type { BambooColorOption } from '../composables/useBambooEditor'
 import ToolbarIcon from './ToolbarIcon.vue'
 
@@ -349,45 +349,45 @@ const emit = defineEmits<{
   'toggle-fullscreen': []
 }>()
 
-const historyItems = [
+const historyItems: readonly ToolbarButtonItem[] = [
   { label: '撤销', icon: 'undo', command: 'undo' },
   { label: '重做', icon: 'redo', command: 'redo' },
   { label: '清除格式', icon: 'clear-format', action: 'clearFormatting' },
-] as const satisfies readonly ToolbarButtonItem[]
+]
 
-const inlineStyleItems = [
+const inlineStyleItems: readonly ToolbarButtonItem[] = [
   { label: '加粗', icon: 'bold', command: 'toggleBold', active: 'bold' },
   { label: '斜体', icon: 'italic', command: 'toggleItalic', active: 'italic' },
   { label: '删除线', icon: 'strike', command: 'toggleStrike', active: 'strike' },
   { label: '行内代码', icon: 'code', command: 'toggleCode', active: 'code' },
-] as const satisfies readonly ToolbarButtonItem[]
+]
 
-const blockItems = [
+const blockItems: readonly ToolbarButtonItem[] = [
   { label: '引用', icon: 'quote', command: 'toggleBlockquote', active: 'blockquote' },
   { label: '代码块', icon: 'code-block', command: 'toggleCodeBlock', active: 'codeBlock' },
-] as const satisfies readonly ToolbarButtonItem[]
+]
 
-const insertItems = [
+const insertItems: readonly ToolbarButtonItem[] = [
   { label: '分割线', icon: 'horizontal-rule', action: 'insertHorizontalRule' },
-] as const satisfies readonly ToolbarButtonItem[]
+]
 
-const headingOptions = [
+const headingOptions: readonly HeadingOption[] = [
   { label: '正文', shortLabel: '正文', command: 'setParagraph' },
   { label: '标题 1', shortLabel: 'H1', command: 'toggleHeading', attrs: { level: 1 } },
   { label: '标题 2', shortLabel: 'H2', command: 'toggleHeading', attrs: { level: 2 } },
   { label: '标题 3', shortLabel: 'H3', command: 'toggleHeading', attrs: { level: 3 } },
-] as const satisfies readonly HeadingOption[]
+]
 
-const alignOptions = [
+const alignOptions: readonly AlignOption[] = [
   { label: '左对齐', value: 'left', icon: 'align-left' },
   { label: '居中对齐', value: 'center', icon: 'align-center' },
   { label: '右对齐', value: 'right', icon: 'align-right' },
-] as const satisfies readonly AlignOption[]
+]
 
-const listOptions = [
+const listOptions: readonly ListOption[] = [
   { label: '无序列表', command: 'toggleBulletList', active: 'bulletList', icon: 'bullet-list' },
   { label: '有序列表', command: 'toggleOrderedList', active: 'orderedList', icon: 'ordered-list' },
-] as const satisfies readonly ListOption[]
+]
 
 const colorPalette = props.colorPalette ?? []
 
@@ -501,8 +501,13 @@ function handleAction(action: ToolbarAction) {
 }
 
 function isImageSelected() {
-  const selection = props.editor?.state.selection as NodeSelection | undefined
-  return selection?.node?.type.name === 'image'
+  const selection = props.editor?.state.selection
+  if (!selection) {
+    return false
+  }
+
+  const nodeSelection = selection as typeof selection & { node?: { type?: { name?: string } } }
+  return nodeSelection.node?.type?.name === 'image'
 }
 
 function isDisabled(command: string, attrs?: Record<string, unknown>) {
@@ -791,7 +796,8 @@ function onClickOutside(event: MouseEvent) {
     return
   }
 
-  if (event.target instanceof Node && !targets.some((target) => target?.contains(event.target))) {
+  const eventTarget = event.target
+  if (eventTarget instanceof Node && !targets.some((target) => target?.contains(eventTarget))) {
     closeMenus()
   }
 }

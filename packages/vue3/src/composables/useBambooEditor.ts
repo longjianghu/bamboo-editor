@@ -69,7 +69,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
       }),
       content: sanitizeHtml(toValue(options.modelValue) ?? '', sanitizeOptions()),
       editable: !toValue(options.disabled),
-      onUpdate: ({ editor: instance }) => {
+      onUpdate: ({ editor: instance }: { editor: any }) => {
         options.onUpdate?.(sanitizeHtml(instance.getHTML(), sanitizeOptions()))
       },
     })
@@ -136,7 +136,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
     const localId = `${Date.now()}-${Math.random().toString(36).slice(2)}`
     const previewUrl = await readAsDataUrl(file)
 
-    instance.chain().focus().setImage({
+    ;(instance.chain().focus() as any).setImage({
       src: previewUrl,
       alt: file.name,
       'data-local-id': localId,
@@ -179,7 +179,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
       return false
     }
 
-    return instance.chain().focus().setImage({ src }).run()
+    return (instance.chain().focus() as any).setImage({ src }).run()
   }
 
   function undo() {
@@ -188,7 +188,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
       return false
     }
 
-    return instance.chain().focus().undo().run()
+    return (instance.chain().focus() as any).undo().run()
   }
 
   function redo() {
@@ -197,7 +197,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
       return false
     }
 
-    return instance.chain().focus().redo().run()
+    return (instance.chain().focus() as any).redo().run()
   }
 
   function insertHorizontalRule() {
@@ -206,7 +206,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
       return false
     }
 
-    return instance.chain().focus().setHorizontalRule().run()
+    return (instance.chain().focus() as any).setHorizontalRule().run()
   }
 
   function clearFormatting() {
@@ -277,13 +277,14 @@ function updateImageByLocalId(editor: Editor, localId: string, attrs: Record<str
     return
   }
 
-  const node = editor.state.doc.nodeAt(imagePosition)
+  const position = imagePosition
+  const node = editor.state.doc.nodeAt(position)
   if (!node) {
     return
   }
 
-  editor.commands.command(({ tr }) => {
-    tr.setNodeMarkup(imagePosition, undefined, {
+  editor.commands.command(({ tr }: { tr: any }) => {
+    tr.setNodeMarkup(position, undefined, {
       ...node.attrs,
       ...attrs,
     })
