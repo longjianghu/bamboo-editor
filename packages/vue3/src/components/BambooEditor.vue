@@ -18,8 +18,53 @@
         @toggle-fullscreen="toggleFullscreen"
       />
 
-      <div class="bamboo-editor__surface" :class="{ 'is-mobile': resolvedDevice === 'mobile' }" :style="surfaceStyle">
-        <EditorContent v-if="editor" :editor="editor" class="bamboo-editor__content" />
+      <div ref="surfaceRef" class="bamboo-editor__surface" :class="{ 'is-mobile': resolvedDevice === 'mobile' }" :style="surfaceStyle">
+        <template v-if="editor">
+          <EditorContent :editor="editor" class="bamboo-editor__content" />
+          <div
+            v-if="resolvedDevice === 'pc'"
+            class="bamboo-editor__word-count"
+            :class="{ 'is-compact': isCompactWordCount }"
+            :aria-label="wordCountAriaLabel"
+            @mouseenter="handleWordCountMouseEnter"
+            @mouseleave="handleWordCountMouseLeave"
+          >
+            <div class="bamboo-editor__word-count-summary">
+              <template v-if="wordCountState.hasSelectedText">
+                <span v-if="!isCompactWordCount">已选 </span>
+                <span class="bamboo-editor__word-count-value is-selected">{{ formatVisibleWordCount(wordCountState.selectedChineseCharacters) }}</span>
+                <span class="bamboo-editor__word-count-separator">/</span>
+                <span v-if="!isCompactWordCount">共 </span>
+                <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(wordCountState.chineseCharacters) }}</span>
+                <span v-if="!isCompactWordCount"> 字</span>
+              </template>
+              <template v-else>
+                <span v-if="!isCompactWordCount">共 </span>
+                <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(wordCountState.chineseCharacters) }}</span>
+                <span v-if="!isCompactWordCount"> 字</span>
+              </template>
+            </div>
+
+            <div v-if="isWordCountTooltipVisible" class="bamboo-editor__word-count-tooltip" role="tooltip">
+              <div class="bamboo-editor__word-count-tooltip-row">
+                <span>字符数（含空格）</span>
+                <span class="bamboo-editor__word-count-value">{{ formatFullWordCount(wordCountState.totalCharacters) }}</span>
+              </div>
+              <div class="bamboo-editor__word-count-tooltip-row">
+                <span>中文字数</span>
+                <span class="bamboo-editor__word-count-value">{{ formatFullWordCount(wordCountState.chineseCharacters) }}</span>
+              </div>
+              <div class="bamboo-editor__word-count-tooltip-row">
+                <span>段落数</span>
+                <span class="bamboo-editor__word-count-value">{{ formatFullWordCount(wordCountState.paragraphCount) }}</span>
+              </div>
+              <div class="bamboo-editor__word-count-tooltip-row">
+                <span>行数</span>
+                <span class="bamboo-editor__word-count-value">{{ formatFullWordCount(wordCountState.lineCount) }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
         <div v-else class="bamboo-editor__placeholder">Loading editor...</div>
       </div>
 
@@ -40,6 +85,12 @@
         :editor="editor"
         :disabled="disabled"
         :color-palette="resolvedColorPalette"
+        :stats="{
+          totalCharacters: wordCountState.totalCharacters,
+          chineseCharacters: wordCountState.chineseCharacters,
+          paragraphCount: wordCountState.paragraphCount,
+          lineCount: wordCountState.lineCount,
+        }"
         @image-select="handleImageSelect"
         @open-remote-image-dialog="handleOpenRemoteImageDialog"
         @text-color-select="handleTextColorSelect"
@@ -64,6 +115,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue'
+import type { Editor } from '@tiptap/vue-3'
 import { EditorContent } from '@tiptap/vue-3'
 import ToolbarPC from './ToolbarPC.vue'
 import ToolbarMobile from './ToolbarMobile.vue'
@@ -72,6 +124,29 @@ import EditorUrlDialog from './EditorUrlDialog.vue'
 import { useBambooEditor, type BambooColorOption, type BambooDevice, type UploadHandler } from '../composables/useBambooEditor'
 
 declare const window: Window & typeof globalThis
+
+const WORD_COUNT_DEBOUNCE_MS = 300
+const WORD_COUNT_TOOLTIP_DELAY_MS = 200
+const WORD_COUNT_COMPACT_WIDTH = 400
+const WORD_COUNT_SCROLLBAR_GAP = 20
+
+type WordCountState = {
+  totalCharacters: number
+  chineseCharacters: number
+  selectedChineseCharacters: number
+  paragraphCount: number
+  lineCount: number
+  hasSelectedText: boolean
+}
+
+const DEFAULT_WORD_COUNT_STATE: WordCountState = {
+  totalCharacters: 0,
+  chineseCharacters: 0,
+  selectedChineseCharacters: 0,
+  paragraphCount: 0,
+  lineCount: 0,
+  hasSelectedText: false,
+}
 
 const DEFAULT_COLOR_PALETTE: BambooColorOption[] = [
   { token: 'primary', label: '主色', value: '#18181b' },
@@ -103,8 +178,12 @@ const emit = defineEmits<{
 
 const isFullscreen = ref(false)
 const editorScopeId = `bamboo-editor-${Math.random().toString(36).slice(2)}`
+const surfaceRef = ref<HTMLElement | null>(null)
 const floatingToolbarVisible = ref(false)
 const floatingToolbarPosition = ref({ top: 0, left: 0 })
+const wordCountState = ref<WordCountState>({ ...DEFAULT_WORD_COUNT_STATE })
+const surfaceWidth = ref(0)
+const isWordCountTooltipVisible = ref(false)
 const urlDialogVisible = ref(false)
 const urlDialogState = ref<{
   type: 'link' | 'remote-image'
@@ -120,6 +199,14 @@ const urlDialogState = ref<{
 
 const resolvedColorPalette = computed(() => props.colorPalette?.length ? props.colorPalette : DEFAULT_COLOR_PALETTE)
 const editorColorCss = computed(() => buildEditorColorCss(editorScopeId, resolvedColorPalette.value))
+const isCompactWordCount = computed(() => surfaceWidth.value > 0 && surfaceWidth.value < WORD_COUNT_COMPACT_WIDTH)
+const wordCountAriaLabel = computed(() => {
+  if (wordCountState.value.hasSelectedText) {
+    return `已选 ${formatFullWordCount(wordCountState.value.selectedChineseCharacters)} 字，共 ${formatFullWordCount(wordCountState.value.chineseCharacters)} 字`
+  }
+
+  return `共 ${formatFullWordCount(wordCountState.value.chineseCharacters)} 字`
+})
 
 const surfaceStyle = computed(() => {
   if (isFullscreen.value) {
@@ -140,6 +227,10 @@ const { editor, resolvedDevice, insertImage, setLink, unsetLink, insertRemoteIma
   colorPalette: resolvedColorPalette,
   onUpdate: (html) => emit('update:modelValue', html),
 })
+
+let wordCountTimer: number | null = null
+let wordCountTooltipTimer: number | null = null
+let surfaceResizeObserver: ResizeObserver | null = null
 
 function handleImageSelect(file: File) {
   return insertImage(file)
@@ -232,6 +323,182 @@ function handleClearFormatting() {
 
 function handleInsertHorizontalRule() {
   return insertHorizontalRule()
+}
+
+function clearWordCountTimers() {
+  clearWordCountTimer()
+
+  if (wordCountTooltipTimer !== null) {
+    window.clearTimeout(wordCountTooltipTimer)
+    wordCountTooltipTimer = null
+  }
+}
+
+function handleWordCountMouseEnter() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  if (wordCountTooltipTimer !== null) {
+    window.clearTimeout(wordCountTooltipTimer)
+  }
+
+  wordCountTooltipTimer = window.setTimeout(() => {
+    isWordCountTooltipVisible.value = true
+    wordCountTooltipTimer = null
+  }, WORD_COUNT_TOOLTIP_DELAY_MS)
+}
+
+function handleWordCountMouseLeave() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  if (wordCountTooltipTimer !== null) {
+    window.clearTimeout(wordCountTooltipTimer)
+    wordCountTooltipTimer = null
+  }
+
+  isWordCountTooltipVisible.value = false
+}
+
+function updateSurfaceWidth() {
+  const surfaceElement = surfaceRef.value
+  if (!surfaceElement) {
+    surfaceWidth.value = 0
+    return
+  }
+
+  const scrollbarGap = resolvedDevice.value === 'pc' ? WORD_COUNT_SCROLLBAR_GAP : 0
+  surfaceWidth.value = Math.max(surfaceElement.clientWidth - scrollbarGap, 0)
+}
+
+function resetWordCountState() {
+  clearWordCountTimer()
+  wordCountState.value = { ...DEFAULT_WORD_COUNT_STATE }
+  handleWordCountMouseLeave()
+}
+
+function scheduleWordCountRefresh(immediate = false) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  clearWordCountTimer()
+
+  if (immediate) {
+    refreshWordCountNow()
+    return
+  }
+
+  wordCountTimer = window.setTimeout(() => {
+    refreshWordCountNow()
+    wordCountTimer = null
+  }, WORD_COUNT_DEBOUNCE_MS)
+}
+
+function clearWordCountTimer() {
+  if (typeof window === 'undefined') {
+    wordCountTimer = null
+    return
+  }
+
+  if (wordCountTimer !== null) {
+    window.clearTimeout(wordCountTimer)
+    wordCountTimer = null
+  }
+}
+
+function refreshWordCountNow() {
+  const instance = editor.value
+  if (!instance) {
+    resetWordCountState()
+    return
+  }
+
+  if (resolvedDevice.value === 'pc') {
+    updateSurfaceWidth()
+  }
+  const plainText = getEditorPlainText(instance)
+  const selectionText = getSelectionText(instance)
+  const chineseCharacters = countChineseCharacters(plainText)
+  const selectedChineseCharacters = countChineseCharacters(selectionText)
+
+  wordCountState.value = {
+    totalCharacters: getTotalCharacterCount(instance),
+    chineseCharacters,
+    selectedChineseCharacters,
+    paragraphCount: countParagraphs(instance),
+    lineCount: countLogicalLines(plainText),
+    hasSelectedText: selectedChineseCharacters > 0,
+  }
+}
+
+function getTotalCharacterCount(instance: Editor) {
+  return instance.storage.characterCount?.characters?.() ?? instance.getText().length
+}
+
+function getEditorPlainText(instance: Editor) {
+  return instance.state.doc.textBetween(0, instance.state.doc.content.size, '\n', '\n')
+}
+
+function getSelectionText(instance: Editor) {
+  const { from, to, empty } = instance.state.selection
+  if (empty || from === to) {
+    return ''
+  }
+
+  return instance.state.doc.textBetween(from, to, '\n', '\n')
+}
+
+function countChineseCharacters(value: string) {
+  try {
+    return value.match(/\p{Unified_Ideograph}/gu)?.length ?? 0
+  }
+  catch {
+    return value.match(/[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/g)?.length ?? 0
+  }
+}
+
+function countParagraphs(instance: Editor) {
+  let count = 0
+
+  instance.state.doc.descendants((node) => {
+    if (node.isTextblock && node.textContent.trim()) {
+      count += 1
+    }
+  })
+
+  return count
+}
+
+function countLogicalLines(value: string) {
+  if (!value.trim()) {
+    return 0
+  }
+
+  return value
+    .split(/\r?\n/)
+    .filter(line => line.trim().length > 0)
+    .length
+}
+
+function formatFullWordCount(value: number) {
+  return value.toLocaleString('zh-CN')
+}
+
+function formatVisibleWordCount(value: number) {
+  if (!isCompactWordCount.value) {
+    return formatFullWordCount(value)
+  }
+
+  if (value >= 1000) {
+    const compactValue = value / 1000
+    const displayValue = Number.isInteger(compactValue) ? compactValue.toFixed(0) : compactValue.toFixed(1)
+    return `${displayValue.replace(/\.0$/, '')}k`
+  }
+
+  return `${value}`
 }
 
 function hideFloatingToolbar() {
@@ -381,16 +648,49 @@ watch(resolvedDevice, (value) => {
   if (value !== 'mobile') {
     hideFloatingToolbar()
   }
+
+  if (value !== 'pc') {
+    resetWordCountState()
+    return
+  }
+
+  updateSurfaceWidth()
+  scheduleWordCountRefresh(true)
 })
+
+watch(surfaceRef, (element, _, onCleanup) => {
+  updateSurfaceWidth()
+
+  if (typeof window === 'undefined' || !element) {
+    return
+  }
+
+  if (typeof ResizeObserver !== 'undefined') {
+    surfaceResizeObserver = new ResizeObserver(() => updateSurfaceWidth())
+    surfaceResizeObserver.observe(element)
+
+    onCleanup(() => {
+      surfaceResizeObserver?.disconnect()
+      surfaceResizeObserver = null
+    })
+
+    return
+  }
+
+  window.addEventListener('resize', updateSurfaceWidth)
+  onCleanup(() => window.removeEventListener('resize', updateSurfaceWidth))
+}, { immediate: true })
 
 watch([editor, resolvedDevice, () => props.disabled], (_, __, onCleanup) => {
   const instance = editor.value
   if (!instance) {
     hideFloatingToolbar()
+    resetWordCountState()
     return
   }
 
   const handleSelectionChange = () => updateFloatingToolbar()
+  const handleWordCountChange = () => scheduleWordCountRefresh()
   const handleBlur = ({ event }: { event?: FocusEvent }) => {
     const relatedTarget = event?.relatedTarget
     if (relatedTarget instanceof Node && relatedTarget.closest('.floating-toolbar-pc')) {
@@ -404,15 +704,21 @@ watch([editor, resolvedDevice, () => props.disabled], (_, __, onCleanup) => {
 
   instance.on('selectionUpdate', handleSelectionChange)
   instance.on('transaction', handleSelectionChange)
+  instance.on('selectionUpdate', handleWordCountChange)
+  instance.on('transaction', handleWordCountChange)
   instance.on('focus', handleFocus)
   instance.on('blur', handleBlur)
   window.addEventListener('resize', handleSelectionChange)
   window.addEventListener('scroll', handleSelectionChange, true)
   updateFloatingToolbar()
+  scheduleWordCountRefresh(true)
 
   onCleanup(() => {
+    clearWordCountTimer()
     instance.off('selectionUpdate', handleSelectionChange)
     instance.off('transaction', handleSelectionChange)
+    instance.off('selectionUpdate', handleWordCountChange)
+    instance.off('transaction', handleWordCountChange)
     instance.off('focus', handleFocus)
     instance.off('blur', handleBlur)
     window.removeEventListener('resize', handleSelectionChange)
@@ -422,6 +728,8 @@ watch([editor, resolvedDevice, () => props.disabled], (_, __, onCleanup) => {
 
 onBeforeUnmount(() => {
   hideFloatingToolbar()
+  clearWordCountTimers()
+  surfaceResizeObserver?.disconnect()
 
   if (typeof document !== 'undefined') {
     document.body.style.overflow = ''
@@ -506,7 +814,8 @@ function escapeCssValue(value: string) {
 .bamboo-editor.is-fullscreen .bamboo-editor__main {
   gap: 0;
   min-height: 0;
-  margin: 18px 24px 0;
+  width: min(1280px, calc(100vw - 48px));
+  margin: 18px auto 0;
   border: 1px solid #dcdfe6;
   border-radius: 12px 12px 0 0;
   background: #fff;
@@ -515,6 +824,7 @@ function escapeCssValue(value: string) {
 }
 
 .bamboo-editor__surface {
+  position: relative;
   height: 50vh;
   min-height: 320px;
   border: 0;
@@ -548,7 +858,7 @@ function escapeCssValue(value: string) {
   box-sizing: border-box;
   height: 100%;
   min-height: 100%;
-  padding: 10px 12px;
+  padding: 10px 12px 56px;
   color: #18181b;
   font-size: 16px;
   line-height: 1.75;
@@ -616,7 +926,7 @@ function escapeCssValue(value: string) {
   box-sizing: border-box;
   min-height: 100%;
   height: 100%;
-  padding: 10px 12px;
+  padding: 10px 12px 56px;
   max-width: 920px;
   margin: 0 auto;
   overflow-y: auto;
@@ -724,6 +1034,95 @@ function escapeCssValue(value: string) {
   pointer-events: none;
   float: left;
   height: 0;
+}
+
+.bamboo-editor__word-count {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.bamboo-editor.is-fullscreen .bamboo-editor__word-count {
+  right: max(16px, calc((100% - 920px) / 2 + 16px));
+}
+
+.bamboo-editor.is-fullscreen .bamboo-editor__word-count.is-compact {
+  right: max(12px, calc((100% - 920px) / 2 + 12px));
+}
+
+.bamboo-editor__word-count.is-compact {
+  right: 12px;
+  bottom: 12px;
+}
+
+.bamboo-editor__word-count-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px;
+  border: 1px solid rgba(228, 231, 236, 0.92);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #71717a;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  transition: opacity 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bamboo-editor__word-count:hover .bamboo-editor__word-count-summary {
+  color: #52525b;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
+}
+
+.bamboo-editor__word-count.is-compact .bamboo-editor__word-count-summary {
+  padding: 5px 8px;
+}
+
+.bamboo-editor__word-count-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.bamboo-editor__word-count-value.is-selected {
+  color: #1890ff;
+}
+
+.bamboo-editor__word-count-separator {
+  color: #a1a1aa;
+}
+
+.bamboo-editor__word-count-tooltip {
+  min-width: 188px;
+  max-width: min(260px, calc(100vw - 32px));
+  padding: 10px 12px;
+  border: 1px solid rgba(228, 231, 236, 0.96);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #52525b;
+  font-size: 12px;
+  line-height: 1.5;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+}
+
+.bamboo-editor__word-count-tooltip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.bamboo-editor__word-count-tooltip-row + .bamboo-editor__word-count-tooltip-row {
+  margin-top: 6px;
 }
 
 .bamboo-editor__placeholder {

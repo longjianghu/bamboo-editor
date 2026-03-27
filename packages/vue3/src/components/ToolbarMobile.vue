@@ -48,6 +48,18 @@
             <span>收起</span>
           </button>
         </div>
+
+        <div class="toolbar-mobile__panel-divider"></div>
+
+        <div class="toolbar-mobile__stats">
+          <span class="toolbar-mobile__stats-summary">
+            共 <span class="toolbar-mobile__stats-value">{{ formatCount(stats.chineseCharacters) }}</span> 字
+            <span class="toolbar-mobile__stats-dot">·</span>
+            <span class="toolbar-mobile__stats-value">{{ formatCount(stats.paragraphCount) }}</span> 段
+            <span class="toolbar-mobile__stats-dot">·</span>
+            <span class="toolbar-mobile__stats-value">{{ formatCount(stats.lineCount) }}</span> 行
+          </span>
+        </div>
       </div>
     </div>
 
@@ -203,6 +215,12 @@ const props = defineProps<{
   editor: Editor | null
   disabled?: boolean
   colorPalette?: readonly BambooColorOption[]
+  stats: {
+    totalCharacters: number
+    chineseCharacters: number
+    paragraphCount: number
+    lineCount: number
+  }
 }>()
 
 const emit = defineEmits<{
@@ -246,6 +264,10 @@ const currentListOption = computed(() => props.editor?.isActive('orderedList') ?
 const currentListLabel = computed(() => currentListOption.value.label)
 const currentListIcon = computed(() => currentListOption.value.icon)
 const isListMenuActive = computed(() => Boolean(props.editor?.isActive('bulletList') || props.editor?.isActive('orderedList')))
+
+function formatCount(value: number) {
+  return value.toLocaleString('zh-CN')
+}
 
 function clearPanelTimers() {
   if (openTimer !== null) {
@@ -645,6 +667,43 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
+}
+
+.toolbar-mobile__panel-divider {
+  height: 1px;
+  margin: 10px 4px;
+  background: rgba(212, 215, 222, 0.9);
+}
+
+.toolbar-mobile__stats {
+  display: flex;
+  justify-content: center;
+  padding: 2px 4px 0;
+  color: #71717a;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.toolbar-mobile__stats-summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.toolbar-mobile__stats-dot {
+  color: #a1a1aa;
+}
+
+.toolbar-mobile__stats-value {
+  color: #18181b;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 .toolbar-mobile__panel-grid > * {

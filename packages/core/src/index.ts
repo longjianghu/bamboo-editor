@@ -1,4 +1,5 @@
 import StarterKit from '@tiptap/starter-kit'
+import CharacterCount from '@tiptap/extension-character-count'
 import HardBreak from '@tiptap/extension-hard-break'
 import Placeholder from '@tiptap/extension-placeholder'
 import HorizontalRule from '@tiptap/extension-horizontal-rule'
@@ -40,6 +41,7 @@ export function getDefaultExtensions(options: BambooEditorOptions = {}): AnyExte
       placeholder: options.placeholder ?? '开始输入内容…',
       emptyEditorClass: 'is-editor-empty',
     }),
+    CharacterCount,
     CleanHeading,
     CleanImage.configure(options.image ?? {}),
     CleanLink,
