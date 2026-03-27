@@ -1,6 +1,6 @@
 {
   "name": "@bamboo-editor/vue3",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Vue 3 Bamboo Editor component with PC and mobile rich-text editing UI.",
   "license": "MIT",
   "type": "module",

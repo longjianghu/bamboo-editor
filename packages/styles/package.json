@@ -1,6 +1,6 @@
 {
   "name": "@bamboo-editor/styles",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Display styles for Bamboo Editor content on web and WeChat Mini Program.",
   "license": "MIT",
   "type": "module",
