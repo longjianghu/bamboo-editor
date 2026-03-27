@@ -702,6 +702,12 @@ function escapeCssValue(value: string) {
   border-radius: 12px;
 }
 
+.bamboo-editor__content :deep(.ProseMirror img.ProseMirror-selectednode) {
+  outline: 2px solid rgba(20, 184, 166, 0.92);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.16);
+}
+
 .bamboo-editor__content :deep(.ProseMirror img[data-align='center']) {
   margin-left: auto;
   margin-right: auto;
