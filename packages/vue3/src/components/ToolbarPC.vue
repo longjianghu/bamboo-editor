@@ -48,19 +48,41 @@
       </div>
     </div>
 
-    <button
-      v-for="item in inlineStyleItems"
-      :key="item.label"
-      type="button"
-      class="toolbar-pc__button"
-      :class="item.active ? buttonClass(item.active, item.attrs) : undefined"
-      :disabled="item.command ? isDisabled(item.command, item.attrs) : disabled"
-      :title="item.label"
-      :aria-label="item.label"
-      @click="item.action ? handleAction(item.action) : run(item.command, item.attrs)"
-    >
-      <ToolbarIcon :name="item.icon" />
-    </button>
+    <div class="toolbar-pc__dropdown" :class="{ 'is-open': isAlignMenuOpen }" ref="alignMenuRef">
+      <button
+        type="button"
+        class="toolbar-pc__button toolbar-pc__dropdown-trigger"
+        :class="{ 'is-active': isAlignMenuOpen || !isTextAlignActive('left') }"
+        :disabled="disabled"
+        :title="currentAlignLabel"
+        :aria-label="currentAlignLabel"
+        ref="alignTriggerRef"
+        @click="toggleMenu('align')"
+      >
+        <ToolbarIcon :name="currentAlignIcon" />
+        <ToolbarIcon name="chevron-down" />
+      </button>
+
+      <div
+        v-if="isAlignMenuOpen"
+        class="toolbar-pc__dropdown-menu toolbar-pc__option-list"
+        :class="menuPlacementClass(alignDropdownPlacement)"
+        :style="alignDropdownMenuStyle"
+      >
+        <button
+          v-for="option in alignOptions"
+          :key="option.label"
+          type="button"
+          class="toolbar-pc__option-button toolbar-pc__option-button--icon"
+          :class="{ 'is-active': isTextAlignActive(option.value) }"
+          :disabled="disabled"
+          @click="selectAlign(option.value)"
+        >
+          <ToolbarIcon :name="option.icon" />
+          <span class="toolbar-pc__option-label">{{ option.label }}</span>
+        </button>
+      </div>
+    </div>
 
     <div class="toolbar-pc__dropdown" :class="{ 'is-open': isColorMenuOpen }" ref="colorMenuRef">
       <button
@@ -112,6 +134,20 @@
     </div>
 
     <button
+      v-for="item in inlineStyleItems"
+      :key="item.label"
+      type="button"
+      class="toolbar-pc__button"
+      :class="item.active ? buttonClass(item.active, item.attrs) : undefined"
+      :disabled="item.command ? isDisabled(item.command, item.attrs) : disabled"
+      :title="item.label"
+      :aria-label="item.label"
+      @click="item.action ? handleAction(item.action) : run(item.command, item.attrs)"
+    >
+      <ToolbarIcon :name="item.icon" />
+    </button>
+
+    <button
       type="button"
       class="toolbar-pc__button"
       :class="buttonClass('link')"
@@ -121,6 +157,63 @@
       @click="onLinkClick"
     >
       <ToolbarIcon name="link" />
+    </button>
+
+    <div class="toolbar-pc__dropdown" :class="{ 'is-open': isImageMenuOpen }" ref="imageMenuRef">
+      <button
+        type="button"
+        class="toolbar-pc__button toolbar-pc__dropdown-trigger"
+        :class="{ 'is-active': isImageMenuOpen }"
+        :disabled="disabled"
+        title="图片"
+        aria-label="图片"
+        ref="imageTriggerRef"
+        @click="toggleMenu('image')"
+      >
+        <ToolbarIcon name="remote-image" />
+        <ToolbarIcon name="chevron-down" />
+      </button>
+
+      <div
+        v-if="isImageMenuOpen"
+        class="toolbar-pc__dropdown-menu toolbar-pc__option-list"
+        :class="menuPlacementClass(imageDropdownPlacement)"
+        :style="imageDropdownMenuStyle"
+      >
+        <button
+          type="button"
+          class="toolbar-pc__option-button toolbar-pc__option-button--icon"
+          :disabled="disabled"
+          @click="onImageTriggerClick"
+        >
+          <ToolbarIcon name="image" />
+          <span class="toolbar-pc__option-label">上传图片</span>
+        </button>
+
+        <button
+          type="button"
+          class="toolbar-pc__option-button toolbar-pc__option-button--icon"
+          :disabled="disabled"
+          @click="onRemoteImageClick"
+        >
+          <ToolbarIcon name="remote-image" />
+          <span class="toolbar-pc__option-label">远程图片</span>
+        </button>
+      </div>
+    </div>
+
+    <button
+      v-for="item in insertItems"
+      :key="item.label"
+      type="button"
+      class="toolbar-pc__button"
+      :class="item.active ? buttonClass(item.active, item.attrs) : undefined"
+      :disabled="item.command ? isDisabled(item.command, item.attrs) : disabled"
+      :title="item.label"
+      :aria-label="item.label"
+      @click="item.action ? handleAction(item.action) : run(item.command, item.attrs)"
+    >
+      <ToolbarIcon :name="item.icon" />
     </button>
 
     <div class="toolbar-pc__dropdown" :class="{ 'is-open': isListMenuOpen }" ref="listMenuRef">
@@ -172,99 +265,6 @@
     >
       <ToolbarIcon :name="item.icon" />
     </button>
-
-    <button
-      v-for="item in insertItems"
-      :key="item.label"
-      type="button"
-      class="toolbar-pc__button"
-      :class="item.active ? buttonClass(item.active, item.attrs) : undefined"
-      :disabled="item.command ? isDisabled(item.command, item.attrs) : disabled"
-      :title="item.label"
-      :aria-label="item.label"
-      @click="item.action ? handleAction(item.action) : run(item.command, item.attrs)"
-    >
-      <ToolbarIcon :name="item.icon" />
-    </button>
-
-    <div class="toolbar-pc__dropdown" :class="{ 'is-open': isImageMenuOpen }" ref="imageMenuRef">
-      <button
-        type="button"
-        class="toolbar-pc__button toolbar-pc__dropdown-trigger"
-        :class="{ 'is-active': isImageMenuOpen }"
-        :disabled="disabled"
-        title="图片"
-        aria-label="图片"
-        ref="imageTriggerRef"
-        @click="toggleMenu('image')"
-      >
-        <ToolbarIcon name="remote-image" />
-        <ToolbarIcon name="chevron-down" />
-      </button>
-
-      <div
-        v-if="isImageMenuOpen"
-        class="toolbar-pc__dropdown-menu toolbar-pc__option-list"
-        :class="menuPlacementClass(imageDropdownPlacement)"
-        :style="imageDropdownMenuStyle"
-      >
-        <button
-          type="button"
-          class="toolbar-pc__option-button toolbar-pc__option-button--icon"
-          :disabled="disabled"
-          @click="onImageTriggerClick"
-        >
-          <ToolbarIcon name="image" />
-          <span class="toolbar-pc__option-label">上传图片</span>
-        </button>
-
-        <button
-          type="button"
-          class="toolbar-pc__option-button toolbar-pc__option-button--icon"
-          :disabled="disabled"
-          @click="onRemoteImageClick"
-        >
-          <ToolbarIcon name="remote-image" />
-          <span class="toolbar-pc__option-label">远程图片</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="toolbar-pc__dropdown" :class="{ 'is-open': isAlignMenuOpen }" ref="alignMenuRef">
-      <button
-        type="button"
-        class="toolbar-pc__button toolbar-pc__dropdown-trigger"
-        :class="{ 'is-active': isAlignMenuOpen || !isTextAlignActive('left') }"
-        :disabled="disabled"
-        :title="currentAlignLabel"
-        :aria-label="currentAlignLabel"
-        ref="alignTriggerRef"
-        @click="toggleMenu('align')"
-      >
-        <ToolbarIcon :name="currentAlignIcon" />
-        <ToolbarIcon name="chevron-down" />
-      </button>
-
-      <div
-        v-if="isAlignMenuOpen"
-        class="toolbar-pc__dropdown-menu toolbar-pc__option-list"
-        :class="menuPlacementClass(alignDropdownPlacement)"
-        :style="alignDropdownMenuStyle"
-      >
-        <button
-          v-for="option in alignOptions"
-          :key="option.label"
-          type="button"
-          class="toolbar-pc__option-button toolbar-pc__option-button--icon"
-          :class="{ 'is-active': isTextAlignActive(option.value) }"
-          :disabled="disabled"
-          @click="selectAlign(option.value)"
-        >
-          <ToolbarIcon :name="option.icon" />
-          <span class="toolbar-pc__option-label">{{ option.label }}</span>
-        </button>
-      </div>
-    </div>
 
     <input ref="imageFileInputRef" class="toolbar-pc__file" type="file" accept="image/*" :disabled="disabled" @change="onFileChange">
 
