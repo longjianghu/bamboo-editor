@@ -1,6 +1,6 @@
 {
   "name": "@bamboo-editor/vue3",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Vue 3 Bamboo Editor component with PC and mobile rich-text editing UI.",
   "license": "MIT",
   "type": "module",
@@ -45,7 +45,7 @@
     "prepack": "pnpm run build"
   },
   "dependencies": {
-    "@bamboo-editor/core": "^0.1.2"
+    "@bamboo-editor/core": "^0.1.3"
   },
   "peerDependencies": {
     "@tiptap/vue-3": "^2.11.5",

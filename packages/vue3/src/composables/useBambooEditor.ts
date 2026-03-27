@@ -58,8 +58,18 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
   const isNearLimit = computed(() => resolvedMaxLength.value != null && currentLength.value >= resolvedMaxLength.value * 0.9)
   const isAtLimit = computed(() => resolvedMaxLength.value != null && currentLength.value >= resolvedMaxLength.value)
 
-  onMounted(() => {
-    window.addEventListener('resize', handleResize)
+  const cleanupEditor = () => {
+    if (!editor.value) {
+      return
+    }
+
+    editor.value.view.dom.removeEventListener(MAX_LENGTH_FEEDBACK_EVENT, onMaxLengthFeedback as EventListener)
+    editor.value.destroy()
+    editor.value = null
+  }
+
+  const mountEditor = (content: string) => {
+    cleanupEditor()
 
     editor.value = new Editor({
       ...createBambooEditorOptions({
@@ -67,7 +77,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
         colorTokens: resolveColorTokens(toValue(options.colorPalette)),
         maxLength: toValue(options.maxLength),
       }),
-      content: sanitizeHtml(toValue(options.modelValue) ?? '', sanitizeOptions()),
+      content,
       editable: !toValue(options.disabled),
       onUpdate: ({ editor: instance }: { editor: any }) => {
         options.onUpdate?.(sanitizeHtml(instance.getHTML(), sanitizeOptions()))
@@ -75,13 +85,16 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
     })
 
     editor.value.view.dom.addEventListener(MAX_LENGTH_FEEDBACK_EVENT, onMaxLengthFeedback as EventListener)
+  }
+
+  onMounted(() => {
+    window.addEventListener('resize', handleResize)
+    mountEditor(sanitizeHtml(toValue(options.modelValue) ?? '', sanitizeOptions()))
   })
 
   onBeforeUnmount(() => {
     window.removeEventListener('resize', handleResize)
-    editor.value?.view.dom.removeEventListener(MAX_LENGTH_FEEDBACK_EVENT, onMaxLengthFeedback as EventListener)
-    editor.value?.destroy()
-    editor.value = null
+    cleanupEditor()
   })
 
   watch(
@@ -109,21 +122,19 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
   watch(
     () => toValue(options.maxLength),
     (value) => {
-      if (!editor.value) {
-        return
-      }
+      const currentContent = editor.value ? sanitizeHtml(editor.value.getHTML(), sanitizeOptions()) : sanitizeHtml(toValue(options.modelValue) ?? '', sanitizeOptions())
+      mountEditor(currentContent)
 
       if (value == null) {
         maxLengthFeedback.value = null
         return
       }
 
-      const current = editor.value.storage.characterCount?.characters?.() ?? 0
+      const current = editor.value?.storage.characterCount?.characters?.() ?? 0
       if (current > value) {
         maxLengthFeedback.value = { kind: 'limit', message: '已达到字数上限' }
       }
     },
-    { immediate: true },
   )
 
   async function insertImage(file: File) {

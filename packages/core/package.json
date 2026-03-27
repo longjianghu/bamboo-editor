@@ -1,6 +1,6 @@
 {
   "name": "@bamboo-editor/core",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Core Tiptap extensions and controlled HTML utilities for Bamboo Editor.",
   "license": "MIT",
   "type": "module",

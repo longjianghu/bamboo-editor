@@ -1,4 +1,4 @@
-# Bamboo Editor
+# 🎋 Bamboo Editor
 
 一个面向多端内容发布的纯净 HTML 富文本编辑器，支持 PC / Mobile 编辑，输出受控语义化 HTML，推荐通过 `mp-html` 在微信小程序中渲染。
 
@@ -102,10 +102,28 @@ const colorPalette = [
 ]
 
 async function uploadHandler(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const resp = await fetch('/api/upload/image', {
+    method: 'POST',
+    body: formData,
+  })
+
+  if (!resp.ok) {
+    throw new Error(`上传失败: ${resp.status}`)
+  }
+
+  const data = await resp.json() as {
+    url: string
+    alt?: string
+    width?: number
+  }
+
   return {
-    src: URL.createObjectURL(file),
-    alt: file.name,
-    width: 800,
+    src: data.url,
+    alt: data.alt ?? file.name,
+    width: data.width ?? 800,
   }
 }
 </script>
@@ -376,4 +394,4 @@ import '@bamboo-editor/styles/src/bamboo-content.css'
 
 ## License
 
-MIT
+[MIT](./LICENSE)

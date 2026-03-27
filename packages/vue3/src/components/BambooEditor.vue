@@ -962,6 +962,7 @@ function escapeCssValue(value: string) {
   color: #18181b;
   font-size: 16px;
   line-height: 1.75;
+  text-align: left;
   outline: none;
   overflow-y: auto;
 }
