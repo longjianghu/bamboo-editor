@@ -51,13 +51,26 @@
 
         <div class="toolbar-mobile__panel-divider"></div>
 
-        <div class="toolbar-mobile__stats">
+        <div class="toolbar-mobile__stats" :class="statsStatusClass">
           <span class="toolbar-mobile__stats-summary">
-            共 <span class="toolbar-mobile__stats-value">{{ formatCount(stats.chineseCharacters) }}</span> 字
-            <span class="toolbar-mobile__stats-dot">·</span>
-            <span class="toolbar-mobile__stats-value">{{ formatCount(stats.paragraphCount) }}</span> 段
-            <span class="toolbar-mobile__stats-dot">·</span>
-            <span class="toolbar-mobile__stats-value">{{ formatCount(stats.lineCount) }}</span> 行
+            <template v-if="stats.maxLength != null">
+              <span class="toolbar-mobile__stats-value">{{ formatCount(stats.currentLength ?? 0) }}</span>
+              <span>/</span>
+              <span class="toolbar-mobile__stats-value">{{ formatCount(stats.maxLength) }}</span>
+            </template>
+            <template v-else>
+              <span>字符数（含空格）</span>
+              <span class="toolbar-mobile__stats-value">{{ formatCount(stats.totalCharacters) }}</span>
+              <span class="toolbar-mobile__stats-dot">·</span>
+              <span>中文字数</span>
+              <span class="toolbar-mobile__stats-value">{{ formatCount(stats.chineseCharacters) }}</span>
+              <span class="toolbar-mobile__stats-dot">·</span>
+              <span>段落数</span>
+              <span class="toolbar-mobile__stats-value">{{ formatCount(stats.paragraphCount) }}</span>
+              <span class="toolbar-mobile__stats-dot">·</span>
+              <span>行数</span>
+              <span class="toolbar-mobile__stats-value">{{ formatCount(stats.lineCount) }}</span>
+            </template>
           </span>
         </div>
       </div>
@@ -220,6 +233,10 @@ const props = defineProps<{
     chineseCharacters: number
     paragraphCount: number
     lineCount: number
+    currentLength?: number
+    maxLength?: number
+    isNearLimit?: boolean
+    isAtLimit?: boolean
   }
 }>()
 
@@ -264,6 +281,10 @@ const currentListOption = computed(() => props.editor?.isActive('orderedList') ?
 const currentListLabel = computed(() => currentListOption.value.label)
 const currentListIcon = computed(() => currentListOption.value.icon)
 const isListMenuActive = computed(() => Boolean(props.editor?.isActive('bulletList') || props.editor?.isActive('orderedList')))
+const statsStatusClass = computed(() => ({
+  'is-warning': Boolean(props.stats.maxLength != null && props.stats.isNearLimit && !props.stats.isAtLimit),
+  'is-danger': Boolean(props.stats.maxLength != null && props.stats.isAtLimit),
+}))
 
 function formatCount(value: number) {
   return value.toLocaleString('zh-CN')
@@ -685,12 +706,22 @@ onBeforeUnmount(() => {
   text-align: center;
 }
 
+.toolbar-mobile__stats.is-warning {
+  color: #ea580c;
+}
+
+.toolbar-mobile__stats.is-danger {
+  color: #ff4d4f;
+}
+
 .toolbar-mobile__stats-summary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  max-width: 100%;
   gap: 4px;
+  white-space: nowrap;
 }
 
 .toolbar-mobile__stats-dot {

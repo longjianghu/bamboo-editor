@@ -1,6 +1,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, toValue, watch, type MaybeRefOrGetter } from 'vue'
 import { Editor } from '@tiptap/vue-3'
-import { createBambooEditorOptions, sanitizeHtml } from '@bamboo-editor/core'
+import { createBambooEditorOptions, MAX_LENGTH_FEEDBACK_EVENT, sanitizeHtml, type MaxLengthFeedbackDetail } from '@bamboo-editor/core'
 
 export type BambooDevice = 'pc' | 'mobile' | 'auto'
 
@@ -25,12 +25,14 @@ export interface UseBambooEditorOptions {
   disabled?: MaybeRefOrGetter<boolean | undefined>
   uploadHandler?: MaybeRefOrGetter<UploadHandler | undefined>
   colorPalette?: MaybeRefOrGetter<readonly BambooColorOption[] | undefined>
+  maxLength?: MaybeRefOrGetter<number | undefined>
   onUpdate?: (html: string) => void
 }
 
 export function useBambooEditor(options: UseBambooEditorOptions) {
   const editor = shallowRef<Editor | null>(null)
   const windowWidth = ref(typeof window === 'undefined' ? 1024 : window.innerWidth)
+  const maxLengthFeedback = ref<MaxLengthFeedbackDetail | null>(null)
 
   const resolvedDevice = computed(() => {
     const device = toValue(options.device)
@@ -49,6 +51,13 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
     colorTokens: resolveColorTokens(toValue(options.colorPalette)),
   })
 
+  const currentLength = computed(() => editor.value?.storage.characterCount?.characters?.() ?? 0)
+  const resolvedMaxLength = computed(() => toValue(options.maxLength))
+  const remainingLength = computed(() => resolvedMaxLength.value == null ? undefined : Math.max(0, resolvedMaxLength.value - currentLength.value))
+  const usageRatio = computed(() => resolvedMaxLength.value ? currentLength.value / resolvedMaxLength.value : 0)
+  const isNearLimit = computed(() => resolvedMaxLength.value != null && currentLength.value >= resolvedMaxLength.value * 0.9)
+  const isAtLimit = computed(() => resolvedMaxLength.value != null && currentLength.value >= resolvedMaxLength.value)
+
   onMounted(() => {
     window.addEventListener('resize', handleResize)
 
@@ -56,6 +65,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
       ...createBambooEditorOptions({
         placeholder: toValue(options.placeholder),
         colorTokens: resolveColorTokens(toValue(options.colorPalette)),
+        maxLength: toValue(options.maxLength),
       }),
       content: sanitizeHtml(toValue(options.modelValue) ?? '', sanitizeOptions()),
       editable: !toValue(options.disabled),
@@ -63,10 +73,13 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
         options.onUpdate?.(sanitizeHtml(instance.getHTML(), sanitizeOptions()))
       },
     })
+
+    editor.value.view.dom.addEventListener(MAX_LENGTH_FEEDBACK_EVENT, onMaxLengthFeedback as EventListener)
   })
 
   onBeforeUnmount(() => {
     window.removeEventListener('resize', handleResize)
+    editor.value?.view.dom.removeEventListener(MAX_LENGTH_FEEDBACK_EVENT, onMaxLengthFeedback as EventListener)
     editor.value?.destroy()
     editor.value = null
   })
@@ -91,6 +104,26 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
     (value) => {
       editor.value?.setEditable(!value)
     },
+  )
+
+  watch(
+    () => toValue(options.maxLength),
+    (value) => {
+      if (!editor.value) {
+        return
+      }
+
+      if (value == null) {
+        maxLengthFeedback.value = null
+        return
+      }
+
+      const current = editor.value.storage.characterCount?.characters?.() ?? 0
+      if (current > value) {
+        maxLengthFeedback.value = { kind: 'limit', message: '已达到字数上限' }
+      }
+    },
+    { immediate: true },
   )
 
   async function insertImage(file: File) {
@@ -185,9 +218,25 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
     return instance.chain().focus().unsetAllMarks().clearNodes().run()
   }
 
+  function onMaxLengthFeedback(event: Event) {
+    const detail = (event as CustomEvent<MaxLengthFeedbackDetail>).detail
+    if (!detail) {
+      return
+    }
+
+    maxLengthFeedback.value = detail
+  }
+
   return {
     editor,
     resolvedDevice,
+    currentLength,
+    maxLength: resolvedMaxLength,
+    remainingLength,
+    usageRatio,
+    isNearLimit,
+    isAtLimit,
+    maxLengthFeedback,
     insertImage,
     setLink,
     unsetLink,

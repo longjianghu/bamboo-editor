@@ -24,24 +24,40 @@
           <div
             v-if="resolvedDevice === 'pc'"
             class="bamboo-editor__word-count"
-            :class="{ 'is-compact': isCompactWordCount }"
+            :class="[
+              { 'is-compact': isCompactWordCount },
+              maxLengthStatus === 'warning' ? 'is-warning' : '',
+              maxLengthStatus === 'danger' ? 'is-danger' : '',
+            ]"
             :aria-label="wordCountAriaLabel"
             @mouseenter="handleWordCountMouseEnter"
             @mouseleave="handleWordCountMouseLeave"
           >
             <div class="bamboo-editor__word-count-summary">
-              <template v-if="wordCountState.hasSelectedText">
+              <template v-if="maxLength != null">
+                <template v-if="currentLength > maxLength">
+                  <span>已超出 </span>
+                  <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(currentLength - maxLength) }}</span>
+                  <span> 字符</span>
+                </template>
+                <template v-else>
+                  <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(currentLength) }}</span>
+                  <span class="bamboo-editor__word-count-separator">/</span>
+                  <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(maxLength) }}</span>
+                </template>
+              </template>
+              <template v-else-if="wordCountState.hasSelectedText">
                 <span v-if="!isCompactWordCount">已选 </span>
                 <span class="bamboo-editor__word-count-value is-selected">{{ formatVisibleWordCount(wordCountState.selectedChineseCharacters) }}</span>
                 <span class="bamboo-editor__word-count-separator">/</span>
                 <span v-if="!isCompactWordCount">共 </span>
-                <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(wordCountState.chineseCharacters) }}</span>
-                <span v-if="!isCompactWordCount"> 字</span>
+                <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(wordCountState.totalCharacters) }}</span>
+                <span v-if="!isCompactWordCount"> 字符</span>
               </template>
               <template v-else>
                 <span v-if="!isCompactWordCount">共 </span>
-                <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(wordCountState.chineseCharacters) }}</span>
-                <span v-if="!isCompactWordCount"> 字</span>
+                <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(wordCountState.totalCharacters) }}</span>
+                <span v-if="!isCompactWordCount"> 字符</span>
               </template>
             </div>
 
@@ -90,6 +106,10 @@
           chineseCharacters: wordCountState.chineseCharacters,
           paragraphCount: wordCountState.paragraphCount,
           lineCount: wordCountState.lineCount,
+          currentLength,
+          maxLength,
+          isNearLimit,
+          isAtLimit,
         }"
         @image-select="handleImageSelect"
         @open-remote-image-dialog="handleOpenRemoteImageDialog"
@@ -97,6 +117,12 @@
         @clear-formatting="handleClearFormatting"
         @insert-horizontal-rule="handleInsertHorizontalRule"
       />
+
+      <transition name="bamboo-editor-toast">
+        <div v-if="resolvedDevice === 'mobile' && mobileToastVisible" class="bamboo-editor__toast" role="status" aria-live="polite">
+          {{ mobileToastMessage }}
+        </div>
+      </transition>
 
       <EditorUrlDialog
         :visible="urlDialogVisible"
@@ -165,6 +191,7 @@ const props = withDefaults(defineProps<{
   uploadHandler?: UploadHandler
   height?: string
   colorPalette?: BambooColorOption[]
+  maxLength?: number
 }>(), {
   device: 'auto',
   placeholder: '请输入内容',
@@ -185,6 +212,8 @@ const wordCountState = ref<WordCountState>({ ...DEFAULT_WORD_COUNT_STATE })
 const surfaceWidth = ref(0)
 const isWordCountTooltipVisible = ref(false)
 const urlDialogVisible = ref(false)
+const mobileToastVisible = ref(false)
+const mobileToastMessage = ref('')
 const urlDialogState = ref<{
   type: 'link' | 'remote-image'
   mode: 'create' | 'edit'
@@ -201,11 +230,35 @@ const resolvedColorPalette = computed(() => props.colorPalette?.length ? props.c
 const editorColorCss = computed(() => buildEditorColorCss(editorScopeId, resolvedColorPalette.value))
 const isCompactWordCount = computed(() => surfaceWidth.value > 0 && surfaceWidth.value < WORD_COUNT_COMPACT_WIDTH)
 const wordCountAriaLabel = computed(() => {
-  if (wordCountState.value.hasSelectedText) {
-    return `已选 ${formatFullWordCount(wordCountState.value.selectedChineseCharacters)} 字，共 ${formatFullWordCount(wordCountState.value.chineseCharacters)} 字`
+  if (maxLength.value != null) {
+    if (currentLength.value > maxLength.value) {
+      return `已超出 ${formatFullWordCount(currentLength.value - maxLength.value)} 字符`
+    }
+
+    return `${formatFullWordCount(currentLength.value)}/${formatFullWordCount(maxLength.value)} 字符`
   }
 
-  return `共 ${formatFullWordCount(wordCountState.value.chineseCharacters)} 字`
+  if (wordCountState.value.hasSelectedText) {
+    return `已选 ${formatFullWordCount(wordCountState.value.selectedChineseCharacters)} 字，共 ${formatFullWordCount(wordCountState.value.totalCharacters)} 字符`
+  }
+
+  return `共 ${formatFullWordCount(wordCountState.value.totalCharacters)} 字符`
+})
+
+const maxLengthStatus = computed(() => {
+  if (maxLength.value == null) {
+    return 'default'
+  }
+
+  if (currentLength.value >= maxLength.value) {
+    return 'danger'
+  }
+
+  if (usageRatio.value >= 0.9) {
+    return 'warning'
+  }
+
+  return 'default'
 })
 
 const surfaceStyle = computed(() => {
@@ -218,18 +271,20 @@ const surfaceStyle = computed(() => {
   }
 })
 
-const { editor, resolvedDevice, insertImage, setLink, unsetLink, insertRemoteImage, undo, redo, insertHorizontalRule, clearFormatting } = useBambooEditor({
+const { editor, resolvedDevice, currentLength, maxLength, remainingLength, usageRatio, isNearLimit, isAtLimit, maxLengthFeedback, insertImage, setLink, unsetLink, insertRemoteImage, undo, redo, insertHorizontalRule, clearFormatting } = useBambooEditor({
   modelValue: toRef(props, 'modelValue'),
   device: toRef(props, 'device'),
   placeholder: toRef(props, 'placeholder'),
   disabled: toRef(props, 'disabled'),
   uploadHandler: toRef(props, 'uploadHandler'),
   colorPalette: resolvedColorPalette,
+  maxLength: toRef(props, 'maxLength'),
   onUpdate: (html) => emit('update:modelValue', html),
 })
 
 let wordCountTimer: number | null = null
 let wordCountTooltipTimer: number | null = null
+let mobileToastTimer: number | null = null
 let surfaceResizeObserver: ResizeObserver | null = null
 
 function handleImageSelect(file: File) {
@@ -325,12 +380,35 @@ function handleInsertHorizontalRule() {
   return insertHorizontalRule()
 }
 
+function showMobileToast(message: string) {
+  if (typeof window === 'undefined' || !message) {
+    return
+  }
+
+  mobileToastMessage.value = message
+  mobileToastVisible.value = true
+
+  if (mobileToastTimer !== null) {
+    window.clearTimeout(mobileToastTimer)
+  }
+
+  mobileToastTimer = window.setTimeout(() => {
+    mobileToastVisible.value = false
+    mobileToastTimer = null
+  }, 1800)
+}
+
 function clearWordCountTimers() {
   clearWordCountTimer()
 
   if (wordCountTooltipTimer !== null) {
     window.clearTimeout(wordCountTooltipTimer)
     wordCountTooltipTimer = null
+  }
+
+  if (mobileToastTimer !== null) {
+    window.clearTimeout(mobileToastTimer)
+    mobileToastTimer = null
   }
 }
 
@@ -492,6 +570,10 @@ function formatVisibleWordCount(value: number) {
     return formatFullWordCount(value)
   }
 
+  if (maxLength.value != null) {
+    return `${value}`
+  }
+
   if (value >= 1000) {
     const compactValue = value / 1000
     const displayValue = Number.isInteger(compactValue) ? compactValue.toFixed(0) : compactValue.toFixed(1)
@@ -638,6 +720,14 @@ watch(isFullscreen, (value) => {
   }
 
   window.removeEventListener('keydown', onKeydown)
+})
+
+watch([maxLengthFeedback, resolvedDevice], ([feedback, device]) => {
+  if (!feedback || device !== 'mobile') {
+    return
+  }
+
+  showMobileToast(feedback.message)
 })
 
 watch(resolvedDevice, (value) => {
@@ -926,9 +1016,10 @@ function escapeCssValue(value: string) {
   box-sizing: border-box;
   min-height: 100%;
   height: 100%;
-  padding: 10px 12px 56px;
-  max-width: 920px;
-  margin: 0 auto;
+  padding: 10px 16px 56px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   overflow-y: auto;
 }
 
@@ -1049,11 +1140,11 @@ function escapeCssValue(value: string) {
 }
 
 .bamboo-editor.is-fullscreen .bamboo-editor__word-count {
-  right: max(16px, calc((100% - 920px) / 2 + 16px));
+  right: 16px;
 }
 
 .bamboo-editor.is-fullscreen .bamboo-editor__word-count.is-compact {
-  right: max(12px, calc((100% - 920px) / 2 + 12px));
+  right: 12px;
 }
 
 .bamboo-editor__word-count.is-compact {
@@ -1081,6 +1172,18 @@ function escapeCssValue(value: string) {
 .bamboo-editor__word-count:hover .bamboo-editor__word-count-summary {
   color: #52525b;
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
+}
+
+.bamboo-editor__word-count.is-warning .bamboo-editor__word-count-summary {
+  color: #ea580c;
+  border-color: rgba(234, 88, 12, 0.18);
+  background: rgba(255, 247, 237, 0.96);
+}
+
+.bamboo-editor__word-count.is-danger .bamboo-editor__word-count-summary {
+  color: #ff4d4f;
+  border-color: rgba(255, 77, 79, 0.22);
+  background: rgba(255, 241, 240, 0.96);
 }
 
 .bamboo-editor__word-count.is-compact .bamboo-editor__word-count-summary {
@@ -1123,6 +1226,33 @@ function escapeCssValue(value: string) {
 
 .bamboo-editor__word-count-tooltip-row + .bamboo-editor__word-count-tooltip-row {
   margin-top: 6px;
+}
+
+.bamboo-editor__toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  max-width: min(280px, calc(100vw - 32px));
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(24, 24, 27, 0.9);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+  transform: translateX(-50%);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+}
+
+.bamboo-editor-toast-enter-active,
+.bamboo-editor-toast-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.bamboo-editor-toast-enter-from,
+.bamboo-editor-toast-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
 }
 
 .bamboo-editor__placeholder {
