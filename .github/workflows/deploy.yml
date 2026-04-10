@@ -1,9 +1,10 @@
-name: Deploy Playground to GitHub Pages
+# 文件名：.github/workflows/deploy.yml
+name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]  # main 分支有更新时自动触发
-  workflow_dispatch:  # 也支持手动点击触发
+    branches: [ "main" ] # 设置在 main 分支推送时触发
+  workflow_dispatch: # 允许手动触发
 
 permissions:
   contents: read
@@ -11,48 +12,48 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: "pages"
   cancel-in-progress: false
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # 使用合适的Node.js版本
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build Playground
+        run: pnpm --filter playground build # 假设在根目录使用 pnpm filter 来构建playground包
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './playground/dist' # 将此处路径替换为您的playground构建产物的实际路径
+
   deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    needs: build
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-      
-      - name: Install dependencies
-        run: pnpm install
-      
-      - name: Build packages
-        run: pnpm build
-      
-      - name: Build playground
-        run: |
-          cd playground
-          pnpm build
-      
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-      
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./playground/dist
-      
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
