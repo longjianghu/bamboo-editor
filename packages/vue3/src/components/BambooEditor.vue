@@ -16,6 +16,7 @@
         @clear-formatting="handleClearFormatting"
         @insert-horizontal-rule="handleInsertHorizontalRule"
         @toggle-fullscreen="toggleFullscreen"
+        @show-info="infoDialogVisible = true"
       />
 
       <div ref="surfaceRef" class="bamboo-editor__surface" :class="{ 'is-mobile': resolvedDevice === 'mobile' }" :style="surfaceStyle">
@@ -135,6 +136,12 @@
         @remove="handleUrlDialogRemove"
         @cancel="closeUrlDialog"
       />
+
+      <EditorInfoDialog
+        :visible="infoDialogVisible"
+        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
+        @close="infoDialogVisible = false"
+      />
     </div>
   </div>
 </template>
@@ -147,6 +154,7 @@ import ToolbarPC from './ToolbarPC.vue'
 import ToolbarMobile from './ToolbarMobile.vue'
 import FloatingToolbarPC from './FloatingToolbarPC.vue'
 import EditorUrlDialog from './EditorUrlDialog.vue'
+import EditorInfoDialog from './EditorInfoDialog.vue'
 import { useBambooEditor } from '../composables/useBambooEditor'
 import type { BambooColorOption, BambooDevice, UploadHandler } from '../composables/useBambooEditor'
 
@@ -222,6 +230,7 @@ const wordCountState = ref<WordCountState>({ ...DEFAULT_WORD_COUNT_STATE })
 const surfaceWidth = ref(0)
 const isWordCountTooltipVisible = ref(false)
 const urlDialogVisible = ref(false)
+const infoDialogVisible = ref(false)
 const mobileToastVisible = ref(false)
 const mobileToastMessage = ref('')
 const urlDialogState = ref<{

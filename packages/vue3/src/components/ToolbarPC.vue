@@ -279,6 +279,16 @@
     >
       <ToolbarIcon :name="fullscreen ? 'fullscreen-exit' : 'fullscreen-enter'" />
     </button>
+
+    <button
+      type="button"
+      class="toolbar-pc__button toolbar-pc__info"
+      title="关于"
+      aria-label="关于"
+      @click="emit('show-info')"
+    >
+      <ToolbarIcon name="info" />
+    </button>
   </div>
 </template>
 
@@ -347,6 +357,7 @@ const emit = defineEmits<{
   'clear-formatting': []
   'insert-horizontal-rule': []
   'toggle-fullscreen': []
+  'show-info': []
 }>()
 
 const historyItems: readonly ToolbarButtonItem[] = [
@@ -1048,6 +1059,10 @@ onBeforeUnmount(() => {
 
 .toolbar-pc__fullscreen {
   margin-left: 4px;
+}
+
+.toolbar-pc__info {
+  margin-left: 0;
 }
 
 :global(.bamboo-editor.is-fullscreen) .toolbar-pc__fullscreen {

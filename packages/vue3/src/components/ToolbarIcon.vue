@@ -173,6 +173,12 @@
       <path d="M15 15L20 20" />
       <path d="M9 15L4 20" />
     </g>
+
+    <g v-else-if="name === 'info'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8V8.01" stroke-width="2" />
+      <path d="M11 12H12V16H13" />
+    </g>
   </svg>
 </template>
 
@@ -205,6 +211,7 @@ type ToolbarIconName =
   | 'align-right'
   | 'fullscreen-enter'
   | 'fullscreen-exit'
+  | 'info'
 
 defineProps<{
   name: ToolbarIconName
