@@ -173,6 +173,8 @@ const WORD_COUNT_DEBOUNCE_MS = 300
 const WORD_COUNT_TOOLTIP_DELAY_MS = 200
 const WORD_COUNT_COMPACT_WIDTH = 400
 const WORD_COUNT_SCROLLBAR_GAP = 20
+const DRAFT_DEBOUNCE_MS = 1000
+const DRAFT_DEFAULT_TTL = 3 * 24 * 60 * 60 * 1000
 
 type WordCountState = {
   totalCharacters: number
@@ -210,11 +212,14 @@ const props = withDefaults(defineProps<{
   height?: string
   colorPalette?: BambooColorOption[]
   maxLength?: number
+  editorId?: string
+  draftTtl?: number
 }>(), {
   device: 'auto',
   placeholder: '请输入内容',
   disabled: false,
   height: '50vh',
+  draftTtl: DRAFT_DEFAULT_TTL,
 })
 
 const emit = defineEmits<{
@@ -298,13 +303,94 @@ const { editor, resolvedDevice, currentLength, maxLength, remainingLength, usage
   uploadHandler: toRef(props, 'uploadHandler'),
   colorPalette: resolvedColorPalette,
   maxLength: toRef(props, 'maxLength'),
-  onUpdate: (html) => emit('update:modelValue', html),
+  onUpdate: (html) => {
+    emit('update:modelValue', html)
+    scheduleDraftSave(html)
+  },
 })
 
 let wordCountTimer: number | null = null
 let wordCountTooltipTimer: number | null = null
 let mobileToastTimer: number | null = null
 let surfaceResizeObserver: ResizeObserver | null = null
+let draftTimer: number | null = null
+
+function getDraftKey() {
+  if (typeof window === 'undefined' || !props.editorId) {
+    return null
+  }
+
+  const { pathname, search, hash } = window.location
+  return `bamboo_draft_${pathname}${search}${hash}_${props.editorId}`
+}
+
+function saveDraft(html: string) {
+  const key = getDraftKey()
+  if (!key) {
+    return
+  }
+
+  try {
+    localStorage.setItem(key, JSON.stringify({ html, savedAt: Date.now() }))
+  }
+  catch {
+    // localStorage 不可用时静默失败
+  }
+}
+
+function loadDraft() {
+  const key = getDraftKey()
+  if (!key) {
+    return null
+  }
+
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) {
+      return null
+    }
+
+    const { html, savedAt } = JSON.parse(raw) as { html: string, savedAt: number }
+    if (Date.now() - savedAt > props.draftTtl) {
+      localStorage.removeItem(key)
+      return null
+    }
+
+    return html
+  }
+  catch {
+    return null
+  }
+}
+
+function clearDraft() {
+  const key = getDraftKey()
+  if (!key) {
+    return
+  }
+
+  try {
+    localStorage.removeItem(key)
+  }
+  catch {
+    // 静默失败
+  }
+}
+
+function scheduleDraftSave(html: string) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  if (draftTimer !== null) {
+    window.clearTimeout(draftTimer)
+  }
+
+  draftTimer = window.setTimeout(() => {
+    saveDraft(html)
+    draftTimer = null
+  }, DRAFT_DEBOUNCE_MS)
+}
 
 function handleImageSelect(file: File) {
   return insertImage(file)
@@ -790,6 +876,18 @@ watch(surfaceRef, (element, _, onCleanup) => {
   onCleanup(() => window.removeEventListener('resize', updateSurfaceWidth))
 }, { immediate: true })
 
+watch(editor, (instance) => {
+  if (!instance || !props.editorId) {
+    return
+  }
+
+  const draft = loadDraft()
+  if (draft && draft !== props.modelValue) {
+    instance.commands.setContent(draft, false)
+    emit('update:modelValue', draft)
+  }
+}, { once: true })
+
 watch([editor, resolvedDevice, () => props.disabled], (_, __, onCleanup) => {
   const instance = editor.value
   if (!instance) {
@@ -840,6 +938,11 @@ onBeforeUnmount(() => {
   clearWordCountTimers()
   surfaceResizeObserver?.disconnect()
 
+  if (draftTimer !== null) {
+    window.clearTimeout(draftTimer)
+    draftTimer = null
+  }
+
   if (typeof document !== 'undefined') {
     document.body.style.overflow = ''
     removeEditorColorStyle(editorScopeId)
@@ -884,6 +987,8 @@ function removeEditorColorStyle(scopeId: string) {
 function escapeCssValue(value: string) {
   return value.replace(/['\\]/g, '\\$&')
 }
+
+defineExpose({ clearDraft })
 </script>
 
 <style scoped>

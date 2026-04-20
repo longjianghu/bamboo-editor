@@ -193,10 +193,16 @@ playground 当前包含：
 - `height?: string`：编辑区高度，默认 `50vh`，内容超出时编辑区内部滚动
 - `colorPalette?: Array<{ token: string; label: string; value: string }>`：文字颜色面板配置，默认提供 `primary / success / warning / danger / muted / purple`
 - `maxLength?: number`：可选字符数上限；达到上限后会阻止继续输入，并对粘贴内容进行截断处理
+- `editorId?: string`：草稿功能唯一标识，不传则不启用草稿自动保存
+- `draftTtl?: number`：草稿过期时间（毫秒），默认 `3 * 24 * 60 * 60 * 1000`（3 天）
 
 ### BambooEditor Emits
 
 - `update:modelValue`：返回最新 HTML
+
+### BambooEditor 暴露方法（defineExpose）
+
+- `clearDraft()`：清除当前编辑器对应的本地草稿，适合在用户正常保存成功后调用
 
 ### 组件行为说明
 
@@ -206,6 +212,40 @@ playground 当前包含：
 - Mobile 模式提供底部工具栏、扩展面板和选区浮动工具栏
 - 支持链接新增 / 编辑 / 移除、远程图片插入、本地图片上传、分割线插入、清除格式
 - 配置 `maxLength` 后，普通输入、粘贴、中文输入法上屏后的最终结果都会按统一字符语义限制
+- 配置 `editorId` 后，编辑器会自动将内容保存到 `localStorage`，下次打开时自动恢复草稿；不配置则不启用此功能
+
+### 草稿自动保存
+
+配置 `editorId` 后，编辑器会在用户输入时自动将内容保存到 `localStorage`，浏览器崩溃或意外关闭后重新打开可自动恢复内容。
+
+**草稿 key 规则：** `bamboo_draft_{pathname}{search}{hash}_{editorId}`，路径与 `editorId` 共同决定唯一性，天然支持多页面、多编辑器隔离。
+
+**注意：** 如果同一页面下有多个编辑器编辑不同的业务内容（如不同文章），需要在 `editorId` 中拼入业务 ID，否则会互相覆盖草稿：
+
+```html
+<!-- 固定页面，单个编辑器 -->
+<BambooEditor editor-id="profile-bio" v-model="content" />
+
+<!-- 同一页面编辑不同文章，需拼入业务 ID -->
+<BambooEditor :editor-id="`article-body-${articleId}`" v-model="content" />
+```
+
+用户正常保存成功后，应调用 `clearDraft()` 清除草稿，避免下次误恢复已过期内容：
+
+```vue
+<script setup>
+const editorRef = ref()
+
+async function onSave() {
+  await saveToServer(content.value)
+  editorRef.value.clearDraft()
+}
+</script>
+
+<template>
+  <BambooEditor ref="editorRef" :editor-id="`article-body-${articleId}`" v-model="content" />
+</template>
+```
 
 ### useBambooEditor
 
@@ -370,6 +410,7 @@ import '@bamboo-editor/styles/src/bamboo-content.css'
 - `validateHtml()`
 - `sanitizePastedHtml()`
 - `maxLength` 字符限制
+- 草稿自动保存与恢复（基于 `localStorage`）
 - PC / Mobile 双端编辑器 UI
 - Web / Weapp 展示样式
 - 本地 playground

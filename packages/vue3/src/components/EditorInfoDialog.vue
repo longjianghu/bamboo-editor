@@ -27,13 +27,17 @@
             </div>
             <div class="editor-info-dialog__name">Bamboo Editor</div>
           </div>
-          
-          <div class="editor-info-dialog__version">v{{ pkg ? pkg.version : "0.1.3" }}</div>
-          
+
+          <div class="editor-info-dialog__meta">
+            <span class="editor-info-dialog__version">v{{ pkg ? pkg.version : "0.1.4" }}</span>
+            <span class="editor-info-dialog__meta-sep">·</span>
+            <a href="mailto:215241062@qq.com" class="editor-info-dialog__author">龙江湖</a>
+          </div>
+
           <div class="editor-info-dialog__desc">
             一款轻量级、响应式、基于 Vue 3 和 Tiptap 开发的富文本编辑器。
           </div>
-          
+
           <div class="editor-info-dialog__links">
             <a href="https://github.com/longjianghu/bamboo-editor" target="_blank" rel="noopener noreferrer" class="editor-info-dialog__link">
               <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true" width="16" height="16">
@@ -42,12 +46,6 @@
               GitHub 仓库
             </a>
           </div>
-        </div>
-
-        <div class="editor-info-dialog__footer">
-          <button type="button" class="editor-info-dialog__btn" @click="emit('close')">
-            确定
-          </button>
         </div>
       </div>
     </div>
@@ -247,7 +245,7 @@ onBeforeUnmount(() => {
 }
 
 .editor-info-dialog__body {
-  padding: 32px 24px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -257,12 +255,12 @@ onBeforeUnmount(() => {
 .editor-info-dialog__logo {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 6px;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
 .editor-info-dialog__logo-icon {
-  font-size: 32px;
+  font-size: 28px;
   line-height: 1;
   display: flex;
   align-items: center;
@@ -271,25 +269,46 @@ onBeforeUnmount(() => {
 }
 
 .editor-info-dialog__name {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: #0f172a;
 }
 
-.editor-info-dialog__version {
+.editor-info-dialog__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
   font-size: 13px;
   color: #71717a;
+}
+
+.editor-info-dialog__version {
   background: #f4f4f5;
   padding: 2px 8px;
   border-radius: 12px;
-  margin-bottom: 20px;
+}
+
+.editor-info-dialog__meta-sep {
+  color: #d4d4d8;
+}
+
+.editor-info-dialog__author {
+  color: #52525b;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.editor-info-dialog__author:hover {
+  color: #14b8a6;
 }
 
 .editor-info-dialog__desc {
-  font-size: 14px;
-  color: #52525b;
+  font-size: 13px;
+  color: #71717a;
   line-height: 1.6;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .editor-info-dialog__links {
@@ -304,11 +323,11 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 40px;
+  height: 36px;
   border: 1px solid #e4e4e7;
   border-radius: 10px;
   color: #3f3f46;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   text-decoration: none;
   background: #fafafa;
@@ -319,36 +338,5 @@ onBeforeUnmount(() => {
   background: #f4f4f5;
   border-color: #d4d4d8;
   color: #18181b;
-}
-
-.editor-info-dialog__footer {
-  display: flex;
-  gap: 10px;
-  padding: 16px 20px;
-  background: #fafafa;
-  border-top: 1px solid #f4f4f5;
-  border-radius: 0 0 18px 18px;
-}
-
-.editor-info-dialog__btn {
-  width: 100%;
-  height: 40px;
-  border: none;
-  border-radius: 10px;
-  background: #14b8a6;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.editor-info-dialog__btn:hover {
-  background: #0d9488;
-}
-
-.editor-info-dialog--mobile .editor-info-dialog__footer {
-  border-radius: 0;
-  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 }
 </style>
