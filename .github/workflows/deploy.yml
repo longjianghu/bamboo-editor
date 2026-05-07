@@ -32,7 +32,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build Playground
+      # 🆕 先把除 playground 以外的所有包都构建好，解决依赖找不到的问题
+      - name: Build workspace dependencies
+        run: pnpm --filter=!@bamboo-editor/playground build
+
+      - name: Build Playground with base
         run: |
           cd playground
           pnpm build -- --base /bamboo-editor/
