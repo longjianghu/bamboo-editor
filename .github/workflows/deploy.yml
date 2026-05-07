@@ -36,10 +36,10 @@ jobs:
       - name: Build workspace dependencies
         run: pnpm --filter=!@bamboo-editor/playground build
 
-      - name: Build Playground with base
+      - name: Build Playground
         run: |
           cd playground
-          pnpm build -- --base /bamboo-editor/
+          pnpm build
           touch dist/.nojekyll
 
       - name: Upload artifact
