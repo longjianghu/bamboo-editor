@@ -15,6 +15,10 @@ Bamboo Editor 不是通用 Office 型编辑器，而是面向以下场景的内�
 
 一句话描述：**为多端内容发布而设计、优先适配 `mp-html` 的纯净 HTML 编辑器。**
 
+## 在线演示
+
+在线体验：[https://longjianghu.github.io/bamboo-editor/](https://longjianghu.github.io/bamboo-editor/)
+
 ## 为什么选择 HTML 而不是 Markdown
 
 Markdown 适合文档类内容，但在图片、引用、代码块、跨端渲染一致性等富内容场景下存在限制。Bamboo Editor 选择把受控语义化 HTML 作为内容契约：
