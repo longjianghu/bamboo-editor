@@ -1234,6 +1234,22 @@ defineExpose({ clearDraft })
   box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.16);
 }
 
+.bamboo-editor__content :deep(.ProseMirror ::selection) {
+  background: rgba(20, 184, 166, 0.25);
+}
+
+.bamboo-editor__content :deep(.ProseMirror::-moz-selection) {
+  background: rgba(20, 184, 166, 0.25);
+}
+
+.bamboo-editor__content :deep(.ProseMirror:has(.ProseMirror-selectednode)) ::selection {
+  background: transparent;
+}
+
+.bamboo-editor__content :deep(.ProseMirror:has(.ProseMirror-selectednode)) ::-moz-selection {
+  background: transparent;
+}
+
 .bamboo-editor__content :deep(.ProseMirror img[data-align='center']) {
   margin-left: auto;
   margin-right: auto;

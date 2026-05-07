@@ -9,7 +9,7 @@
         <button type="button" @click="device = 'pc'">PC</button>
         <button type="button" @click="device = 'mobile'">Mobile</button>
         <button type="button" @click="maxLength = undefined">Unlimited</button>
-        <button type="button" @click="maxLength = 50">max=50</button>
+        <button type="button" @click="maxLength = 500">max=500</button>
       </div>
     </header>
 
@@ -38,7 +38,7 @@ import { BambooEditor } from '@bamboo-editor/vue3'
 import '@bamboo-editor/styles/bamboo-content.css'
 
 const device = ref<'pc' | 'mobile'>('pc')
-const maxLength = ref<number | undefined>(50)
+const maxLength = ref<number | undefined>(500)
 const html = ref(`
 <h1>Bamboo Editor</h1>
 <p><strong>纯净 HTML</strong> 输出，适合 Web 与微信小程序展示。</p>

@@ -17,7 +17,6 @@
       <button
         type="button"
         class="toolbar-pc__button toolbar-pc__dropdown-trigger toolbar-pc__dropdown-trigger--text"
-        :class="{ 'is-active': isHeadingMenuOpen || !isParagraphActive() }"
         :disabled="disabled"
         :title="currentHeadingLabel"
         :aria-label="currentHeadingLabel"
@@ -39,7 +38,6 @@
           :key="option.label"
           type="button"
           class="toolbar-pc__option-button"
-          :class="{ 'is-active': isHeadingOptionActive(option) }"
           :disabled="option.command ? isDisabled(option.command, option.attrs) : disabled"
           @click="selectHeading(option)"
         >
@@ -52,7 +50,6 @@
       <button
         type="button"
         class="toolbar-pc__button toolbar-pc__dropdown-trigger"
-        :class="{ 'is-active': isAlignMenuOpen || !isTextAlignActive('left') }"
         :disabled="disabled"
         :title="currentAlignLabel"
         :aria-label="currentAlignLabel"
@@ -74,7 +71,6 @@
           :key="option.label"
           type="button"
           class="toolbar-pc__option-button toolbar-pc__option-button--icon"
-          :class="{ 'is-active': isTextAlignActive(option.value) }"
           :disabled="disabled"
           @click="selectAlign(option.value)"
         >
@@ -88,7 +84,6 @@
       <button
         type="button"
         class="toolbar-pc__button toolbar-pc__dropdown-trigger"
-        :class="{ 'is-active': !isColorCleared() || isColorMenuOpen }"
         :disabled="disabled"
         :title="currentColorLabel"
         :aria-label="currentColorLabel"
@@ -109,7 +104,6 @@
           <button
             type="button"
             class="toolbar-pc__palette-swatch"
-            :class="{ 'is-active': isColorCleared() }"
             title="默认颜色"
             aria-label="默认颜色"
             @click="selectTextColor(null)"
@@ -122,7 +116,6 @@
             :key="item.token"
             type="button"
             class="toolbar-pc__palette-swatch"
-            :class="{ 'is-active': isTextColorActive(item.token) }"
             :title="item.label"
             :aria-label="item.label"
             @click="selectTextColor(item.token)"
@@ -138,8 +131,7 @@
       :key="item.label"
       type="button"
       class="toolbar-pc__button"
-      :class="item.active ? buttonClass(item.active, item.attrs) : undefined"
-      :disabled="item.command ? isDisabled(item.command!, item.attrs) : disabled"
+      :disabled="disabled"
       :title="item.label"
       :aria-label="item.label"
       @click="item.action ? handleAction(item.action) : run(item.command!, item.attrs)"
@@ -150,7 +142,6 @@
     <button
       type="button"
       class="toolbar-pc__button"
-      :class="buttonClass('link')"
       :disabled="disabled"
       title="链接"
       aria-label="链接"
@@ -163,7 +154,6 @@
       <button
         type="button"
         class="toolbar-pc__button toolbar-pc__dropdown-trigger"
-        :class="{ 'is-active': isImageMenuOpen }"
         :disabled="disabled"
         title="图片"
         aria-label="图片"
@@ -207,8 +197,7 @@
       :key="item.label"
       type="button"
       class="toolbar-pc__button"
-      :class="item.active ? buttonClass(item.active, item.attrs) : undefined"
-      :disabled="item.command ? isDisabled(item.command!, item.attrs) : disabled"
+      :disabled="disabled"
       :title="item.label"
       :aria-label="item.label"
       @click="item.action ? handleAction(item.action) : run(item.command!, item.attrs)"
@@ -220,7 +209,6 @@
       <button
         type="button"
         class="toolbar-pc__button toolbar-pc__dropdown-trigger"
-        :class="{ 'is-active': isListMenuOpen || isListMenuActive }"
         :disabled="disabled"
         :title="currentListLabel"
         :aria-label="currentListLabel"
@@ -242,7 +230,6 @@
           :key="option.label"
           type="button"
           class="toolbar-pc__option-button toolbar-pc__option-button--icon"
-          :class="buttonClass(option.active)"
           :disabled="isDisabled(option.command)"
           @click="selectList(option)"
         >
@@ -257,8 +244,7 @@
       :key="item.label"
       type="button"
       class="toolbar-pc__button"
-      :class="item.active ? buttonClass(item.active, item.attrs) : undefined"
-      :disabled="item.command ? isDisabled(item.command!, item.attrs) : disabled"
+      :disabled="disabled"
       :title="item.label"
       :aria-label="item.label"
       @click="item.action ? handleAction(item.action) : run(item.command!, item.attrs)"
@@ -271,7 +257,6 @@
     <button
       type="button"
       class="toolbar-pc__button toolbar-pc__fullscreen"
-      :class="{ 'is-active': fullscreen }"
       :title="fullscreen ? '退出全屏' : '全屏编辑'"
       :aria-label="fullscreen ? '退出全屏' : '全屏编辑'"
       :disabled="disabled"
@@ -535,7 +520,10 @@ function isDisabled(command: string, attrs?: Record<string, unknown>) {
   return !target?.run?.()
 }
 
-function buttonClass(name: string, attrs?: Record<string, unknown>) {
+function buttonClass(name: string, attrs?: Record<string, unknown>, disableWhenImageSelected?: boolean) {
+  if (disableWhenImageSelected && isImageSelected()) {
+    return { 'is-active': false }
+  }
   const active = attrs ? props.editor?.isActive(name, attrs) : props.editor?.isActive(name)
   return { 'is-active': Boolean(active) }
 }
