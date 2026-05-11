@@ -51,7 +51,6 @@ export function getDefaultExtensions(options: BambooEditorOptions = {}): AnyExte
       bulletList: false,
       orderedList: false,
       listItem: false,
-      horizontalRule: false,
       hardBreak: false,
     }),
     HardBreak,
@@ -77,6 +76,7 @@ export function getDefaultExtensions(options: BambooEditorOptions = {}): AnyExte
     CleanListItem,
     CleanBlockquote,
     CleanCodeBlock,
+    HorizontalRule,
   ]
 }
 
