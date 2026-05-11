@@ -4,8 +4,8 @@ export interface CleanImageOptions {
   allowBase64?: boolean
 }
 
-function parseAlign(value: string | null) {
-  return value === 'center' || value === 'right' ? value : null
+function parseAlign(value: string | null): 'left' | 'center' | 'right' | null {
+  return value === 'left' || value === 'center' || value === 'right' ? value as any : 'left'
 }
 
 export const CleanImage = Image.extend<CleanImageOptions>({
@@ -24,16 +24,24 @@ export const CleanImage = Image.extend<CleanImageOptions>({
       alt: {
         default: null,
       },
-      'data-width': {
+      title: {
         default: null,
-        parseHTML: (element) => element.getAttribute('data-width'),
+      },
+      width: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('width'),
+      },
+      height: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('height'),
       },
       'data-align': {
-        default: null,
-        parseHTML: (element) => parseAlign(element.getAttribute('data-align')),
+        default: 'left',
+        parseHTML: (element) => parseAlign(element.getAttribute('data-align') || element.getAttribute('align')),
         renderHTML: (attributes) => {
           const value = parseAlign(attributes['data-align'])
-          return value ? { 'data-align': value } : {}
+          if (value === 'left' || !value) return {}
+          return { 'data-align': value }
         },
       },
       'data-uploading': {
@@ -52,10 +60,164 @@ export const CleanImage = Image.extend<CleanImageOptions>({
   renderHTML({ HTMLAttributes }) {
     const attrs = Object.fromEntries(
       Object.entries(HTMLAttributes).filter(([key, value]) => {
-        return ['src', 'alt', 'data-width', 'data-align'].includes(key) && value != null && value !== ''
+        const allowed = ['src', 'alt', 'title', 'width', 'height', 'data-align']
+        return allowed.includes(key) && value != null && value !== ''
       }),
     )
 
     return ['img', attrs]
+  },
+
+  addNodeView() {
+    return ({ node, editor, getPos }) => {
+      let currentNode = node
+      const { src, alt, width, height, 'data-align': align } = currentNode.attrs
+
+      const container = document.createElement('div')
+      container.className = 'clean-image-wrapper'
+
+      // 对齐逻辑
+      if (align === 'center') {
+        container.style.textAlign = 'center'
+      } else if (align === 'right') {
+        container.style.textAlign = 'right'
+      } else {
+        container.style.textAlign = 'left'
+      }
+
+      const img = document.createElement('img')
+      img.className = 'clean-image'
+      
+      if (src) {
+        img.setAttribute('src', src)
+      }
+      if (alt) {
+        img.setAttribute('alt', alt)
+      }
+
+      if (width) {
+        img.setAttribute('width', width)
+        img.style.width = `${width}px`
+        img.style.maxWidth = '100%'
+      } else {
+        img.style.width = 'auto'
+        img.style.maxWidth = '100%'
+      }
+
+      if (height) {
+        img.setAttribute('height', height)
+        img.style.height = `${height}px`
+      }
+
+      // 处理上传状态
+      const isUploading = currentNode.attrs['data-uploading'] === 'true'
+      if (isUploading) {
+        img.classList.add('is-uploading')
+      }
+
+      const loadingOverlay = document.createElement('div')
+      loadingOverlay.className = 'clean-image-loading'
+      loadingOverlay.style.display = isUploading ? 'flex' : 'none'
+      loadingOverlay.innerHTML = '<span>上传中...</span>'
+
+      const editButton = document.createElement('button')
+      editButton.className = 'clean-image-edit-button'
+      editButton.type = 'button'
+      editButton.title = '编辑图片'
+      editButton.innerHTML = `
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+        </svg>
+      `
+      editButton.addEventListener('click', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        const pos = typeof getPos === 'function' ? getPos() : undefined
+        if (pos !== undefined) {
+          ;(editor as any).emit('open-image-dialog', { 
+            pos, 
+            node: currentNode,
+            mode: 'edit',
+            initialData: {
+              src: currentNode.attrs.src,
+              alt: currentNode.attrs.alt,
+              width: currentNode.attrs.width,
+              height: currentNode.attrs.height,
+              align: currentNode.attrs['data-align'] || 'left'
+            }
+          })
+        }
+      })
+
+      container.appendChild(img)
+      container.appendChild(editButton)
+      container.appendChild(loadingOverlay)
+
+      return {
+        dom: container,
+        update: (updatedNode) => {
+          if (updatedNode.type.name !== this.name) {
+            return false
+          }
+
+          currentNode = updatedNode
+          const newSrc = currentNode.attrs.src
+          const newAlt = currentNode.attrs.alt
+          const newWidth = currentNode.attrs.width
+          const newHeight = currentNode.attrs.height
+          const newAlign = parseAlign(currentNode.attrs['data-align'])
+          const newUploading = currentNode.attrs['data-uploading']
+          const wasUploading = newUploading === 'true'
+
+          if (newSrc !== img.getAttribute('src')) {
+            img.setAttribute('src', newSrc)
+          }
+
+          if (newAlt !== img.getAttribute('alt')) {
+            if (newAlt) {
+              img.setAttribute('alt', newAlt)
+            } else {
+              img.removeAttribute('alt')
+            }
+          }
+
+          if (newAlign === 'center') {
+            container.style.textAlign = 'center'
+          } else if (newAlign === 'right') {
+            container.style.textAlign = 'right'
+          } else {
+            container.style.textAlign = 'left'
+          }
+
+          if (newWidth) {
+            img.setAttribute('width', newWidth)
+            img.style.width = `${newWidth}px`
+          } else {
+            img.removeAttribute('width')
+            img.style.width = 'auto'
+          }
+
+          if (newHeight) {
+            img.setAttribute('height', newHeight)
+            img.style.height = `${newHeight}px`
+          } else {
+            img.removeAttribute('height')
+            img.style.height = ''
+          }
+
+          // 更新上传状态
+          if (wasUploading) {
+            img.classList.add('is-uploading')
+            loadingOverlay.style.display = 'flex'
+          } else {
+            img.classList.remove('is-uploading')
+            loadingOverlay.style.display = 'none'
+          }
+
+          return true
+        },
+      }
+    }
   },
 })

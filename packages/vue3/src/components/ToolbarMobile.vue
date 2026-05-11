@@ -135,48 +135,16 @@
         </div>
       </div>
 
-      <div class="toolbar-mobile__dropdown" :class="{ 'is-open': isImageMenuOpen }" ref="imageMenuRef">
-        <button
-          type="button"
-          class="toolbar-mobile__button toolbar-mobile__dropdown-trigger"
-          :class="{ 'is-active': isImageMenuOpen }"
-          :disabled="disabled"
-          title="图片"
-          aria-label="图片"
-          ref="imageTriggerRef"
-          @click="toggleMenu('image')"
-        >
-          <ToolbarIcon name="remote-image" />
-          <ToolbarIcon name="chevron-down" />
-        </button>
-
-        <div
-          v-if="isImageMenuOpen"
-          class="toolbar-mobile__dropdown-menu toolbar-mobile__option-list"
-          :class="menuPlacementClass(imageDropdownPlacement)"
-          :style="imageDropdownMenuStyle"
-        >
-          <button
-            type="button"
-            class="toolbar-mobile__option-button toolbar-mobile__option-button--icon"
-            :disabled="disabled"
-            @click="onImageTriggerClick"
-          >
-            <ToolbarIcon name="image" />
-            <span class="toolbar-mobile__option-label">上传图片</span>
-          </button>
-
-          <button
-            type="button"
-            class="toolbar-mobile__option-button toolbar-mobile__option-button--icon"
-            :disabled="disabled"
-            @click="onRemoteImageClick"
-          >
-            <ToolbarIcon name="remote-image" />
-            <span class="toolbar-mobile__option-label">远程图片</span>
-          </button>
-        </div>
-      </div>
+      <button
+        type="button"
+        class="toolbar-mobile__button"
+        :disabled="disabled"
+        title="图片"
+        aria-label="图片"
+        @click="emit('open-image-dialog')"
+      >
+        <ToolbarIcon name="image" />
+      </button>
 
       <div class="toolbar-mobile__dropdown" ref="plusMenuRef">
         <button
@@ -192,7 +160,7 @@
         </button>
       </div>
 
-      <input ref="imageFileInputRef" class="toolbar-mobile__file" type="file" accept="image/*" :disabled="disabled" @change="onFileChange">
+      <input ref="videoFileInputRef" class="toolbar-mobile__file" type="file" accept="video/*" :disabled="disabled" @change="onVideoFileChange">
     </div>
   </div>
 </template>
@@ -217,7 +185,7 @@ type DropdownPlacement = {
   vertical: 'up'
 }
 
-type MenuKind = 'list' | 'image'
+type MenuKind = 'list'
 
 type ToolbarEmitAction = 'clear-formatting' | 'insert-horizontal-rule'
 
@@ -241,9 +209,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'image-select': [file: File]
+  'open-image-dialog': []
   'open-link-dialog': [payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }]
-  'open-remote-image-dialog': [payload?: { initialValue?: string }]
   'text-color-select': [token: string | null]
   'clear-formatting': []
   'insert-horizontal-rule': []
@@ -255,24 +222,18 @@ const listOptions = [
 ] as const satisfies readonly ListOption[]
 
 const isListMenuOpen = ref(false)
-const isImageMenuOpen = ref(false)
 const isPlusPanelVisible = ref(false)
 const isPlusPanelOpen = ref(false)
 
 const listMenuRef = ref<HTMLElement | null>(null)
 const listTriggerRef = ref<HTMLElement | null>(null)
-const imageMenuRef = ref<HTMLElement | null>(null)
-const imageTriggerRef = ref<HTMLElement | null>(null)
 const plusMenuRef = ref<HTMLElement | null>(null)
 const plusTriggerRef = ref<HTMLElement | null>(null)
 const shellRef = ref<HTMLElement | null>(null)
-const imageFileInputRef = ref<HTMLInputElement | null>(null)
 
 const panelWrapStyle = ref<Record<string, string>>({})
 const listDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'up' })
-const imageDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'up' })
 const listDropdownMenuStyle = ref<Record<string, string>>({})
-const imageDropdownMenuStyle = ref<Record<string, string>>({})
 
 let openTimer: number | null = null
 let closeTimer: number | null = null
@@ -350,18 +311,6 @@ function emitActionAndClosePanel(action: ToolbarEmitAction) {
   closePlusPanel()
 }
 
-function onRemoteImageClick() {
-  if (props.disabled) return
-  closeMenus()
-  emit('open-remote-image-dialog', { initialValue: '' })
-}
-
-function onImageTriggerClick() {
-  if (props.disabled) return
-  closeMenus()
-  nextTick(() => imageFileInputRef.value?.click())
-}
-
 function updatePanelPosition() {
   const shell = shellRef.value
   if (!shell || typeof window === 'undefined') return
@@ -379,18 +328,15 @@ function updatePanelPosition() {
 }
 
 function getMenuState(kind: MenuKind) {
-  if (kind === 'list') return isListMenuOpen
-  return isImageMenuOpen
+  return isListMenuOpen
 }
 
 function getMenuElements(kind: MenuKind) {
-  if (kind === 'list') return { menuRef: listMenuRef, triggerRef: listTriggerRef, placementRef: listDropdownPlacement, styleRef: listDropdownMenuStyle, width: 160 }
-  return { menuRef: imageMenuRef, triggerRef: imageTriggerRef, placementRef: imageDropdownPlacement, styleRef: imageDropdownMenuStyle, width: 176 }
+  return { menuRef: listMenuRef, triggerRef: listTriggerRef, placementRef: listDropdownPlacement, styleRef: listDropdownMenuStyle, width: 160 }
 }
 
 function closeMenus() {
   isListMenuOpen.value = false
-  isImageMenuOpen.value = false
 }
 
 function openPlusPanel() {
@@ -475,7 +421,7 @@ function menuPlacementClass(placement: DropdownPlacement) {
 }
 
 function onClickOutside(event: MouseEvent) {
-  const targets = [listMenuRef.value, imageMenuRef.value].filter(Boolean)
+  const targets = [listMenuRef.value].filter(Boolean)
   if (!targets.length) return
   const eventTarget = event.target
   if (eventTarget instanceof Node && !targets.some((target) => target?.contains(eventTarget))) closeMenus()
@@ -483,16 +429,7 @@ function onClickOutside(event: MouseEvent) {
 
 function onViewportChange() {
   if (isListMenuOpen.value) updateDropdownPosition('list')
-  if (isImageMenuOpen.value) updateDropdownPosition('image')
   if (isPlusPanelVisible.value || isPlusPanelOpen.value) updatePanelPosition()
-}
-
-function onFileChange(event: Event) {
-  closeMenus()
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (file) emit('image-select', file)
-  input.value = ''
 }
 
 onMounted(() => {

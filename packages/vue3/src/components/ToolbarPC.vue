@@ -150,47 +150,16 @@
       <ToolbarIcon name="link" />
     </button>
 
-    <div class="toolbar-pc__dropdown" :class="{ 'is-open': isImageMenuOpen }" ref="imageMenuRef">
-      <button
-        type="button"
-        class="toolbar-pc__button toolbar-pc__dropdown-trigger"
-        :disabled="disabled"
-        title="图片"
-        aria-label="图片"
-        ref="imageTriggerRef"
-        @click="toggleMenu('image')"
-      >
-        <ToolbarIcon name="remote-image" />
-        <ToolbarIcon name="chevron-down" />
-      </button>
-
-      <div
-        v-if="isImageMenuOpen"
-        class="toolbar-pc__dropdown-menu toolbar-pc__option-list"
-        :class="menuPlacementClass(imageDropdownPlacement)"
-        :style="imageDropdownMenuStyle"
-      >
-        <button
-          type="button"
-          class="toolbar-pc__option-button toolbar-pc__option-button--icon"
-          :disabled="disabled"
-          @click="onImageTriggerClick"
-        >
-          <ToolbarIcon name="image" />
-          <span class="toolbar-pc__option-label">上传图片</span>
-        </button>
-
-        <button
-          type="button"
-          class="toolbar-pc__option-button toolbar-pc__option-button--icon"
-          :disabled="disabled"
-          @click="onRemoteImageClick"
-        >
-          <ToolbarIcon name="remote-image" />
-          <span class="toolbar-pc__option-label">远程图片</span>
-        </button>
-      </div>
-    </div>
+    <button
+      type="button"
+      class="toolbar-pc__button"
+      :disabled="disabled"
+      title="图片"
+      aria-label="图片"
+      @click="emit('open-image-dialog')"
+    >
+      <ToolbarIcon name="image" />
+    </button>
 
     <button
       type="button"
@@ -263,9 +232,6 @@
       <ToolbarIcon :name="item.icon" />
     </button>
 
-    <input ref="imageFileInputRef" class="toolbar-pc__file" type="file" accept="image/*" :disabled="disabled" @change="onFileChange">
-    <input ref="videoFileInputRef" class="toolbar-pc__file" type="file" accept="video/*" :disabled="disabled" @change="onVideoFileChange">
-
     <button
       type="button"
       class="toolbar-pc__button toolbar-pc__fullscreen"
@@ -335,7 +301,7 @@ type DropdownPlacement = {
   vertical: 'down' | 'up'
 }
 
-type MenuKind = 'heading' | 'align' | 'color' | 'image' | 'list' | 'video'
+type MenuKind = 'heading' | 'align' | 'color' | 'image' | 'list'
 
 const props = defineProps<{
   editor: Editor | null
@@ -345,10 +311,9 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'image-select': [file: File]
+  'open-image-dialog': []
   'open-video-dialog': []
   'open-link-dialog': [payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }]
-  'open-remote-image-dialog': [payload?: { initialValue?: string }]
   'text-color-select': [token: string | null]
   'undo': []
   'redo': []
@@ -403,9 +368,7 @@ const colorPalette = props.colorPalette ?? []
 const isHeadingMenuOpen = ref(false)
 const isAlignMenuOpen = ref(false)
 const isColorMenuOpen = ref(false)
-const isImageMenuOpen = ref(false)
 const isListMenuOpen = ref(false)
-const isVideoMenuOpen = ref(false)
 
 const headingMenuRef = ref<HTMLElement | null>(null)
 const headingTriggerRef = ref<HTMLElement | null>(null)
@@ -413,28 +376,18 @@ const alignMenuRef = ref<HTMLElement | null>(null)
 const alignTriggerRef = ref<HTMLElement | null>(null)
 const colorMenuRef = ref<HTMLElement | null>(null)
 const colorTriggerRef = ref<HTMLElement | null>(null)
-const imageMenuRef = ref<HTMLElement | null>(null)
-const imageTriggerRef = ref<HTMLElement | null>(null)
-const imageFileInputRef = ref<HTMLInputElement | null>(null)
 const listMenuRef = ref<HTMLElement | null>(null)
 const listTriggerRef = ref<HTMLElement | null>(null)
-const videoMenuRef = ref<HTMLElement | null>(null)
-const videoTriggerRef = ref<HTMLElement | null>(null)
-const videoFileInputRef = ref<HTMLInputElement | null>(null)
 
 const headingDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'down' })
 const alignDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'down' })
 const colorDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'down' })
-const imageDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'down' })
 const listDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'down' })
-const videoDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'down' })
 
 const headingDropdownMenuStyle = ref<Record<string, string>>({})
 const alignDropdownMenuStyle = ref<Record<string, string>>({})
 const colorDropdownMenuStyle = ref<Record<string, string>>({})
-const imageDropdownMenuStyle = ref<Record<string, string>>({})
 const listDropdownMenuStyle = ref<Record<string, string>>({})
-const videoDropdownMenuStyle = ref<Record<string, string>>({})
 
 const activeColor = computed(() => colorPalette.find((item) => isTextColorActive(item.token)) ?? null)
 const currentColorValue = computed(() => activeColor.value?.value ?? '#18181b')
@@ -591,24 +544,6 @@ function onLinkClick() {
   })
 }
 
-function onRemoteImageClick() {
-  if (props.disabled) {
-    return
-  }
-
-  closeMenus()
-  emit('open-remote-image-dialog', { initialValue: '' })
-}
-
-function onImageTriggerClick() {
-  if (props.disabled) {
-    return
-  }
-
-  closeMenus()
-  nextTick(() => imageFileInputRef.value?.click())
-}
-
 function setTextAlign(align: 'left' | 'center' | 'right') {
   if (props.disabled || !props.editor) {
     return
@@ -680,10 +615,6 @@ function getMenuState(kind: MenuKind) {
     return isAlignMenuOpen
   }
 
-  if (kind === 'image') {
-    return isImageMenuOpen
-  }
-
   if (kind === 'list') {
     return isListMenuOpen
   }
@@ -716,16 +647,6 @@ function getMenuElements(kind: MenuKind) {
     }
   }
 
-  if (kind === 'image') {
-    return {
-      menuRef: imageMenuRef,
-      triggerRef: imageTriggerRef,
-      placementRef: imageDropdownPlacement,
-      styleRef: imageDropdownMenuStyle,
-      width: 176,
-    }
-  }
-
   if (kind === 'list') {
     return {
       menuRef: listMenuRef,
@@ -733,16 +654,6 @@ function getMenuElements(kind: MenuKind) {
       placementRef: listDropdownPlacement,
       styleRef: listDropdownMenuStyle,
       width: 160,
-    }
-  }
-
-  if (kind === 'video') {
-    return {
-      menuRef: videoMenuRef,
-      triggerRef: videoTriggerRef,
-      placementRef: videoDropdownPlacement,
-      styleRef: videoDropdownMenuStyle,
-      width: 176,
     }
   }
 
@@ -759,9 +670,7 @@ function closeMenus() {
   isHeadingMenuOpen.value = false
   isAlignMenuOpen.value = false
   isColorMenuOpen.value = false
-  isImageMenuOpen.value = false
   isListMenuOpen.value = false
-  isVideoMenuOpen.value = false
 }
 
 function toggleMenu(kind: MenuKind) {
@@ -824,7 +733,7 @@ function menuPlacementClass(placement: DropdownPlacement) {
 }
 
 function onClickOutside(event: MouseEvent) {
-  const targets = [headingMenuRef.value, alignMenuRef.value, colorMenuRef.value, imageMenuRef.value, listMenuRef.value, videoMenuRef.value].filter(Boolean)
+  const targets = [headingMenuRef.value, alignMenuRef.value, colorMenuRef.value, listMenuRef.value, videoMenuRef.value].filter(Boolean)
   if (!targets.length) {
     return
   }
@@ -894,19 +803,6 @@ function onRemoteVideoClick() {
   emit('open-video-dialog')
 }
 
-function onVideoTriggerClick() {
-  // Deprecated - video now uses dialog
-  if (props.disabled) {
-    return
-  }
-
-  closeMenus()
-  emit('open-video-dialog')
-}
-
-// remove unused video dropdown refs
-// @ts-ignore
-const _unused = [isVideoMenuOpen, videoMenuRef, videoTriggerRef, videoDropdownPlacement, videoDropdownMenuStyle]
 
 onMounted(() => {
   document.addEventListener('mousedown', onClickOutside)

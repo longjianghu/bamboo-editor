@@ -7,10 +7,9 @@
         :disabled="disabled"
         :fullscreen="isFullscreen"
         :color-palette="resolvedColorPalette"
-        @image-select="handleImageSelect"
+        @open-image-dialog="handleOpenImageDialog"
         @open-video-dialog="handleOpenVideoDialog"
         @open-link-dialog="handleOpenLinkDialog"
-        @open-remote-image-dialog="handleOpenRemoteImageDialog"
         @text-color-select="handleTextColorSelect"
         @undo="handleUndo"
         @redo="handleRedo"
@@ -113,8 +112,7 @@
           isNearLimit,
           isAtLimit,
         }"
-        @image-select="handleImageSelect"
-        @open-remote-image-dialog="handleOpenRemoteImageDialog"
+        @open-image-dialog="handleOpenImageDialog"
         @text-color-select="handleTextColorSelect"
         @clear-formatting="handleClearFormatting"
         @insert-horizontal-rule="handleInsertHorizontalRule"
@@ -149,6 +147,17 @@
         @cancel="closeVideoDialog"
       />
 
+      <EditorImageDialog
+        :visible="imageDialogVisible"
+        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
+        :mode="imageDialogState.mode"
+        :initial-data="imageDialogState.initialData"
+        :upload-handler="props.uploadHandler"
+        @confirm="handleImageDialogConfirm"
+        @remove="handleImageDialogRemove"
+        @cancel="closeImageDialog"
+      />
+
       <EditorInfoDialog
         :visible="infoDialogVisible"
         :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
@@ -174,6 +183,7 @@ import ToolbarMobile from './ToolbarMobile.vue'
 import FloatingToolbarPC from './FloatingToolbarPC.vue'
 import EditorUrlDialog from './EditorUrlDialog.vue'
 import EditorVideoDialog from './EditorVideoDialog.vue'
+import EditorImageDialog from './EditorImageDialog.vue'
 import EditorInfoDialog from './EditorInfoDialog.vue'
 import EditorErrorDialog from './EditorErrorDialog.vue'
 import { useBambooEditor } from '../composables/useBambooEditor'
@@ -274,12 +284,25 @@ const urlDialogState = ref<{
   allowRemove: false,
 })
 const videoDialogVisible = ref(false)
+const imageDialogVisible = ref(false)
 const shouldIgnoreVideoSelection = ref(false)
 const videoDialogState = ref<{
   mode: 'create' | 'edit'
   initialData?: {
     src: string
     poster?: string
+    width?: number
+    height?: number
+    align?: 'left' | 'center' | 'right'
+  }
+}>({
+  mode: 'create',
+})
+const imageDialogState = ref<{
+  mode: 'create' | 'edit'
+  initialData?: {
+    src: string
+    alt?: string
     width?: number
     height?: number
     align?: 'left' | 'center' | 'right'
@@ -351,6 +374,13 @@ const { editor, resolvedDevice, currentLength, maxLength, remainingLength, usage
     errorDialogVisible.value = true
   },
 })
+
+watch(editor, (instance) => {
+  if (instance) {
+    instance.on('open-image-dialog', handleOpenImageDialog)
+    instance.on('open-video-dialog', handleOpenVideoDialog)
+  }
+}, { immediate: true })
 
 let wordCountTimer: number | null = null
 let wordCountTooltipTimer: number | null = null
@@ -435,8 +465,63 @@ function scheduleDraftSave(html: string) {
   }, DRAFT_DEBOUNCE_MS)
 }
 
-function handleImageSelect(file: File) {
-  return insertImage(file)
+function handleOpenImageDialog(payload?: { pos?: number; node?: any; initialData?: any; mode?: 'create' | 'edit' }) {
+  if (props.disabled) {
+    return
+  }
+
+  imageDialogState.value = {
+    mode: payload?.mode ?? 'create',
+    initialData: payload?.initialData ?? payload?.node?.attrs ?? {
+      src: '',
+      alt: '',
+      width: undefined,
+      height: undefined,
+      align: 'left'
+    }
+  }
+  imageDialogVisible.value = true
+}
+
+function closeImageDialog() {
+  imageDialogVisible.value = false
+  window.setTimeout(() => editor.value?.commands.focus(), 0)
+}
+
+function handleImageDialogConfirm(data: { src: string; alt?: string; width?: number; height?: number; align?: 'left' | 'center' | 'right' }) {
+  const instance = editor.value
+  if (!instance) return
+
+  closeImageDialog()
+
+  if (imageDialogState.value.mode === 'edit') {
+    instance.commands.updateAttributes('image', {
+      src: data.src,
+      alt: data.alt,
+      width: data.width ? String(data.width) : null,
+      height: data.height ? String(data.height) : null,
+      'data-align': data.align || 'left',
+    })
+  } else {
+    instance.commands.insertContent({
+      type: 'image',
+      attrs: {
+        src: data.src,
+        alt: data.alt,
+        width: data.width ? String(data.width) : null,
+        height: data.height ? String(data.height) : null,
+        'data-align': data.align || 'left',
+      }
+    })
+  }
+}
+
+function handleImageDialogRemove() {
+  const instance = editor.value
+  if (!instance) return
+
+  instance.commands.deleteSelection()
+  closeImageDialog()
 }
 
 function handleLinkSelect(url: string | null) {
@@ -445,10 +530,6 @@ function handleLinkSelect(url: string | null) {
   }
 
   return setLink(url)
-}
-
-function handleRemoteImageSelect(url: string) {
-  return insertRemoteImage(url)
 }
 
 function handleOpenLinkDialog(payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }) {
@@ -465,20 +546,6 @@ function handleOpenLinkDialog(payload?: { initialValue?: string, mode?: 'create'
   urlDialogVisible.value = true
 }
 
-function handleOpenRemoteImageDialog(payload?: { initialValue?: string }) {
-  if (props.disabled) {
-    return
-  }
-
-  urlDialogState.value = {
-    type: 'remote-image',
-    mode: 'create',
-    initialValue: payload?.initialValue ?? '',
-    allowRemove: false,
-  }
-  urlDialogVisible.value = true
-}
-
 function closeUrlDialog() {
   urlDialogVisible.value = false
   if (urlDialogState.value.type === 'remote-video') {
@@ -491,10 +558,7 @@ function closeUrlDialog() {
 }
 
 function handleUrlDialogConfirm(url: string) {
-  if (urlDialogState.value.type === 'remote-image') {
-    handleRemoteImageSelect(url)
-  }
-  else if (urlDialogState.value.type === 'remote-video') {
+  if (urlDialogState.value.type === 'remote-video') {
     handleRemoteVideoSelect(url)
   }
   else {
@@ -1441,14 +1505,80 @@ defineExpose({ clearDraft })
   background: transparent;
 }
 
-.bamboo-editor__content :deep(.ProseMirror img[data-align='center']) {
-  margin-left: auto;
-  margin-right: auto;
+.bamboo-editor__content :deep(.ProseMirror img) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1em 0;
+  border-radius: 12px;
+  transition: outline 0.2s, box-shadow 0.2s;
 }
 
-.bamboo-editor__content :deep(.ProseMirror img[data-align='right']) {
-  margin-left: auto;
-  margin-right: 0;
+.bamboo-editor__content :deep(.ProseMirror .clean-image-wrapper.ProseMirror-selectednode img) {
+  outline: 3px solid #14b8a6;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(20, 184, 166, 0.1);
+}
+
+.bamboo-editor__content :deep(.ProseMirror img.is-uploading) {
+  opacity: 0.6;
+}
+
+.bamboo-editor__content :deep(.clean-image-wrapper) {
+  position: relative;
+  margin: 1em 0;
+  line-height: 0;
+}
+
+.bamboo-editor__content :deep(.clean-image-loading) {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.bamboo-editor__content :deep(.clean-image-loading span) {
+  padding: 8px 16px;
+  background: #14b8a6;
+  color: #fff;
+  font-size: 14px;
+  border-radius: 8px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.bamboo-editor__content :deep(.clean-image-edit-button) {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #52525b;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.bamboo-editor__content :deep(.clean-image-wrapper:hover .clean-image-edit-button) {
+  opacity: 1;
+}
+
+.bamboo-editor__content :deep(.clean-image-edit-button:hover) {
+  background: #fff;
+  color: #14b8a6;
+  border-color: #14b8a6;
 }
 
 /* Video styles */
