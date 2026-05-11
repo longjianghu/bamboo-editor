@@ -192,6 +192,12 @@
       <path d="M12 8V8.01" stroke-width="2" />
       <path d="M11 12H12V16H13" />
     </g>
+
+    <g v-else-if="name === 'media'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M3 16L8 11L12 14.5L15 11L21 16" />
+      <circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none" />
+    </g>
   </svg>
 </template>
 
@@ -228,6 +234,7 @@ type ToolbarIconName =
   | 'fullscreen-enter'
   | 'fullscreen-exit'
   | 'info'
+  | 'media'
 
 defineProps<{
   name: ToolbarIconName

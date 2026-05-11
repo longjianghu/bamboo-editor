@@ -32,26 +32,6 @@
           <button
             type="button"
             class="toolbar-mobile__panel-button"
-            :disabled="disabled"
-            @click="emitAndClosePanel('open-video-dialog')"
-          >
-            <ToolbarIcon name="remote-video" />
-            <span>视频</span>
-          </button>
-
-          <button
-            type="button"
-            class="toolbar-mobile__panel-button"
-            :disabled="disabled"
-            @click="emitAndClosePanel('open-audio-dialog')"
-          >
-            <ToolbarIcon name="audio" />
-            <span>音频</span>
-          </button>
-
-          <button
-            type="button"
-            class="toolbar-mobile__panel-button"
             :disabled="isDisabled('redo')"
             @click="runAndClosePanel('redo')"
           >
@@ -155,16 +135,39 @@
         </div>
       </div>
 
-      <button
-        type="button"
-        class="toolbar-mobile__button"
-        :disabled="disabled"
-        title="图片"
-        aria-label="图片"
-        @click="emit('open-image-dialog')"
-      >
-        <ToolbarIcon name="image" />
-      </button>
+      <div class="toolbar-mobile__dropdown" :class="{ 'is-open': isMediaMenuOpen }" ref="mediaMenuRef">
+        <button
+          type="button"
+          class="toolbar-mobile__button toolbar-mobile__dropdown-trigger"
+          :disabled="disabled"
+          title="插入媒体"
+          aria-label="插入媒体"
+          ref="mediaTriggerRef"
+          @click="toggleMenu('media')"
+        >
+          <ToolbarIcon name="media" />
+          <ToolbarIcon name="chevron-down" />
+        </button>
+
+        <div
+          v-if="isMediaMenuOpen"
+          class="toolbar-mobile__dropdown-menu toolbar-mobile__option-list"
+          :class="menuPlacementClass(mediaDropdownPlacement)"
+          :style="mediaDropdownMenuStyle"
+        >
+          <button
+            v-for="option in mediaOptions"
+            :key="option.label"
+            type="button"
+            class="toolbar-mobile__option-button toolbar-mobile__option-button--icon"
+            :disabled="disabled"
+            @click="selectMedia(option)"
+          >
+            <ToolbarIcon :name="option.icon" />
+            <span class="toolbar-mobile__option-label">{{ option.label }}</span>
+          </button>
+        </div>
+      </div>
 
       <div class="toolbar-mobile__dropdown" ref="plusMenuRef">
         <button
@@ -200,12 +203,18 @@ type ListOption = {
   icon: 'bullet-list' | 'ordered-list'
 }
 
+type MediaOption = {
+  label: string
+  icon: 'image' | 'remote-video' | 'audio'
+  action: 'open-image-dialog' | 'open-video-dialog' | 'open-audio-dialog'
+}
+
 type DropdownPlacement = {
   horizontal: 'left' | 'right'
   vertical: 'up'
 }
 
-type MenuKind = 'list'
+type MenuKind = 'list' | 'media'
 
 type ToolbarEmitAction = 'clear-formatting' | 'insert-horizontal-rule'
 
@@ -238,7 +247,7 @@ const emit = defineEmits<{
   'insert-horizontal-rule': []
 }>()
 
-function emitAndClosePanel(event: 'open-video-dialog' | 'open-audio-dialog') {
+function emitAndClosePanel(event: 'open-image-dialog' | 'open-video-dialog' | 'open-audio-dialog') {
   emit(event as any)
   closePlusPanel()
 }
@@ -248,12 +257,21 @@ const listOptions = [
   { label: '有序列表', command: 'toggleOrderedList', active: 'orderedList', icon: 'ordered-list' },
 ] as const satisfies readonly ListOption[]
 
+const mediaOptions = [
+  { label: '图片', icon: 'image', action: 'open-image-dialog' },
+  { label: '视频', icon: 'remote-video', action: 'open-video-dialog' },
+  { label: '音频', icon: 'audio', action: 'open-audio-dialog' },
+] as const satisfies readonly MediaOption[]
+
 const isListMenuOpen = ref(false)
+const isMediaMenuOpen = ref(false)
 const isPlusPanelVisible = ref(false)
 const isPlusPanelOpen = ref(false)
 
 const listMenuRef = ref<HTMLElement | null>(null)
 const listTriggerRef = ref<HTMLElement | null>(null)
+const mediaMenuRef = ref<HTMLElement | null>(null)
+const mediaTriggerRef = ref<HTMLElement | null>(null)
 const plusMenuRef = ref<HTMLElement | null>(null)
 const plusTriggerRef = ref<HTMLElement | null>(null)
 const shellRef = ref<HTMLElement | null>(null)
@@ -261,6 +279,8 @@ const shellRef = ref<HTMLElement | null>(null)
 const panelWrapStyle = ref<Record<string, string>>({})
 const listDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'up' })
 const listDropdownMenuStyle = ref<Record<string, string>>({})
+const mediaDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'up' })
+const mediaDropdownMenuStyle = ref<Record<string, string>>({})
 
 let openTimer: number | null = null
 let closeTimer: number | null = null
@@ -327,6 +347,17 @@ function selectList(option: ListOption) {
   closeMenus()
 }
 
+function selectMedia(option: MediaOption) {
+  if (option.action === 'open-image-dialog') {
+    emit('open-image-dialog')
+  } else if (option.action === 'open-video-dialog') {
+    emit('open-video-dialog')
+  } else if (option.action === 'open-audio-dialog') {
+    emit('open-audio-dialog')
+  }
+  closeMenus()
+}
+
 function emitActionAndClosePanel(action: ToolbarEmitAction) {
   if (props.disabled) return
   if (action === 'clear-formatting') {
@@ -355,15 +386,22 @@ function updatePanelPosition() {
 }
 
 function getMenuState(kind: MenuKind) {
+  if (kind === 'media') {
+    return isMediaMenuOpen
+  }
   return isListMenuOpen
 }
 
 function getMenuElements(kind: MenuKind) {
+  if (kind === 'media') {
+    return { menuRef: mediaMenuRef, triggerRef: mediaTriggerRef, placementRef: mediaDropdownPlacement, styleRef: mediaDropdownMenuStyle, width: 120 }
+  }
   return { menuRef: listMenuRef, triggerRef: listTriggerRef, placementRef: listDropdownPlacement, styleRef: listDropdownMenuStyle, width: 160 }
 }
 
 function closeMenus() {
   isListMenuOpen.value = false
+  isMediaMenuOpen.value = false
 }
 
 function openPlusPanel() {
@@ -448,7 +486,7 @@ function menuPlacementClass(placement: DropdownPlacement) {
 }
 
 function onClickOutside(event: MouseEvent) {
-  const targets = [listMenuRef.value].filter(Boolean)
+  const targets = [listMenuRef.value, mediaMenuRef.value].filter(Boolean)
   if (!targets.length) return
   const eventTarget = event.target
   if (eventTarget instanceof Node && !targets.some((target) => target?.contains(eventTarget))) closeMenus()
@@ -456,6 +494,7 @@ function onClickOutside(event: MouseEvent) {
 
 function onViewportChange() {
   if (isListMenuOpen.value) updateDropdownPosition('list')
+  if (isMediaMenuOpen.value) updateDropdownPosition('media')
   if (isPlusPanelVisible.value || isPlusPanelOpen.value) updatePanelPosition()
 }
 

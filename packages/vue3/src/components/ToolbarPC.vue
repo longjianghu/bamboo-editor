@@ -108,7 +108,7 @@
             aria-label="默认颜色"
             @click="selectTextColor(null)"
           >
-            <span class="toolbar-pc__palette-swatch-color" :style="{ backgroundColor: '#18181b' }"></span>
+            <span class="toolbar-pc__palette-swatch-color" :style="{ backgroundColor: '#000000' }"></span>
           </button>
 
           <button
@@ -150,38 +150,39 @@
       <ToolbarIcon name="link" />
     </button>
 
-    <button
-      type="button"
-      class="toolbar-pc__button"
-      :disabled="disabled"
-      title="图片"
-      aria-label="图片"
-      @click="emit('open-image-dialog')"
-    >
-      <ToolbarIcon name="image" />
-    </button>
+    <div class="toolbar-pc__dropdown" :class="{ 'is-open': isMediaMenuOpen }" ref="mediaMenuRef">
+      <button
+        type="button"
+        class="toolbar-pc__button toolbar-pc__dropdown-trigger"
+        :disabled="disabled"
+        title="插入媒体"
+        aria-label="插入媒体"
+        ref="mediaTriggerRef"
+        @click="toggleMenu('media')"
+      >
+        <ToolbarIcon name="media" />
+        <ToolbarIcon name="chevron-down" />
+      </button>
 
-    <button
-      type="button"
-      class="toolbar-pc__button"
-      :disabled="disabled"
-      title="视频"
-      aria-label="视频"
-      @click="emit('open-video-dialog')"
-    >
-      <ToolbarIcon name="remote-video" />
-    </button>
-
-    <button
-      type="button"
-      class="toolbar-pc__button"
-      :disabled="disabled"
-      title="音频"
-      aria-label="音频"
-      @click="emit('open-audio-dialog')"
-    >
-      <ToolbarIcon name="audio" />
-    </button>
+      <div
+        v-if="isMediaMenuOpen"
+        class="toolbar-pc__dropdown-menu toolbar-pc__option-list"
+        :class="menuPlacementClass(mediaDropdownPlacement)"
+        :style="mediaDropdownMenuStyle"
+      >
+        <button
+          v-for="option in mediaOptions"
+          :key="option.label"
+          type="button"
+          class="toolbar-pc__option-button toolbar-pc__option-button--icon"
+          :disabled="disabled"
+          @click="selectMedia(option)"
+        >
+          <ToolbarIcon :name="option.icon" />
+          <span class="toolbar-pc__option-label">{{ option.label }}</span>
+        </button>
+      </div>
+    </div>
 
     <button
       v-for="item in insertItems"
@@ -312,7 +313,13 @@ type DropdownPlacement = {
   vertical: 'down' | 'up'
 }
 
-type MenuKind = 'heading' | 'align' | 'color' | 'list'
+type MenuKind = 'heading' | 'align' | 'color' | 'list' | 'media'
+
+type MediaOption = {
+  label: string
+  icon: 'image' | 'remote-video' | 'audio'
+  action: 'open-image-dialog' | 'open-video-dialog' | 'open-audio-dialog'
+}
 
 const props = defineProps<{
   editor: Editor | null
@@ -375,12 +382,19 @@ const listOptions: readonly ListOption[] = [
   { label: '有序列表', command: 'toggleOrderedList', active: 'orderedList', icon: 'ordered-list' },
 ]
 
+const mediaOptions: readonly MediaOption[] = [
+  { label: '图片', icon: 'image', action: 'open-image-dialog' },
+  { label: '视频', icon: 'remote-video', action: 'open-video-dialog' },
+  { label: '音频', icon: 'audio', action: 'open-audio-dialog' },
+]
+
 const colorPalette = props.colorPalette ?? []
 
 const isHeadingMenuOpen = ref(false)
 const isAlignMenuOpen = ref(false)
 const isColorMenuOpen = ref(false)
 const isListMenuOpen = ref(false)
+const isMediaMenuOpen = ref(false)
 
 const headingMenuRef = ref<HTMLElement | null>(null)
 const headingTriggerRef = ref<HTMLElement | null>(null)
@@ -390,19 +404,23 @@ const colorMenuRef = ref<HTMLElement | null>(null)
 const colorTriggerRef = ref<HTMLElement | null>(null)
 const listMenuRef = ref<HTMLElement | null>(null)
 const listTriggerRef = ref<HTMLElement | null>(null)
+const mediaMenuRef = ref<HTMLElement | null>(null)
+const mediaTriggerRef = ref<HTMLElement | null>(null)
 
 const headingDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'down' })
 const alignDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'down' })
 const colorDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'down' })
 const listDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'down' })
+const mediaDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'down' })
 
 const headingDropdownMenuStyle = ref<Record<string, string>>({})
 const alignDropdownMenuStyle = ref<Record<string, string>>({})
 const colorDropdownMenuStyle = ref<Record<string, string>>({})
 const listDropdownMenuStyle = ref<Record<string, string>>({})
+const mediaDropdownMenuStyle = ref<Record<string, string>>({})
 
 const activeColor = computed(() => colorPalette.find((item) => isTextColorActive(item.token)) ?? null)
-const currentColorValue = computed(() => activeColor.value?.value ?? '#18181b')
+const currentColorValue = computed(() => activeColor.value?.value ?? '#000000')
 const currentColorLabel = computed(() => activeColor.value ? `文字颜色：${activeColor.value.label}` : '文字颜色')
 
 const currentHeadingOption = computed(() => {
@@ -585,6 +603,17 @@ function selectList(option: ListOption) {
   closeMenus()
 }
 
+function selectMedia(option: MediaOption) {
+  if (option.action === 'open-image-dialog') {
+    emit('open-image-dialog')
+  } else if (option.action === 'open-video-dialog') {
+    emit('open-video-dialog')
+  } else if (option.action === 'open-audio-dialog') {
+    emit('open-audio-dialog')
+  }
+  closeMenus()
+}
+
 function isTextAlignActive(align: 'left' | 'center' | 'right') {
   if (!props.editor) {
     return false
@@ -631,6 +660,10 @@ function getMenuState(kind: MenuKind) {
     return isListMenuOpen
   }
 
+  if (kind === 'media') {
+    return isMediaMenuOpen
+  }
+
   return isColorMenuOpen
 }
 
@@ -665,6 +698,16 @@ function getMenuElements(kind: MenuKind) {
     }
   }
 
+  if (kind === 'media') {
+    return {
+      menuRef: mediaMenuRef,
+      triggerRef: mediaTriggerRef,
+      placementRef: mediaDropdownPlacement,
+      styleRef: mediaDropdownMenuStyle,
+      width: 120,
+    }
+  }
+
   return {
     menuRef: colorMenuRef,
     triggerRef: colorTriggerRef,
@@ -679,6 +722,7 @@ function closeMenus() {
   isAlignMenuOpen.value = false
   isColorMenuOpen.value = false
   isListMenuOpen.value = false
+  isMediaMenuOpen.value = false
 }
 
 function toggleMenu(kind: MenuKind) {
@@ -741,7 +785,7 @@ function menuPlacementClass(placement: DropdownPlacement) {
 }
 
 function onClickOutside(event: MouseEvent) {
-  const targets = [headingMenuRef.value, alignMenuRef.value, colorMenuRef.value, listMenuRef.value].filter(Boolean)
+  const targets = [headingMenuRef.value, alignMenuRef.value, colorMenuRef.value, listMenuRef.value, mediaMenuRef.value].filter(Boolean)
   if (!targets.length) {
     return
   }
@@ -767,6 +811,10 @@ function onViewportChange() {
 
   if (isListMenuOpen.value) {
     updateDropdownPosition('list')
+  }
+
+  if (isMediaMenuOpen.value) {
+    updateDropdownPosition('media')
   }
 }
 

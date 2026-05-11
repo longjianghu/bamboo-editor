@@ -241,12 +241,14 @@ const DEFAULT_WORD_COUNT_STATE: WordCountState = {
 }
 
 const DEFAULT_COLOR_PALETTE: BambooColorOption[] = [
-  { token: 'primary', label: '主色', value: '#18181b' },
+  { token: 'cyan', label: '青色', value: '#0891b2' },
   { token: 'success', label: '绿色', value: '#16a34a' },
   { token: 'warning', label: '橙色', value: '#ea580c' },
   { token: 'danger', label: '红色', value: '#dc2626' },
   { token: 'muted', label: '灰色', value: '#71717a' },
   { token: 'purple', label: '紫色', value: '#7c3aed' },
+  { token: 'pink', label: '粉色', value: '#db2777' },
+  { token: 'yellow', label: '黄色', value: '#ca8a04' },
 ]
 
 const props = withDefaults(defineProps<{
@@ -1449,8 +1451,8 @@ defineExpose({ clearDraft })
   text-align: right;
 }
 
-.bamboo-editor__content :deep(.ProseMirror span[data-color='primary']) {
-  color: var(--bamboo-editor-color-primary, #18181b);
+.bamboo-editor__content :deep(.ProseMirror span[data-color='cyan']) {
+  color: var(--bamboo-editor-color-cyan, #0891b2);
 }
 
 .bamboo-editor__content :deep(.ProseMirror span[data-color='success']) {
@@ -1471,6 +1473,14 @@ defineExpose({ clearDraft })
 
 .bamboo-editor__content :deep(.ProseMirror span[data-color='purple']) {
   color: var(--bamboo-editor-color-purple, #7c3aed);
+}
+
+.bamboo-editor__content :deep(.ProseMirror span[data-color='pink']) {
+  color: var(--bamboo-editor-color-pink, #db2777);
+}
+
+.bamboo-editor__content :deep(.ProseMirror span[data-color='yellow']) {
+  color: var(--bamboo-editor-color-yellow, #ca8a04);
 }
 
 .bamboo-editor__surface.is-mobile .bamboo-editor__content :deep(.ProseMirror) {
