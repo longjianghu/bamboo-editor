@@ -43,6 +43,11 @@ export const CleanVideo = Node.create<CleanVideoOptions>({
       poster: {
         default: null,
       },
+      controls: {
+        default: 'controls',
+        parseHTML: (element) => element.hasAttribute('controls') ? 'controls' : null,
+        renderHTML: () => ({ controls: 'controls' }),
+      },
       width: {
         default: null,
         parseHTML: (element) => element.getAttribute('width') || element.getAttribute('data-width'),
@@ -108,7 +113,7 @@ export const CleanVideo = Node.create<CleanVideoOptions>({
 
     // 默认添加 controls 属性以保持一致性
     if (!attrs.controls) {
-      attrs.controls = 'true'
+      attrs.controls = 'controls'
     }
 
     return ['video', attrs]

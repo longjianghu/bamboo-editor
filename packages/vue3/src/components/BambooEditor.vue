@@ -445,9 +445,23 @@ function handleAudioDialogConfirm(data: { src: string; align?: 'left' | 'center'
   closeAudioDialog()
 
   if (audioDialogState.value.mode === 'edit') {
-    instance.commands.updateAttributes('audio', {
-      src: data.src,
-      'data-align': data.align,
+    instance.commands.command(({ tr }: { tr: any }) => {
+      const { from, to } = instance.state.selection
+      let found = false
+      instance.state.doc.nodesBetween(from, to, (node: any) => {
+        if (node.type.name === 'audio' && !found) {
+          const pos = from
+          tr.setNodeMarkup(pos, undefined, {
+            ...node.attrs,
+            src: data.src,
+            'data-align': data.align,
+          })
+          found = true
+          return false
+        }
+        return true
+      })
+      return true
     })
   } else {
     instance.commands.insertContent({
@@ -1732,6 +1746,60 @@ defineExpose({ clearDraft })
 }
 
 .bamboo-editor__content :deep(.clean-video-edit-button:hover) {
+  background: #fff;
+  color: #14b8a6;
+  border-color: #14b8a6;
+}
+
+/* Audio styles */
+.bamboo-editor__content :deep(.ProseMirror audio) {
+  transition: outline 0.2s, box-shadow 0.2s;
+}
+
+.bamboo-editor__content :deep(.ProseMirror .clean-audio-wrapper.ProseMirror-selectednode .clean-audio-inner audio) {
+  outline: 3px solid #14b8a6;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(20, 184, 166, 0.1);
+  border-radius: 999px;
+}
+
+.bamboo-editor__content :deep(.clean-audio-wrapper) {
+  position: relative;
+  margin: 1em 0;
+}
+
+.bamboo-editor__content :deep(.clean-audio-inner) {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+.bamboo-editor__content :deep(.clean-audio-edit-button) {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #52525b;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.bamboo-editor__content :deep(.clean-audio-wrapper:hover .clean-audio-edit-button) {
+  opacity: 1;
+}
+
+.bamboo-editor__content :deep(.clean-audio-edit-button:hover) {
   background: #fff;
   color: #14b8a6;
   border-color: #14b8a6;

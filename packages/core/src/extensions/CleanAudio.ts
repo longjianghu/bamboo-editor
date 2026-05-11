@@ -42,9 +42,9 @@ export const CleanAudio = Node.create<CleanAudioOptions>({
         },
       },
       controls: {
-        default: 'true',
-        parseHTML: (element) => element.getAttribute('controls') ?? 'true',
-        renderHTML: () => ({ controls: 'true' }),
+        default: 'controls',
+        parseHTML: (element) => element.hasAttribute('controls') ? 'controls' : null,
+        renderHTML: () => ({ controls: 'controls' }),
       },
     }
   },
@@ -66,7 +66,7 @@ export const CleanAudio = Node.create<CleanAudioOptions>({
     )
 
     if (!attrs.controls) {
-      attrs.controls = 'true'
+      attrs.controls = 'controls'
     }
 
     return ['audio', attrs]
@@ -89,6 +89,9 @@ export const CleanAudio = Node.create<CleanAudioOptions>({
         container.style.textAlign = 'left'
       }
 
+      const innerWrapper = document.createElement('div')
+      innerWrapper.className = 'clean-audio-inner'
+
       const audio = document.createElement('audio')
       audio.className = 'clean-audio'
       audio.controls = true
@@ -97,7 +100,7 @@ export const CleanAudio = Node.create<CleanAudioOptions>({
       }
 
       // 选中状态效果
-      container.addEventListener('click', () => {
+      innerWrapper.addEventListener('click', () => {
         if (typeof getPos === 'function') {
           editor.commands.setNodeSelection(getPos())
         }
@@ -127,8 +130,9 @@ export const CleanAudio = Node.create<CleanAudioOptions>({
         })
       }
 
-      container.appendChild(audio)
-      container.appendChild(editButton)
+      innerWrapper.appendChild(audio)
+      innerWrapper.appendChild(editButton)
+      container.appendChild(innerWrapper)
 
       return {
         dom: container,
@@ -141,6 +145,7 @@ export const CleanAudio = Node.create<CleanAudioOptions>({
 
           if (newSrc !== audio.src) {
             audio.src = newSrc
+            audio.load()
           }
 
           if (newAlign === 'center') {

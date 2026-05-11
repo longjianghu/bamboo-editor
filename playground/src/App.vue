@@ -49,7 +49,7 @@ const html = ref(`
   <li>mp-html 优先</li>
   <li>通过 CSS 控制展示</li>
 </ul>
-<audio src="https://www.w3schools.com/html/horse.mp3" controls></audio>
+<audio src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" controls></audio>
 `)
 
 const colorPalette = [
