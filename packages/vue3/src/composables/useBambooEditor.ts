@@ -10,6 +10,12 @@ export interface CleanVideoOptions {
   maxSize?: number // MB
 }
 
+// 音频配置类型
+export interface CleanAudioOptions {
+  accept?: string
+  maxSize?: number // MB
+}
+
 export interface BambooColorOption {
   token: string
   label: string
@@ -20,6 +26,7 @@ export interface UploadResult {
   src: string
   alt?: string
   width?: number
+  height?: number
   poster?: string
 }
 
@@ -34,6 +41,7 @@ export interface UseBambooEditorOptions {
   colorPalette?: MaybeRefOrGetter<readonly BambooColorOption[] | undefined>
   maxLength?: MaybeRefOrGetter<number | undefined>
   video?: MaybeRefOrGetter<CleanVideoOptions | undefined>
+  audio?: MaybeRefOrGetter<CleanAudioOptions | undefined>
   onUpdate?: (html: string) => void
   onUploadError?: (error: { type: 'size' | 'type'; message: string; file: File }) => void
 }
@@ -81,6 +89,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
     cleanupEditor()
 
     const videoOpts = toValue(options.video)
+    const audioOpts = toValue(options.audio)
 
     editor.value = new Editor({
       ...createBambooEditorOptions({
@@ -88,6 +97,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
         colorTokens: resolveColorTokens(toValue(options.colorPalette)),
         maxLength: toValue(options.maxLength),
         video: videoOpts,
+        audio: audioOpts,
       }),
       content,
       editable: !toValue(options.disabled),
@@ -336,6 +346,41 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
     maxLengthFeedback.value = detail
   }
 
+  const insertAudio = async (file: File) => {
+    const handler = toValue(options.uploadHandler)
+    if (!handler) {
+      editor.value?.commands.insertContent({
+        type: 'audio',
+        attrs: { src: URL.createObjectURL(file) }
+      })
+      return
+    }
+
+    // Validate size
+    const maxSize = toValue(options.audio)?.maxSize ?? 20
+    if (file.size > maxSize * 1024 * 1024) {
+      options.onUploadError?.({ type: 'size', message: `音频大小不能超过 ${maxSize}MB`, file })
+      return
+    }
+
+    try {
+      const result = await handler(file)
+      editor.value?.commands.insertContent({
+        type: 'audio',
+        attrs: { src: result.src }
+      })
+    } catch (error) {
+      options.onUploadError?.({ type: 'type', message: '音频上传失败', file })
+    }
+  }
+
+  const insertRemoteAudio = (url: string, align?: 'left' | 'center' | 'right') => {
+    editor.value?.commands.insertContent({
+      type: 'audio',
+      attrs: { src: url, 'data-align': align || 'left' }
+    })
+  }
+
   return {
     editor,
     resolvedDevice,
@@ -352,6 +397,8 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
     insertRemoteImage,
     insertVideo,
     insertRemoteVideo,
+    insertAudio,
+    insertRemoteAudio,
     undo,
     redo,
     insertHorizontalRule,

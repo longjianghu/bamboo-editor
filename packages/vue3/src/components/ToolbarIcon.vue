@@ -141,6 +141,12 @@
       <path d="M0 870.4m51.2 0l989.866667 0q51.2 0 51.2 51.2l0 0q0 51.2-51.2 51.2l-989.866667 0q-51.2 0-51.2-51.2l0 0q0-51.2 51.2-51.2Z" transform="scale(0.021978 0.0234375)" />
     </g>
 
+    <g v-else-if="name === 'audio'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 18V5l12-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="18" cy="16" r="3" />
+    </g>
+
     <g v-else-if="name === 'text-color'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M8 18L12 6L16 18" />
       <path d="M9.5 14H14.5" />
@@ -210,6 +216,7 @@ type ToolbarIconName =
   | 'remote-image'
   | 'video'
   | 'remote-video'
+  | 'audio'
   | 'link'
   | 'text-color'
   | 'text-color-clear'

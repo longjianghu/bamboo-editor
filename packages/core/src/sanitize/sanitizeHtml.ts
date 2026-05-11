@@ -17,6 +17,7 @@ const ALLOWED_TAGS = new Set([
   'li',
   'img',
   'video',
+  'audio',
   'pre',
   'blockquote',
   'span',
@@ -32,15 +33,16 @@ const ALLOWED_ATTRIBUTES: Record<string, Set<string>> = {
   blockquote: new Set(['data-align']),
   img: new Set(['src', 'alt', 'data-width', 'data-align']),
   video: new Set(['src', 'poster', 'data-width', 'data-height', 'data-align', 'controls']),
+  audio: new Set(['src', 'data-align', 'controls']),
   span: new Set(['data-color']),
 }
 
 function isDangerousUrl(value: string) {
-  return /^\s*(javascript:|data:(?!image\/|video\/))/i.test(value)
+  return /^\s*(javascript:|data:(?!image\/|video\/|audio\/))/i.test(value)
 }
 
 function isValidSrcUrl(value: string) {
-  // Allow blob:, data: (for image/video), https:, http:
+  // Allow blob:, data: (for image/video/audio), https:, http:
   return /^blob:/i.test(value) || /^data:/i.test(value) || /^https?:\/\//i.test(value)
 }
 
@@ -123,7 +125,7 @@ export function sanitizeHtml(html: string, options?: SanitizeOptions): string {
 
   for (const element of Array.from(container.querySelectorAll('*'))) {
     const tag = element.tagName.toLowerCase()
-    if (tag !== 'br' && tag !== 'img' && tag !== 'hr' && tag !== 'video' && element.childNodes.length === 0 && !element.textContent?.trim()) {
+    if (tag !== 'br' && tag !== 'img' && tag !== 'hr' && tag !== 'video' && tag !== 'audio' && element.childNodes.length === 0 && !element.textContent?.trim()) {
       element.remove()
     }
   }

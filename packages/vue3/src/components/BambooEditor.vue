@@ -9,6 +9,7 @@
         :color-palette="resolvedColorPalette"
         @open-image-dialog="handleOpenImageDialog"
         @open-video-dialog="handleOpenVideoDialog"
+        @open-audio-dialog="handleOpenAudioDialog"
         @open-link-dialog="handleOpenLinkDialog"
         @text-color-select="handleTextColorSelect"
         @undo="handleUndo"
@@ -113,6 +114,8 @@
           isAtLimit,
         }"
         @open-image-dialog="handleOpenImageDialog"
+        @open-video-dialog="handleOpenVideoDialog"
+        @open-audio-dialog="handleOpenAudioDialog"
         @text-color-select="handleTextColorSelect"
         @clear-formatting="handleClearFormatting"
         @insert-horizontal-rule="handleInsertHorizontalRule"
@@ -158,6 +161,17 @@
         @cancel="closeImageDialog"
       />
 
+      <EditorAudioDialog
+        :visible="audioDialogVisible"
+        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
+        :mode="audioDialogState.mode"
+        :initial-data="audioDialogState.initialData"
+        :upload-handler="props.uploadHandler"
+        @confirm="handleAudioDialogConfirm"
+        @remove="handleAudioDialogRemove"
+        @cancel="closeAudioDialog"
+      />
+
       <EditorInfoDialog
         :visible="infoDialogVisible"
         :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
@@ -184,10 +198,11 @@ import FloatingToolbarPC from './FloatingToolbarPC.vue'
 import EditorUrlDialog from './EditorUrlDialog.vue'
 import EditorVideoDialog from './EditorVideoDialog.vue'
 import EditorImageDialog from './EditorImageDialog.vue'
+import EditorAudioDialog from './EditorAudioDialog.vue'
 import EditorInfoDialog from './EditorInfoDialog.vue'
 import EditorErrorDialog from './EditorErrorDialog.vue'
 import { useBambooEditor } from '../composables/useBambooEditor'
-import type { BambooColorOption, BambooDevice, UploadHandler, CleanVideoOptions } from '../composables/useBambooEditor'
+import type { BambooColorOption, BambooDevice, UploadHandler, CleanVideoOptions, CleanAudioOptions } from '../composables/useBambooEditor'
 
 declare const window: Window & typeof globalThis
 
@@ -246,6 +261,7 @@ const props = withDefaults(defineProps<{
   editorId?: string
   draftTtl?: number
   videoOptions?: CleanVideoOptions
+  audioOptions?: CleanAudioOptions
 }>(), {
   device: 'auto',
   placeholder: '请输入内容',
@@ -273,7 +289,7 @@ const errorDialogMessage = ref('')
 const mobileToastVisible = ref(false)
 const mobileToastMessage = ref('')
 const urlDialogState = ref<{
-  type: 'link' | 'remote-image' | 'remote-video'
+  type: 'link' | 'remote-video'
   mode: 'create' | 'edit'
   initialValue: string
   allowRemove: boolean
@@ -285,6 +301,7 @@ const urlDialogState = ref<{
 })
 const videoDialogVisible = ref(false)
 const imageDialogVisible = ref(false)
+const audioDialogVisible = ref(false)
 const shouldIgnoreVideoSelection = ref(false)
 const videoDialogState = ref<{
   mode: 'create' | 'edit'
@@ -305,6 +322,15 @@ const imageDialogState = ref<{
     alt?: string
     width?: number
     height?: number
+    align?: 'left' | 'center' | 'right'
+  }
+}>({
+  mode: 'create',
+})
+const audioDialogState = ref<{
+  mode: 'create' | 'edit'
+  initialData?: {
+    src: string
     align?: 'left' | 'center' | 'right'
   }
 }>({
@@ -356,7 +382,7 @@ const surfaceStyle = computed(() => {
   }
 })
 
-const { editor, resolvedDevice, currentLength, maxLength, remainingLength, usageRatio, isNearLimit, isAtLimit, maxLengthFeedback, insertImage, setLink, unsetLink, insertRemoteImage, insertVideo, insertRemoteVideo, undo, redo, insertHorizontalRule, clearFormatting } = useBambooEditor({
+const { editor, resolvedDevice, currentLength, maxLength, remainingLength, usageRatio, isNearLimit, isAtLimit, maxLengthFeedback, insertImage, setLink, unsetLink, insertRemoteImage, insertVideo, insertRemoteVideo, insertAudio, insertRemoteAudio, undo, redo, insertHorizontalRule, clearFormatting } = useBambooEditor({
   modelValue: toRef(props, 'modelValue'),
   device: toRef(props, 'device'),
   placeholder: toRef(props, 'placeholder'),
@@ -365,6 +391,7 @@ const { editor, resolvedDevice, currentLength, maxLength, remainingLength, usage
   colorPalette: resolvedColorPalette,
   maxLength: toRef(props, 'maxLength'),
   video: toRef(props, 'videoOptions'),
+  audio: toRef(props, 'audioOptions'),
   onUpdate: (html) => {
     emit('update:modelValue', html)
     scheduleDraftSave(html)
@@ -377,10 +404,69 @@ const { editor, resolvedDevice, currentLength, maxLength, remainingLength, usage
 
 watch(editor, (instance) => {
   if (instance) {
-    instance.on('open-image-dialog', handleOpenImageDialog)
-    instance.on('open-video-dialog', handleOpenVideoDialog)
+    instance.on('open-image-dialog' as any, handleOpenImageDialog)
+    instance.on('open-video-dialog' as any, handleOpenVideoDialog)
+    instance.on('open-audio-dialog' as any, handleOpenAudioDialog)
   }
 }, { immediate: true })
+
+function handleOpenAudioDialog(payload?: { pos?: number; node?: any; initialData?: any; mode?: 'create' | 'edit' }) {
+  if (props.disabled) {
+    return
+  }
+
+  if (payload?.pos !== undefined && editor.value) {
+    editor.value.commands.setNodeSelection(payload.pos)
+  }
+
+  const finalSrc = payload?.initialData?.src || payload?.node?.attrs?.src || ''
+  const finalAlign = payload?.initialData?.align || payload?.initialData?.['data-align'] || payload?.node?.attrs?.['data-align'] || 'left'
+  console.log('[BambooEditor] handleOpenAudioDialog - node attrs:', payload?.node?.attrs, 'finalAlign:', finalAlign)
+
+  audioDialogState.value = {
+    mode: payload?.mode ?? 'create',
+    initialData: {
+      src: finalSrc,
+      align: finalAlign
+    }
+  }
+  audioDialogVisible.value = true
+}
+
+function closeAudioDialog() {
+  audioDialogVisible.value = false
+  window.setTimeout(() => editor.value?.commands.focus(), 0)
+}
+
+function handleAudioDialogConfirm(data: { src: string; align?: 'left' | 'center' | 'right' }) {
+  const instance = editor.value
+  if (!instance) return
+
+  closeAudioDialog()
+
+  if (audioDialogState.value.mode === 'edit') {
+    instance.commands.updateAttributes('audio', {
+      src: data.src,
+      'data-align': data.align,
+    })
+  } else {
+    instance.commands.insertContent({
+      type: 'audio',
+      attrs: {
+        src: data.src,
+        'data-align': data.align,
+      }
+    })
+  }
+}
+
+function handleAudioDialogRemove() {
+  const instance = editor.value
+  if (!instance) return
+
+  instance.commands.deleteSelection()
+  closeAudioDialog()
+}
 
 let wordCountTimer: number | null = null
 let wordCountTooltipTimer: number | null = null
@@ -500,7 +586,7 @@ function handleImageDialogConfirm(data: { src: string; alt?: string; width?: num
       alt: data.alt,
       width: data.width ? String(data.width) : null,
       height: data.height ? String(data.height) : null,
-      'data-align': data.align || 'left',
+      'data-align': data.align,
     })
   } else {
     instance.commands.insertContent({
@@ -510,7 +596,7 @@ function handleImageDialogConfirm(data: { src: string; alt?: string; width?: num
         alt: data.alt,
         width: data.width ? String(data.width) : null,
         height: data.height ? String(data.height) : null,
-        'data-align': data.align || 'left',
+        'data-align': data.align,
       }
     })
   }
@@ -611,7 +697,7 @@ function handleVideoDialogConfirm(data: { src: string; poster?: string; width?: 
             poster: data.poster ?? node.attrs.poster,
             width: data.width ? String(data.width) : null,
             height: data.height ? String(data.height) : null,
-            'data-align': data.align || node.attrs['data-align'] || 'left',
+            'data-align': data.align,
           })
           found = true
           return false
@@ -629,7 +715,7 @@ function handleVideoDialogConfirm(data: { src: string; poster?: string; width?: 
         poster: data.poster,
         width: data.width ? String(data.width) : null,
         height: data.height ? String(data.height) : null,
-        'data-align': data.align || 'left',
+        'data-align': data.align,
       })
       tr.replaceSelectionWith(videoNode)
       return true
@@ -907,19 +993,8 @@ function updateFloatingToolbar() {
   let rect: DOMRect | null = null
 
   if (isImageSelection) {
-    const imageNode = instance.view.nodeDOM(selection.from) as HTMLElement | null
-    if (!imageNode || !editorElement.contains(imageNode)) {
-      hideFloatingToolbar()
-      return
-    }
-
-    const imageRect = imageNode.getBoundingClientRect()
-    if (!imageRect.width && !imageRect.height) {
-      hideFloatingToolbar()
-      return
-    }
-
-    rect = imageRect
+    hideFloatingToolbar()
+    return
   }
   else {
     const { from, to, empty } = selection

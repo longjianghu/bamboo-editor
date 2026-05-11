@@ -32,6 +32,26 @@
           <button
             type="button"
             class="toolbar-mobile__panel-button"
+            :disabled="disabled"
+            @click="emitAndClosePanel('open-video-dialog')"
+          >
+            <ToolbarIcon name="remote-video" />
+            <span>视频</span>
+          </button>
+
+          <button
+            type="button"
+            class="toolbar-mobile__panel-button"
+            :disabled="disabled"
+            @click="emitAndClosePanel('open-audio-dialog')"
+          >
+            <ToolbarIcon name="audio" />
+            <span>音频</span>
+          </button>
+
+          <button
+            type="button"
+            class="toolbar-mobile__panel-button"
             :disabled="isDisabled('redo')"
             @click="runAndClosePanel('redo')"
           >
@@ -160,7 +180,7 @@
         </button>
       </div>
 
-      <input ref="videoFileInputRef" class="toolbar-mobile__file" type="file" accept="video/*" :disabled="disabled" @change="onVideoFileChange">
+
     </div>
   </div>
 </template>
@@ -210,11 +230,18 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'open-image-dialog': []
+  'open-video-dialog': []
+  'open-audio-dialog': []
   'open-link-dialog': [payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }]
   'text-color-select': [token: string | null]
   'clear-formatting': []
   'insert-horizontal-rule': []
 }>()
+
+function emitAndClosePanel(event: 'open-video-dialog' | 'open-audio-dialog') {
+  emit(event as any)
+  closePlusPanel()
+}
 
 const listOptions = [
   { label: '无序列表', command: 'toggleBulletList', active: 'bulletList', icon: 'bullet-list' },

@@ -173,6 +173,17 @@
     </button>
 
     <button
+      type="button"
+      class="toolbar-pc__button"
+      :disabled="disabled"
+      title="音频"
+      aria-label="音频"
+      @click="emit('open-audio-dialog')"
+    >
+      <ToolbarIcon name="audio" />
+    </button>
+
+    <button
       v-for="item in insertItems"
       :key="item.label"
       type="button"
@@ -301,7 +312,7 @@ type DropdownPlacement = {
   vertical: 'down' | 'up'
 }
 
-type MenuKind = 'heading' | 'align' | 'color' | 'image' | 'list'
+type MenuKind = 'heading' | 'align' | 'color' | 'list'
 
 const props = defineProps<{
   editor: Editor | null
@@ -313,6 +324,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'open-image-dialog': []
   'open-video-dialog': []
+  'open-audio-dialog': []
   'open-link-dialog': [payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }]
   'text-color-select': [token: string | null]
   'undo': []
@@ -619,10 +631,6 @@ function getMenuState(kind: MenuKind) {
     return isListMenuOpen
   }
 
-  if (kind === 'video') {
-    return isVideoMenuOpen
-  }
-
   return isColorMenuOpen
 }
 
@@ -733,7 +741,7 @@ function menuPlacementClass(placement: DropdownPlacement) {
 }
 
 function onClickOutside(event: MouseEvent) {
-  const targets = [headingMenuRef.value, alignMenuRef.value, colorMenuRef.value, listMenuRef.value, videoMenuRef.value].filter(Boolean)
+  const targets = [headingMenuRef.value, alignMenuRef.value, colorMenuRef.value, listMenuRef.value].filter(Boolean)
   if (!targets.length) {
     return
   }
@@ -757,50 +765,9 @@ function onViewportChange() {
     updateDropdownPosition('color')
   }
 
-  if (isImageMenuOpen.value) {
-    updateDropdownPosition('image')
-  }
-
   if (isListMenuOpen.value) {
     updateDropdownPosition('list')
   }
-
-  if (isVideoMenuOpen.value) {
-    updateDropdownPosition('video')
-  }
-}
-
-function onFileChange(event: Event) {
-  closeMenus()
-
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (file) {
-    emit('image-select', file)
-  }
-  input.value = ''
-}
-
-function onVideoFileChange(event: Event) {
-  // Deprecated - video now uses dialog
-  closeMenus()
-
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (file) {
-    emit('open-video-dialog')
-  }
-  input.value = ''
-}
-
-function onRemoteVideoClick() {
-  // Deprecated - video now uses dialog
-  if (props.disabled) {
-    return
-  }
-
-  closeMenus()
-  emit('open-video-dialog')
 }
 
 
