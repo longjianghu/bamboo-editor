@@ -85,6 +85,17 @@
       <path d="M959.877 128l0.123 0.123v767.775l-0.123 0.122H64.102l-0.122-0.122V128.123l0.122-0.123h895.775zM960 64H64C28.795 64 0 92.795 0 128v768c0 35.205 28.795 64 64 64h896c35.205 0 64-28.795 64-64V128c0-35.205-28.795-64-64-64zM832 288.01c0 53.023-42.988 96.01-96.01 96.01s-96.01-42.987-96.01-96.01S682.967 192 735.99 192 832 234.988 832 288.01zM896 832H128V704l224.01-384 256 320h64l224.01-192z" transform="scale(0.0234375)" />
     </g>
 
+    <g v-else-if="name === 'video'" fill="currentColor" stroke="none">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" fill="none" />
+      <path d="M8 12L11 9V15L8 12Z" />
+      <path d="M11 12L15 9V15L11 12Z" />
+    </g>
+
+    <g v-else-if="name === 'remote-video'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="M9 8L17 12L9 16V8Z" fill="currentColor" stroke="none" />
+    </g>
+
     <g v-else-if="name === 'align-left'" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
       <path d="M5 7H19" />
       <path d="M5 10H15" />
@@ -201,6 +212,8 @@ type ToolbarIconName =
   | 'code-block'
   | 'image'
   | 'remote-image'
+  | 'video'
+  | 'remote-video'
   | 'link'
   | 'text-color'
   | 'text-color-clear'

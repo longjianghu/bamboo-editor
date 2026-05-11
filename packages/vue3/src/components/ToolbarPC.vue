@@ -193,6 +193,17 @@
     </div>
 
     <button
+      type="button"
+      class="toolbar-pc__button"
+      :disabled="disabled"
+      title="视频"
+      aria-label="视频"
+      @click="emit('open-video-dialog')"
+    >
+      <ToolbarIcon name="remote-video" />
+    </button>
+
+    <button
       v-for="item in insertItems"
       :key="item.label"
       type="button"
@@ -253,6 +264,7 @@
     </button>
 
     <input ref="imageFileInputRef" class="toolbar-pc__file" type="file" accept="image/*" :disabled="disabled" @change="onFileChange">
+    <input ref="videoFileInputRef" class="toolbar-pc__file" type="file" accept="video/*" :disabled="disabled" @change="onVideoFileChange">
 
     <button
       type="button"
@@ -323,7 +335,7 @@ type DropdownPlacement = {
   vertical: 'down' | 'up'
 }
 
-type MenuKind = 'heading' | 'align' | 'color' | 'image' | 'list'
+type MenuKind = 'heading' | 'align' | 'color' | 'image' | 'list' | 'video'
 
 const props = defineProps<{
   editor: Editor | null
@@ -334,6 +346,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'image-select': [file: File]
+  'open-video-dialog': []
   'open-link-dialog': [payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }]
   'open-remote-image-dialog': [payload?: { initialValue?: string }]
   'text-color-select': [token: string | null]
@@ -392,6 +405,7 @@ const isAlignMenuOpen = ref(false)
 const isColorMenuOpen = ref(false)
 const isImageMenuOpen = ref(false)
 const isListMenuOpen = ref(false)
+const isVideoMenuOpen = ref(false)
 
 const headingMenuRef = ref<HTMLElement | null>(null)
 const headingTriggerRef = ref<HTMLElement | null>(null)
@@ -404,18 +418,23 @@ const imageTriggerRef = ref<HTMLElement | null>(null)
 const imageFileInputRef = ref<HTMLInputElement | null>(null)
 const listMenuRef = ref<HTMLElement | null>(null)
 const listTriggerRef = ref<HTMLElement | null>(null)
+const videoMenuRef = ref<HTMLElement | null>(null)
+const videoTriggerRef = ref<HTMLElement | null>(null)
+const videoFileInputRef = ref<HTMLInputElement | null>(null)
 
 const headingDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'down' })
 const alignDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'down' })
 const colorDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'down' })
 const imageDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'down' })
 const listDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'down' })
+const videoDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'down' })
 
 const headingDropdownMenuStyle = ref<Record<string, string>>({})
 const alignDropdownMenuStyle = ref<Record<string, string>>({})
 const colorDropdownMenuStyle = ref<Record<string, string>>({})
 const imageDropdownMenuStyle = ref<Record<string, string>>({})
 const listDropdownMenuStyle = ref<Record<string, string>>({})
+const videoDropdownMenuStyle = ref<Record<string, string>>({})
 
 const activeColor = computed(() => colorPalette.find((item) => isTextColorActive(item.token)) ?? null)
 const currentColorValue = computed(() => activeColor.value?.value ?? '#18181b')
@@ -669,6 +688,10 @@ function getMenuState(kind: MenuKind) {
     return isListMenuOpen
   }
 
+  if (kind === 'video') {
+    return isVideoMenuOpen
+  }
+
   return isColorMenuOpen
 }
 
@@ -713,6 +736,16 @@ function getMenuElements(kind: MenuKind) {
     }
   }
 
+  if (kind === 'video') {
+    return {
+      menuRef: videoMenuRef,
+      triggerRef: videoTriggerRef,
+      placementRef: videoDropdownPlacement,
+      styleRef: videoDropdownMenuStyle,
+      width: 176,
+    }
+  }
+
   return {
     menuRef: colorMenuRef,
     triggerRef: colorTriggerRef,
@@ -728,6 +761,7 @@ function closeMenus() {
   isColorMenuOpen.value = false
   isImageMenuOpen.value = false
   isListMenuOpen.value = false
+  isVideoMenuOpen.value = false
 }
 
 function toggleMenu(kind: MenuKind) {
@@ -790,7 +824,7 @@ function menuPlacementClass(placement: DropdownPlacement) {
 }
 
 function onClickOutside(event: MouseEvent) {
-  const targets = [headingMenuRef.value, alignMenuRef.value, colorMenuRef.value, imageMenuRef.value, listMenuRef.value].filter(Boolean)
+  const targets = [headingMenuRef.value, alignMenuRef.value, colorMenuRef.value, imageMenuRef.value, listMenuRef.value, videoMenuRef.value].filter(Boolean)
   if (!targets.length) {
     return
   }
@@ -821,6 +855,10 @@ function onViewportChange() {
   if (isListMenuOpen.value) {
     updateDropdownPosition('list')
   }
+
+  if (isVideoMenuOpen.value) {
+    updateDropdownPosition('video')
+  }
 }
 
 function onFileChange(event: Event) {
@@ -833,6 +871,42 @@ function onFileChange(event: Event) {
   }
   input.value = ''
 }
+
+function onVideoFileChange(event: Event) {
+  // Deprecated - video now uses dialog
+  closeMenus()
+
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) {
+    emit('open-video-dialog')
+  }
+  input.value = ''
+}
+
+function onRemoteVideoClick() {
+  // Deprecated - video now uses dialog
+  if (props.disabled) {
+    return
+  }
+
+  closeMenus()
+  emit('open-video-dialog')
+}
+
+function onVideoTriggerClick() {
+  // Deprecated - video now uses dialog
+  if (props.disabled) {
+    return
+  }
+
+  closeMenus()
+  emit('open-video-dialog')
+}
+
+// remove unused video dropdown refs
+// @ts-ignore
+const _unused = [isVideoMenuOpen, videoMenuRef, videoTriggerRef, videoDropdownPlacement, videoDropdownMenuStyle]
 
 onMounted(() => {
   document.addEventListener('mousedown', onClickOutside)

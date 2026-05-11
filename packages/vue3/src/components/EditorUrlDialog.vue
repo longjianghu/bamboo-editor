@@ -57,7 +57,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 declare const window: Window & typeof globalThis
 
-type DialogType = 'link' | 'remote-image'
+type DialogType = 'link' | 'remote-image' | 'remote-video'
 type DialogMode = 'create' | 'edit'
 type Device = 'pc' | 'mobile'
 
@@ -92,11 +92,31 @@ const title = computed(() => {
     return '插入远程图片'
   }
 
+  if (props.type === 'remote-video') {
+    return '插入远程视频'
+  }
+
   return props.mode === 'edit' ? '编辑链接' : '添加链接'
 })
 
-const placeholder = computed(() => props.type === 'remote-image' ? '请输入远程图片地址' : '请输入链接地址')
-const confirmLabel = computed(() => props.type === 'remote-image' ? '插入图片' : '确定')
+const placeholder = computed(() => {
+  if (props.type === 'remote-image') {
+    return '请输入远程图片地址'
+  }
+  if (props.type === 'remote-video') {
+    return '请输入远程视频地址'
+  }
+  return '请输入链接地址'
+})
+const confirmLabel = computed(() => {
+  if (props.type === 'remote-image') {
+    return '插入图片'
+  }
+  if (props.type === 'remote-video') {
+    return '插入视频'
+  }
+  return '确定'
+})
 const isConfirmDisabled = computed(() => !inputValue.value.trim())
 
 function clearTimers() {

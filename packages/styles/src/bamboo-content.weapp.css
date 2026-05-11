@@ -86,6 +86,15 @@
   margin-right: auto;
 }
 
+/* Video styles - mp-html will convert to native video component */
+.bamboo-content video {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 24rpx 0;
+  border-radius: 16rpx;
+}
+
 .bamboo-content span[data-color='primary'] {
   color: #18181b;
 }

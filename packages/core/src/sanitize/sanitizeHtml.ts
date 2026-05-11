@@ -16,6 +16,7 @@ const ALLOWED_TAGS = new Set([
   'ol',
   'li',
   'img',
+  'video',
   'pre',
   'blockquote',
   'span',
@@ -30,11 +31,17 @@ const ALLOWED_ATTRIBUTES: Record<string, Set<string>> = {
   p: new Set(['data-align']),
   blockquote: new Set(['data-align']),
   img: new Set(['src', 'alt', 'data-width', 'data-align']),
+  video: new Set(['src', 'poster', 'data-width', 'data-height', 'data-align', 'controls']),
   span: new Set(['data-color']),
 }
 
 function isDangerousUrl(value: string) {
-  return /^\s*javascript:/i.test(value)
+  return /^\s*(javascript:|data:(?!image\/|video\/))/i.test(value)
+}
+
+function isValidSrcUrl(value: string) {
+  // Allow blob:, data: (for image/video), https:, http:
+  return /^blob:/i.test(value) || /^data:/i.test(value) || /^https?:\/\//i.test(value)
 }
 
 function isValidAlign(value: string) {
@@ -116,7 +123,7 @@ export function sanitizeHtml(html: string, options?: SanitizeOptions): string {
 
   for (const element of Array.from(container.querySelectorAll('*'))) {
     const tag = element.tagName.toLowerCase()
-    if (tag !== 'br' && tag !== 'img' && tag !== 'hr' && element.childNodes.length === 0 && !element.textContent?.trim()) {
+    if (tag !== 'br' && tag !== 'img' && tag !== 'hr' && tag !== 'video' && element.childNodes.length === 0 && !element.textContent?.trim()) {
       element.remove()
     }
   }

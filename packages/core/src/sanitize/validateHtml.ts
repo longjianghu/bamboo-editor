@@ -16,6 +16,7 @@ const ALLOWED_TAGS = new Set([
   'ol',
   'li',
   'img',
+  'video',
   'pre',
   'blockquote',
   'span',
@@ -30,13 +31,14 @@ const ALLOWED_ATTRIBUTES: Record<string, Set<string>> = {
   p: new Set(['data-align']),
   blockquote: new Set(['data-align']),
   img: new Set(['src', 'alt', 'data-width', 'data-align']),
+  video: new Set(['src', 'poster', 'data-width', 'data-height', 'data-align', 'controls']),
   span: new Set(['data-color']),
 }
 
-const FORBIDDEN_TAGS = new Set(['script', 'iframe', 'video', 'style'])
+const FORBIDDEN_TAGS = new Set(['script', 'iframe', 'style'])
 
 function isDangerousUrl(value: string) {
-  return /^\s*javascript:/i.test(value)
+  return /^\s*(javascript:|data:(?!image\/|video\/))/i.test(value)
 }
 
 function isValidAlign(value: string) {
@@ -82,7 +84,10 @@ export function validateHtml(html: string, options?: SanitizeOptions): Validatio
       }
 
       if ((name === 'src' || name === 'href') && isDangerousUrl(value)) {
-        errors.push({ type: 'forbidden_url', tag, attr: name, value })
+        // Allow blob: URLs for video
+        if (!/^blob:/i.test(value)) {
+          errors.push({ type: 'forbidden_url', tag, attr: name, value })
+        }
       }
 
       if (name === 'data-align' && !isValidAlign(value)) {

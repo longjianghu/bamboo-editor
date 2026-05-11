@@ -8,6 +8,7 @@
         :fullscreen="isFullscreen"
         :color-palette="resolvedColorPalette"
         @image-select="handleImageSelect"
+        @open-video-dialog="handleOpenVideoDialog"
         @open-link-dialog="handleOpenLinkDialog"
         @open-remote-image-dialog="handleOpenRemoteImageDialog"
         @text-color-select="handleTextColorSelect"
@@ -137,10 +138,28 @@
         @cancel="closeUrlDialog"
       />
 
+      <EditorVideoDialog
+        :visible="videoDialogVisible"
+        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
+        :mode="videoDialogState.mode"
+        :initial-data="videoDialogState.initialData"
+        :upload-handler="props.uploadHandler"
+        @confirm="handleVideoDialogConfirm"
+        @remove="handleVideoDialogRemove"
+        @cancel="closeVideoDialog"
+      />
+
       <EditorInfoDialog
         :visible="infoDialogVisible"
         :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
         @close="infoDialogVisible = false"
+      />
+
+      <EditorErrorDialog
+        :visible="errorDialogVisible"
+        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
+        :message="errorDialogMessage"
+        @close="errorDialogVisible = false"
       />
     </div>
   </div>
@@ -154,9 +173,11 @@ import ToolbarPC from './ToolbarPC.vue'
 import ToolbarMobile from './ToolbarMobile.vue'
 import FloatingToolbarPC from './FloatingToolbarPC.vue'
 import EditorUrlDialog from './EditorUrlDialog.vue'
+import EditorVideoDialog from './EditorVideoDialog.vue'
 import EditorInfoDialog from './EditorInfoDialog.vue'
+import EditorErrorDialog from './EditorErrorDialog.vue'
 import { useBambooEditor } from '../composables/useBambooEditor'
-import type { BambooColorOption, BambooDevice, UploadHandler } from '../composables/useBambooEditor'
+import type { BambooColorOption, BambooDevice, UploadHandler, CleanVideoOptions } from '../composables/useBambooEditor'
 
 declare const window: Window & typeof globalThis
 
@@ -214,6 +235,7 @@ const props = withDefaults(defineProps<{
   maxLength?: number
   editorId?: string
   draftTtl?: number
+  videoOptions?: CleanVideoOptions
 }>(), {
   device: 'auto',
   placeholder: '请输入内容',
@@ -236,10 +258,12 @@ const surfaceWidth = ref(0)
 const isWordCountTooltipVisible = ref(false)
 const urlDialogVisible = ref(false)
 const infoDialogVisible = ref(false)
+const errorDialogVisible = ref(false)
+const errorDialogMessage = ref('')
 const mobileToastVisible = ref(false)
 const mobileToastMessage = ref('')
 const urlDialogState = ref<{
-  type: 'link' | 'remote-image'
+  type: 'link' | 'remote-image' | 'remote-video'
   mode: 'create' | 'edit'
   initialValue: string
   allowRemove: boolean
@@ -248,6 +272,20 @@ const urlDialogState = ref<{
   mode: 'create',
   initialValue: '',
   allowRemove: false,
+})
+const videoDialogVisible = ref(false)
+const shouldIgnoreVideoSelection = ref(false)
+const videoDialogState = ref<{
+  mode: 'create' | 'edit'
+  initialData?: {
+    src: string
+    poster?: string
+    width?: number
+    height?: number
+    align?: 'left' | 'center' | 'right'
+  }
+}>({
+  mode: 'create',
 })
 
 const resolvedColorPalette = computed(() => props.colorPalette?.length ? props.colorPalette : DEFAULT_COLOR_PALETTE)
@@ -295,7 +333,7 @@ const surfaceStyle = computed(() => {
   }
 })
 
-const { editor, resolvedDevice, currentLength, maxLength, remainingLength, usageRatio, isNearLimit, isAtLimit, maxLengthFeedback, insertImage, setLink, unsetLink, insertRemoteImage, undo, redo, insertHorizontalRule, clearFormatting } = useBambooEditor({
+const { editor, resolvedDevice, currentLength, maxLength, remainingLength, usageRatio, isNearLimit, isAtLimit, maxLengthFeedback, insertImage, setLink, unsetLink, insertRemoteImage, insertVideo, insertRemoteVideo, undo, redo, insertHorizontalRule, clearFormatting } = useBambooEditor({
   modelValue: toRef(props, 'modelValue'),
   device: toRef(props, 'device'),
   placeholder: toRef(props, 'placeholder'),
@@ -303,9 +341,14 @@ const { editor, resolvedDevice, currentLength, maxLength, remainingLength, usage
   uploadHandler: toRef(props, 'uploadHandler'),
   colorPalette: resolvedColorPalette,
   maxLength: toRef(props, 'maxLength'),
+  video: toRef(props, 'videoOptions'),
   onUpdate: (html) => {
     emit('update:modelValue', html)
     scheduleDraftSave(html)
+  },
+  onUploadError: ({ message }) => {
+    errorDialogMessage.value = message
+    errorDialogVisible.value = true
   },
 })
 
@@ -438,12 +481,21 @@ function handleOpenRemoteImageDialog(payload?: { initialValue?: string }) {
 
 function closeUrlDialog() {
   urlDialogVisible.value = false
+  if (urlDialogState.value.type === 'remote-video') {
+    shouldIgnoreVideoSelection.value = true
+    window.setTimeout(() => {
+      shouldIgnoreVideoSelection.value = false
+    }, 300)
+  }
   window.setTimeout(() => editor.value?.commands.focus(), 0)
 }
 
 function handleUrlDialogConfirm(url: string) {
   if (urlDialogState.value.type === 'remote-image') {
     handleRemoteImageSelect(url)
+  }
+  else if (urlDialogState.value.type === 'remote-video') {
+    handleRemoteVideoSelect(url)
   }
   else {
     handleLinkSelect(url)
@@ -458,6 +510,82 @@ function handleUrlDialogRemove() {
   }
 
   closeUrlDialog()
+}
+
+function closeVideoDialog() {
+  videoDialogVisible.value = false
+  shouldIgnoreVideoSelection.value = true
+  window.setTimeout(() => {
+    shouldIgnoreVideoSelection.value = false
+  }, 300)
+  window.setTimeout(() => editor.value?.commands.focus(), 0)
+}
+
+function handleVideoDialogConfirm(data: { src: string; poster?: string; width?: number; height?: number; align?: 'left' | 'center' | 'right' }) {
+  console.log('[BambooEditor] handleVideoDialogConfirm', data)
+  const instance = editor.value
+  if (!instance) {
+    console.log('[BambooEditor] no editor instance')
+    return
+  }
+
+  console.log('[BambooEditor] mode:', videoDialogState.value.mode)
+  // Always close dialog first
+  closeVideoDialog()
+
+  if (videoDialogState.value.mode === 'edit') {
+    // Edit existing video - update attributes
+    instance.commands.command(({ tr }: { tr: any }) => {
+      const { from, to } = instance.state.selection
+      let found = false
+      instance.state.doc.nodesBetween(from, to, (node) => {
+        if (node.type.name === 'video' && !found) {
+          const pos = from
+          tr.setNodeMarkup(pos, undefined, {
+            ...node.attrs,
+            src: data.src,
+            poster: data.poster ?? node.attrs.poster,
+            width: data.width ? String(data.width) : null,
+            height: data.height ? String(data.height) : null,
+            'data-align': data.align || node.attrs['data-align'] || 'left',
+          })
+          found = true
+          return false
+        }
+        return true
+      })
+      return true
+    })
+  } else {
+    // Insert new video
+    instance.commands.command(({ tr }: { tr: any }) => {
+      const { from } = instance.state.selection
+      const videoNode = instance.schema.nodes.video.create({
+        src: data.src,
+        poster: data.poster,
+        width: data.width ? String(data.width) : null,
+        height: data.height ? String(data.height) : null,
+        'data-align': data.align || 'left',
+      })
+      tr.replaceSelectionWith(videoNode)
+      return true
+    })
+  }
+}
+
+function handleVideoDialogRemove() {
+  const instance = editor.value
+  if (!instance) {
+    return
+  }
+
+  const selection = instance.state.selection as any
+  const node = selection.node
+  if (node && node.type.name === 'video') {
+    instance.commands.deleteSelection()
+  }
+
+  closeVideoDialog()
 }
 
 function handleTextColorSelect(token: string | null) {
@@ -888,6 +1016,40 @@ watch(editor, (instance) => {
   }
 }, { once: true })
 
+function handleVideoSelect(file: File, poster?: string) {
+  return insertVideo(file, poster)
+}
+
+function handleOpenVideoDialog() {
+  if (props.disabled) {
+    return
+  }
+
+  videoDialogState.value = {
+    mode: 'create',
+    initialData: undefined,
+  }
+  videoDialogVisible.value = true
+}
+
+function handleOpenRemoteVideoDialog(payload?: { initialValue?: string }) {
+  if (props.disabled) {
+    return
+  }
+
+  urlDialogState.value = {
+    type: 'remote-video',
+    mode: 'create',
+    initialValue: payload?.initialValue ?? '',
+    allowRemove: false,
+  }
+  urlDialogVisible.value = true
+}
+
+function handleRemoteVideoSelect(url: string, poster?: string) {
+  return insertRemoteVideo(url, poster)
+}
+
 watch([editor, resolvedDevice, () => props.disabled], (_, __, onCleanup) => {
   const instance = editor.value
   if (!instance) {
@@ -896,7 +1058,9 @@ watch([editor, resolvedDevice, () => props.disabled], (_, __, onCleanup) => {
     return
   }
 
-  const handleSelectionChange = () => updateFloatingToolbar()
+  const handleSelectionChange = () => {
+    updateFloatingToolbar()
+  }
   const handleWordCountChange = () => scheduleWordCountRefresh()
   const handleBlur = ({ event }: { event?: FocusEvent }) => {
     const relatedTarget = event?.relatedTarget
@@ -909,12 +1073,38 @@ watch([editor, resolvedDevice, () => props.disabled], (_, __, onCleanup) => {
 
   const handleFocus = () => updateFloatingToolbar()
 
+  const handleOpenVideoDialogEvent = ({ pos, node, data }: { pos: number; node: any; data?: any }) => {
+    if (props.disabled) {
+      return
+    }
+
+    const finalSrc = data?.src || node.attrs.src || ''
+    const finalPoster = data?.poster || node.attrs.poster || ''
+    const finalWidth = data?.width || node.attrs.width
+    const finalHeight = data?.height || node.attrs.height
+    const finalAlign = data?.align || node.attrs['data-align'] || 'left'
+
+    videoDialogState.value = {
+      mode: 'edit',
+      initialData: {
+        src: finalSrc,
+        poster: finalPoster,
+        width: finalWidth ? Number(finalWidth) : undefined,
+        height: finalHeight ? Number(finalHeight) : undefined,
+        align: finalAlign as any,
+      },
+    }
+    videoDialogVisible.value = true
+    instance.commands.setNodeSelection(pos)
+  }
+
   instance.on('selectionUpdate', handleSelectionChange)
   instance.on('transaction', handleSelectionChange)
   instance.on('selectionUpdate', handleWordCountChange)
   instance.on('transaction', handleWordCountChange)
   instance.on('focus', handleFocus)
   instance.on('blur', handleBlur)
+  instance.on('open-video-dialog' as any, handleOpenVideoDialogEvent)
   window.addEventListener('resize', handleSelectionChange)
   window.addEventListener('scroll', handleSelectionChange, true)
   updateFloatingToolbar()
@@ -928,6 +1118,7 @@ watch([editor, resolvedDevice, () => props.disabled], (_, __, onCleanup) => {
     instance.off('transaction', handleWordCountChange)
     instance.off('focus', handleFocus)
     instance.off('blur', handleBlur)
+    instance.off('open-video-dialog' as any, handleOpenVideoDialogEvent)
     window.removeEventListener('resize', handleSelectionChange)
     window.removeEventListener('scroll', handleSelectionChange, true)
   })
@@ -1258,6 +1449,87 @@ defineExpose({ clearDraft })
 .bamboo-editor__content :deep(.ProseMirror img[data-align='right']) {
   margin-left: auto;
   margin-right: 0;
+}
+
+/* Video styles */
+.bamboo-editor__content :deep(.ProseMirror video) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1em 0;
+  border-radius: 12px;
+  transition: outline 0.2s, box-shadow 0.2s;
+}
+
+.bamboo-editor__content :deep(.ProseMirror .clean-video-wrapper.ProseMirror-selectednode video) {
+  outline: 3px solid #14b8a6;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(20, 184, 166, 0.1);
+}
+
+.bamboo-editor__content :deep(.ProseMirror video.is-uploading) {
+  opacity: 0.6;
+}
+
+.bamboo-editor__content :deep(.clean-video-wrapper) {
+  position: relative;
+  margin: 1em 0;
+}
+
+.bamboo-editor__content :deep(.clean-video-loading) {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.bamboo-editor__content :deep(.clean-video-loading span) {
+  padding: 8px 16px;
+  background: #14b8a6;
+  color: #fff;
+  font-size: 14px;
+  border-radius: 8px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.bamboo-editor__content :deep(.clean-video-edit-button) {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #52525b;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.bamboo-editor__content :deep(.clean-video-wrapper:hover .clean-video-edit-button) {
+  opacity: 1;
+}
+
+.bamboo-editor__content :deep(.clean-video-edit-button:hover) {
+  background: #fff;
+  color: #14b8a6;
+  border-color: #14b8a6;
 }
 
 .bamboo-editor__content :deep(.ProseMirror p.is-editor-empty:first-child::before) {

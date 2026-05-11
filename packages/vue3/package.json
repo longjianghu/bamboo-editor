@@ -45,7 +45,7 @@
     "prepack": "pnpm run build"
   },
   "dependencies": {
-    "@bamboo-editor/core": "^0.1.5"
+    "@bamboo-editor/core": "workspace:*"
   },
   "peerDependencies": {
     "@tiptap/vue-3": "^2.11.5",

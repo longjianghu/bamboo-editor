@@ -66,5 +66,5 @@ function unwrapElement(element: Element) {
 }
 
 function isBlockLikeTag(tag: string) {
-  return ['p', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'pre', 'img', 'hr'].includes(tag)
+  return ['p', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'pre', 'img', 'video', 'hr'].includes(tag)
 }

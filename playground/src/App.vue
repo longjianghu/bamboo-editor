@@ -16,7 +16,7 @@
     <section class="playground__grid">
       <article class="panel">
         <h2>Editor</h2>
-        <BambooEditor v-model="html" :device="device" :upload-handler="uploadHandler" :color-palette="colorPalette" :max-length="maxLength" />
+        <BambooEditor v-model="html" :device="device" :upload-handler="uploadHandler" :color-palette="colorPalette" :max-length="maxLength" :video-options="videoOptions" />
       </article>
 
       <article class="panel panel--code">
@@ -39,6 +39,7 @@ import '@bamboo-editor/styles/bamboo-content.css'
 
 const device = ref<'pc' | 'mobile'>('pc')
 const maxLength = ref<number | undefined>(500)
+const videoOptions = { maxSize: 30 }
 const html = ref(`
 <h1>Bamboo Editor</h1>
 <p><strong>纯净 HTML</strong> 输出，适合 Web 与微信小程序展示。</p>

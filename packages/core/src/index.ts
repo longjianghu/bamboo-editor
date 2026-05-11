@@ -14,6 +14,7 @@ import { CleanCodeBlock } from './extensions/CleanCodeBlock'
 import { CleanLink } from './extensions/CleanLink'
 import { CleanTextAlign } from './extensions/CleanTextAlign'
 import { CleanColor } from './extensions/CleanColor'
+import { CleanVideo, type CleanVideoOptions } from './extensions/CleanVideo'
 import {
   countTextCharacters,
   dispatchMaxLengthFeedback,
@@ -32,6 +33,7 @@ import { validateHtml } from './sanitize/validateHtml'
 
 export interface BambooEditorOptions {
   image?: CleanImageOptions
+  video?: CleanVideoOptions
   placeholder?: string
   colorTokens?: string[]
   maxLength?: number
@@ -61,6 +63,7 @@ export function getDefaultExtensions(options: BambooEditorOptions = {}): AnyExte
     }),
     CleanHeading,
     CleanImage.configure(options.image ?? {}),
+    CleanVideo.configure(options.video ?? {}),
     CleanLink,
     CleanTextAlign,
     CleanColor.configure({
@@ -234,6 +237,7 @@ function createMaxLengthContext(options: BambooEditorOptions) {
 export {
   CleanHeading,
   CleanImage,
+  CleanVideo,
   CleanLink,
   CleanTextAlign,
   CleanColor,
@@ -250,3 +254,4 @@ export {
 
 export type { ValidationError, ValidationResult } from './sanitize/types'
 export type { MaxLengthFeedbackDetail } from './maxLength'
+export type { CleanVideoOptions, VideoAttrs } from './extensions/CleanVideo'

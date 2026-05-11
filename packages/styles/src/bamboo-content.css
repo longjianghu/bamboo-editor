@@ -102,6 +102,20 @@
   margin-right: auto;
 }
 
+/* Video styles - similar to images for consistency */
+.bamboo-content video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1em 0;
+  border-radius: 12px;
+}
+
+.bamboo-content video[data-align='center'] {
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .bamboo-content span[data-color='primary'] {
   color: #18181b;
 }
