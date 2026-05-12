@@ -36,10 +36,11 @@ Markdown 适合文档类内容，但在图片、引用、代码块、跨端渲�
 - 支持标题、正文、加粗、斜体、删除线、行内代码
 - 支持无序列表、有序列表、引用、代码块、分割线
 - 支持链接新增 / 编辑 / 移除
-- 支持本地图片上传与远程图片插入
+- 支持本地图片、视频、音频上传与远程媒体插入
 - 支持受控颜色 token 与自定义调色板
 - 支持粘贴 HTML 清洗、输出 sanitize、结果 validate
 - 支持可选 `maxLength` 字符限制、粘贴截断、IME 兼容与双端计数反馈
+- 支持编辑器高度自适应（`height="auto"`）与容器宽度自动感应模式（`device="auto"`）
 - 展示端仅依赖 CSS，不依赖编辑器运行时
 - 小程序优先适配 `mp-html`，`rich-text` 作为兼容补充
 
@@ -188,15 +189,17 @@ playground 当前包含：
 ### BambooEditor Props
 
 - `modelValue: string`：当前 HTML 内容
-- `device?: 'pc' | 'mobile' | 'auto'`：编辑器模式，默认 `auto`
+- `device?: 'pc' | 'mobile' | 'auto'`：编辑器模式，默认 `auto`。在 `auto` 模式下，编辑器会同时监听浏览器窗口和**自身容器宽度**（阈值 480px）来自动切换布局。
 - `placeholder?: string`：占位文案，默认 `请输入内容`
 - `disabled?: boolean`：是否禁用编辑器
-- `uploadHandler?: (file: File) => Promise<{ src: string; alt?: string; width?: number }>`：图片上传处理函数
-- `height?: string`：编辑区高度，默认 `50vh`，内容超出时编辑区内部滚动
+- `uploadHandler?: (file: File) => Promise<{ src: string; alt?: string; width?: number; poster?: string }>`：媒体文件上传处理函数
+- `height?: string`：编辑区高度，支持 `'auto'`（默认，自适应容器高度）、固定像素（如 `'500px'`）或视口单位。
 - `colorPalette?: Array<{ token: string; label: string; value: string }>`：文字颜色面板配置，默认提供 `primary / success / warning / danger / muted / purple`
 - `maxLength?: number`：可选字符数上限；达到上限后会阻止继续输入，并对粘贴内容进行截断处理
 - `editorId?: string`：草稿功能唯一标识，不传则不启用草稿自动保存
 - `draftTtl?: number`：草稿过期时间（毫秒），默认 `3 * 24 * 60 * 60 * 1000`（3 天）
+- `videoOptions?: { accept?: string; maxSize?: number }`：视频上传配置，`maxSize` 单位 MB
+- `audioOptions?: { accept?: string; maxSize?: number }`：音频上传配置，`maxSize` 单位 MB
 
 ### BambooEditor Emits
 
@@ -304,7 +307,7 @@ Bamboo Editor 保存的不是“任意 HTML”，而是一个**受控 HTML 子�
 - 样式：`strong`, `em`, `del`, `code`, `span[data-color]`
 - 链接：`a`
 - 列表：`ul`, `ol`, `li`
-- 媒体：`img`
+- 媒体：`img`, `video`, `audio`
 - 代码块：`pre`, `code`
 - 引用：`blockquote`
 - 分割线：`hr`
@@ -314,6 +317,8 @@ Bamboo Editor 保存的不是“任意 HTML”，而是一个**受控 HTML 子�
 - `a`：`href`
 - `p`, `h1`, `h2`, `h3`, `blockquote`：`data-align`（仅允许 `center` / `right`，默认左对齐不输出）
 - `img`：`src`, `alt`, `data-width`, `data-align`（仅允许 `center` / `right`，默认左对齐不输出）
+- `video`：`src`, `poster`, `controls`, `data-align`
+- `audio`：`src`, `controls`, `data-align`
 - `span`：`data-color`（仅允许配置白名单内的 token）
 
 ### 限制规则
@@ -413,7 +418,7 @@ import '@bamboo-editor/styles/src/bamboo-content.css'
 - Code block
 - Horizontal rule
 - Link
-- Image upload / remote image
+- Image / Video / Audio upload & remote media
 - `sanitizeHtml()`
 - `validateHtml()`
 - `sanitizePastedHtml()`
@@ -431,7 +436,7 @@ import '@bamboo-editor/styles/src/bamboo-content.css'
 - AI 写作
 - Markdown 双向转换
 - 任意富样式控制
-- 视频、iframe 等复杂嵌入内容
+- iframe 等复杂嵌入内容
 - 任意 HTML 导入保真
 
 ## 设计原则
