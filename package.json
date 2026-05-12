@@ -6,6 +6,15 @@
     "build": "pnpm -r build",
     "dev": "pnpm --filter @bamboo-editor/playground dev",
     "pack:check": "pnpm --dir packages/core pack && pnpm --dir packages/vue3 pack && pnpm --dir packages/styles pack",
-    "release:check": "pnpm build && pnpm pack:check"
+    "release:check": "pnpm build && pnpm pack:check",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^3.0.0",
+    "prettier": "^3.3.0",
+    "eslint": "^9.0.0"
   }
 }
