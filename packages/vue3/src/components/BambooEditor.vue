@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/vue-3'
-import type { BambooColorOption, BambooDevice, CleanAudioOptions, CleanVideoOptions, UploadHandler } from '../composables/useBambooEditor'
+import type { BambooColorOption, BambooDevice, UploadHandler } from '../composables/useBambooEditor'
+import type { CleanAudioOptions, CleanVideoOptions } from '@bamboo-editor/core'
 import { EditorContent } from '@tiptap/vue-3'
 import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue'
 import { useBambooEditor } from '../composables/useBambooEditor'
@@ -13,27 +14,6 @@ import EditorVideoDialog from './EditorVideoDialog.vue'
 import FloatingToolbarPC from './FloatingToolbarPC.vue'
 import ToolbarMobile from './ToolbarMobile.vue'
 import ToolbarPC from './ToolbarPC.vue'
-
-const props = withDefaults(defineProps<{
-  modelValue: string
-  device?: BambooDevice
-  placeholder?: string
-  disabled?: boolean
-  uploadHandler?: UploadHandler
-  height?: string
-  colorPalette?: BambooColorOption[]
-  maxLength?: number
-  editorId?: string
-  draftTtl?: number
-  videoOptions?: CleanVideoOptions
-  audioOptions?: CleanAudioOptions
-}>(), {
-  device: 'auto',
-  placeholder: '请输入内容',
-  disabled: false,
-  height: 'auto',
-  draftTtl: DRAFT_DEFAULT_TTL,
-})
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -56,6 +36,27 @@ const WORD_COUNT_COMPACT_WIDTH = 400
 const WORD_COUNT_SCROLLBAR_GAP = 20
 const DRAFT_DEBOUNCE_MS = 1000
 const DRAFT_DEFAULT_TTL = 3 * 24 * 60 * 60 * 1000
+
+const props = withDefaults(defineProps<{
+  modelValue: string
+  device?: BambooDevice
+  placeholder?: string
+  disabled?: boolean
+  uploadHandler?: UploadHandler
+  height?: string
+  colorPalette?: BambooColorOption[]
+  maxLength?: number
+  editorId?: string
+  draftTtl?: number
+  videoOptions?: CleanVideoOptions
+  audioOptions?: CleanAudioOptions
+}>(), {
+  device: 'auto',
+  placeholder: '请输入内容',
+  disabled: false,
+  height: 'auto',
+  draftTtl: DRAFT_DEFAULT_TTL,
+})
 
 interface WordCountState {
   totalCharacters: number

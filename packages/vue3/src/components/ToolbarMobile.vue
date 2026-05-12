@@ -52,13 +52,13 @@ interface DropdownPlacement {
 
 type MenuKind = 'list' | 'media'
 
-type ToolbarEmitAction = 'clearFormatting' | 'insertHorizontalRule'
-
 const OPEN_DELAY_MS = 100
 const CLOSE_ANIMATION_MS = 200
 
 function _emitAndClosePanel(event: 'openImageDialog' | 'openVideoDialog' | 'openAudioDialog') {
-  emit(event)
+  // 使用 any 转换因为 Tiptap 命令类型限制
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  emit(event as any)
   closePlusPanel()
 }
 
@@ -175,10 +175,10 @@ function selectMedia(option: MediaOption) {
   closeMenus()
 }
 
-function _emitActionAndClosePanel(action: ToolbarEmitAction) {
+function _emitActionAndClosePanel(action: 'clearFormatting' | 'insertHorizontalRule') {
   if (props.disabled)
     return
-  if (action === 'clear-formatting') {
+  if (action === 'clearFormatting') {
     emit('clearFormatting')
   }
   else {
