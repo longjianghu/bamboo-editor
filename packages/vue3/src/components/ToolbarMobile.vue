@@ -56,8 +56,6 @@ const OPEN_DELAY_MS = 100
 const CLOSE_ANIMATION_MS = 200
 
 function _emitAndClosePanel(event: 'openImageDialog' | 'openVideoDialog' | 'openAudioDialog') {
-  // 使用 any 转换因为 Tiptap 命令类型限制
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   emit(event as any)
   closePlusPanel()
 }

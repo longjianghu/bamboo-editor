@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import type { CleanAudioOptions, CleanVideoOptions } from '@bamboo-editor/core'
 import type { Editor } from '@tiptap/vue-3'
 import type { BambooColorOption, BambooDevice, UploadHandler } from '../composables/useBambooEditor'
-import type { CleanAudioOptions, CleanVideoOptions } from '@bamboo-editor/core'
 import { EditorContent } from '@tiptap/vue-3'
 import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue'
 import { useBambooEditor } from '../composables/useBambooEditor'
@@ -202,7 +202,7 @@ const surfaceStyle = computed(() => {
   }
 })
 
-const { editor, resolvedDevice, currentLength, maxLength, remainingLength, usageRatio, isNearLimit, isAtLimit, maxLengthFeedback, insertImage, setLink, unsetLink, insertRemoteImage, insertVideo, insertRemoteVideo, insertAudio, insertRemoteAudio, undo, redo, insertHorizontalRule, clearFormatting } = useBambooEditor({
+const { editor, resolvedDevice, currentLength, maxLength, remainingLength: _remainingLength, usageRatio, isNearLimit, isAtLimit, maxLengthFeedback, insertImage: _insertImage, setLink, unsetLink, insertRemoteImage: _insertRemoteImage, insertVideo, insertRemoteVideo, insertAudio: _insertAudio, insertRemoteAudio: _insertRemoteAudio, undo, redo, insertHorizontalRule, clearFormatting } = useBambooEditor({
   modelValue: toRef(props, 'modelValue'),
   device: toRef(props, 'device'),
   placeholder: toRef(props, 'placeholder'),
@@ -551,7 +551,7 @@ function handleVideoDialogConfirm(data: { src: string, poster?: string, width?: 
   else {
     // Insert new video
     instance.commands.command(({ tr }: { tr: any }) => {
-      const { from } = instance.state.selection
+      const { from: _from } = instance.state.selection
       const videoNode = instance.schema.nodes.video.create({
         'src': data.src,
         'poster': data.poster,
@@ -997,7 +997,7 @@ watch(editor, (instance) => {
   }
 }, { once: true })
 
-function handleVideoSelect(file: File, poster?: string) {
+function _handleVideoSelect(file: File, poster?: string) {
   return insertVideo(file, poster)
 }
 
@@ -1013,7 +1013,7 @@ function handleOpenVideoDialog() {
   videoDialogVisible.value = true
 }
 
-function handleOpenRemoteVideoDialog(payload?: { initialValue?: string }) {
+function _handleOpenRemoteVideoDialog(payload?: { initialValue?: string }) {
   if (props.disabled) {
     return
   }

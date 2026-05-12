@@ -35,6 +35,12 @@ export default antfu(
           math: 'always',
         },
       ],
+      // Vue SFC 中 defineProps 之前有 import/type 是正常的
+      'vue/define-macros-order': 'off',
+      // Vue SFC <script setup> 中变量声明顺序由编译器处理
+      'ts/no-use-before-define': 'off',
+      // 允许在扩展的 Tiptap 命令中使用 as any
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 )
