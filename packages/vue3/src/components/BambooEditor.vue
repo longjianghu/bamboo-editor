@@ -383,7 +383,6 @@ const surfaceStyle = computed(() => {
     return {
       flex: 1,
       height: 'auto',
-      minHeight: 0,
     }
   }
 
