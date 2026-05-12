@@ -14,9 +14,15 @@
   line-height: 1.35;
 }
 
-.bamboo-content h1 { font-size: 44rpx; }
-.bamboo-content h2 { font-size: 38rpx; }
-.bamboo-content h3 { font-size: 34rpx; }
+.bamboo-content h1 {
+  font-size: 44rpx;
+}
+.bamboo-content h2 {
+  font-size: 38rpx;
+}
+.bamboo-content h3 {
+  font-size: 34rpx;
+}
 
 .bamboo-content p,
 .bamboo-content ul,

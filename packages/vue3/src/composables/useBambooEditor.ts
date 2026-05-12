@@ -1,20 +1,15 @@
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, toValue, watch, type MaybeRefOrGetter } from 'vue'
+import {
+  type CleanAudioOptions,
+  type CleanVideoOptions,
+  createBambooEditorOptions,
+  MAX_LENGTH_FEEDBACK_EVENT,
+  type MaxLengthFeedbackDetail,
+  sanitizeHtml,
+} from '@bamboo-editor/core'
 import { Editor } from '@tiptap/vue-3'
-import { createBambooEditorOptions, MAX_LENGTH_FEEDBACK_EVENT, sanitizeHtml, type MaxLengthFeedbackDetail } from '@bamboo-editor/core'
+import { computed, type MaybeRefOrGetter, onBeforeUnmount, onMounted, ref, shallowRef, toValue, watch } from 'vue'
 
 export type BambooDevice = 'pc' | 'mobile' | 'auto'
-
-// 视频配置类型
-export interface CleanVideoOptions {
-  accept?: string
-  maxSize?: number // MB
-}
-
-// 音频配置类型
-export interface CleanAudioOptions {
-  accept?: string
-  maxSize?: number // MB
-}
 
 export interface BambooColorOption {
   token: string
@@ -44,7 +39,7 @@ export interface UseBambooEditorOptions {
   audio?: MaybeRefOrGetter<CleanAudioOptions | undefined>
   containerWidth?: MaybeRefOrGetter<number | undefined>
   onUpdate?: (html: string) => void
-  onUploadError?: (error: { type: 'size' | 'type'; message: string; file: File }) => void
+  onUploadError?: (error: { type: 'size' | 'type', message: string, file: File }) => void
 }
 
 export function useBambooEditor(options: UseBambooEditorOptions) {
@@ -80,9 +75,13 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
 
   const currentLength = computed(() => editor.value?.storage.characterCount?.characters?.() ?? 0)
   const resolvedMaxLength = computed(() => toValue(options.maxLength))
-  const remainingLength = computed(() => resolvedMaxLength.value == null ? undefined : Math.max(0, resolvedMaxLength.value - currentLength.value))
-  const usageRatio = computed(() => resolvedMaxLength.value ? currentLength.value / resolvedMaxLength.value : 0)
-  const isNearLimit = computed(() => resolvedMaxLength.value != null && currentLength.value >= resolvedMaxLength.value * 0.9)
+  const remainingLength = computed(() =>
+    resolvedMaxLength.value == null ? undefined : Math.max(0, resolvedMaxLength.value - currentLength.value),
+  )
+  const usageRatio = computed(() => (resolvedMaxLength.value ? currentLength.value / resolvedMaxLength.value : 0))
+  const isNearLimit = computed(
+    () => resolvedMaxLength.value != null && currentLength.value >= resolvedMaxLength.value * 0.9,
+  )
   const isAtLimit = computed(() => resolvedMaxLength.value != null && currentLength.value >= resolvedMaxLength.value)
 
   const cleanupEditor = () => {
@@ -154,7 +153,9 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
   watch(
     () => toValue(options.maxLength),
     (value) => {
-      const currentContent = editor.value ? sanitizeHtml(editor.value.getHTML(), sanitizeOptions()) : sanitizeHtml(toValue(options.modelValue) ?? '', sanitizeOptions())
+      const currentContent = editor.value
+        ? sanitizeHtml(editor.value.getHTML(), sanitizeOptions())
+        : sanitizeHtml(toValue(options.modelValue) ?? '', sanitizeOptions())
       mountEditor(currentContent)
 
       if (value == null) {
@@ -180,27 +181,42 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
     const localId = `${Date.now()}-${Math.random().toString(36).slice(2)}`
     const previewUrl = await readAsDataUrl(file)
 
-    ;(instance.chain().focus() as any).setImage({
-      src: previewUrl,
-      alt: file.name,
-      'data-local-id': localId,
-      'data-uploading': 'true',
-    }).run()
+    instance
+      .chain()
+      .focus()
+      .setCleanImage({
+        'src': previewUrl,
+        'alt': file.name,
+        'data-local-id': localId,
+        'data-uploading': 'true',
+      })
+      .run()
 
     try {
       const uploaded = await uploadHandler(file)
-      updateImageByLocalId(instance, localId, {
-        src: uploaded.src,
-        alt: uploaded.alt ?? file.name,
-        'data-width': uploaded.width ? String(uploaded.width) : null,
-        'data-uploading': null,
-        'data-local-id': null,
-      })
-    } catch (error) {
-      updateImageByLocalId(instance, localId, {
-        'data-uploading': null,
-        'data-local-id': null,
-      })
+      updateNodeByLocalId(
+        instance,
+        localId,
+        {
+          'src': uploaded.src,
+          'alt': uploaded.alt ?? file.name,
+          'data-width': uploaded.width ? String(uploaded.width) : null,
+          'data-uploading': null,
+          'data-local-id': null,
+        },
+        'image',
+      )
+    }
+    catch (error) {
+      updateNodeByLocalId(
+        instance,
+        localId,
+        {
+          'data-uploading': null,
+          'data-local-id': null,
+        },
+        'image',
+      )
       if (onUploadError && error instanceof Error) {
         onUploadError({ type: 'size', message: error.message, file })
       }
@@ -233,7 +249,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
       return false
     }
 
-    return (instance.chain().focus() as any).setImage({ src }).run()
+    return instance.chain().focus().setCleanImage({ src }).run()
   }
 
   function undo() {
@@ -242,7 +258,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
       return false
     }
 
-    return (instance.chain().focus() as any).undo().run()
+    return (instance.chain().focus() as unknown as { undo: () => { run: () => boolean } }).undo().run()
   }
 
   function redo() {
@@ -251,7 +267,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
       return false
     }
 
-    return (instance.chain().focus() as any).redo().run()
+    return (instance.chain().focus() as unknown as { redo: () => { run: () => boolean } }).redo().run()
   }
 
   async function insertVideo(file: File, poster?: string) {
@@ -291,28 +307,43 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
     const previewUrl = await readAsDataUrl(file)
     const dimensions = await getVideoDimensions(file).catch(() => ({ width: 0, height: 0 }))
 
-    ;(instance.chain().focus() as any).setVideo({
-      src: previewUrl,
-      poster,
-      'data-local-id': localId,
-      'data-uploading': 'true',
-      'data-width': dimensions.width > 0 ? String(dimensions.width) : null,
-    }).run()
+    instance
+      .chain()
+      .focus()
+      .setCleanVideo({
+        'src': previewUrl,
+        poster,
+        'data-local-id': localId,
+        'data-uploading': 'true',
+        'data-width': dimensions.width > 0 ? String(dimensions.width) : null,
+      })
+      .run()
 
     try {
       const uploaded = await uploadHandler(file)
-      updateVideoByLocalId(instance, localId, {
-        src: uploaded.src,
-        poster: poster ?? uploaded.poster ?? null,
-        'data-width': dimensions.width > 0 ? String(dimensions.width) : null,
-        'data-uploading': null,
-        'data-local-id': null,
-      })
-    } catch (error) {
-      updateVideoByLocalId(instance, localId, {
-        'data-uploading': null,
-        'data-local-id': null,
-      })
+      updateNodeByLocalId(
+        instance,
+        localId,
+        {
+          'src': uploaded.src,
+          'poster': poster ?? uploaded.poster ?? null,
+          'data-width': dimensions.width > 0 ? String(dimensions.width) : null,
+          'data-uploading': null,
+          'data-local-id': null,
+        },
+        'video',
+      )
+    }
+    catch (error) {
+      updateNodeByLocalId(
+        instance,
+        localId,
+        {
+          'data-uploading': null,
+          'data-local-id': null,
+        },
+        'video',
+      )
       if (onUploadError && error instanceof Error) {
         onUploadError({ type: 'size', message: error.message, file })
       }
@@ -326,7 +357,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
       return false
     }
 
-    return (instance.chain().focus() as any).setVideo({ src, poster }).run()
+    return instance.chain().focus().setCleanVideo({ src, poster }).run()
   }
 
   function insertHorizontalRule() {
@@ -335,7 +366,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
       return false
     }
 
-    return (instance.chain().focus() as any).setHorizontalRule().run()
+    return instance.chain().focus().insertContent({ type: 'horizontalRule' }).run()
   }
 
   function clearFormatting() {
@@ -361,7 +392,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
     if (!handler) {
       editor.value?.commands.insertContent({
         type: 'audio',
-        attrs: { src: URL.createObjectURL(file) }
+        attrs: { src: URL.createObjectURL(file) },
       })
       return
     }
@@ -377,9 +408,10 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
       const result = await handler(file)
       editor.value?.commands.insertContent({
         type: 'audio',
-        attrs: { src: result.src }
+        attrs: { src: result.src },
       })
-    } catch (error) {
+    }
+    catch {
       options.onUploadError?.({ type: 'type', message: '音频上传失败', file })
     }
   }
@@ -387,7 +419,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
   const insertRemoteAudio = (url: string, align?: 'left' | 'center' | 'right') => {
     editor.value?.commands.insertContent({
       type: 'audio',
-      attrs: { src: url, 'data-align': align || 'left' }
+      attrs: { 'src': url, 'data-align': align || 'left' },
     })
   }
 
@@ -417,7 +449,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
 }
 
 function resolveColorTokens(colorPalette?: readonly BambooColorOption[]) {
-  return colorPalette?.map((item) => item.token).filter(Boolean)
+  return colorPalette?.map(item => item.token).filter(Boolean)
 }
 
 function readAsDataUrl(file: File) {
@@ -429,7 +461,7 @@ function readAsDataUrl(file: File) {
   })
 }
 
-function getVideoDimensions(file: File): Promise<{ width: number; height: number }> {
+function getVideoDimensions(file: File): Promise<{ width: number, height: number }> {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video')
     video.preload = 'metadata'
@@ -451,54 +483,22 @@ function getVideoDimensions(file: File): Promise<{ width: number; height: number
   })
 }
 
-function updateImageByLocalId(editor: Editor, localId: string, attrs: Record<string, string | null>) {
-  let imagePosition: number | null = null
+function updateNodeByLocalId(editor: Editor, localId: string, attrs: Record<string, string | null>, nodeType: string) {
+  let position: number | null = null
 
   editor.state.doc.descendants((node, pos) => {
-    if (node.type.name === 'image' && node.attrs['data-local-id'] === localId) {
-      imagePosition = pos
+    if (node.type.name === nodeType && node.attrs['data-local-id'] === localId) {
+      position = pos
       return false
     }
 
     return true
   })
 
-  if (imagePosition == null) {
+  if (position == null) {
     return
   }
 
-  const position = imagePosition
-  const node = editor.state.doc.nodeAt(position)
-  if (!node) {
-    return
-  }
-
-  editor.commands.command(({ tr }: { tr: any }) => {
-    tr.setNodeMarkup(position, undefined, {
-      ...node.attrs,
-      ...attrs,
-    })
-    return true
-  })
-}
-
-function updateVideoByLocalId(editor: Editor, localId: string, attrs: Record<string, string | null>) {
-  let videoPosition: number | null = null
-
-  editor.state.doc.descendants((node, pos) => {
-    if (node.type.name === 'video' && node.attrs['data-local-id'] === localId) {
-      videoPosition = pos
-      return false
-    }
-
-    return true
-  })
-
-  if (videoPosition == null) {
-    return
-  }
-
-  const position = videoPosition
   const node = editor.state.doc.nodeAt(position)
   if (!node) {
     return
@@ -519,7 +519,13 @@ function normalizeUrl(rawUrl: string) {
     return null
   }
 
-  if (/^https?:\/\//i.test(value) || /^mailto:/i.test(value) || /^tel:/i.test(value) || /^data:(image|video)\//i.test(value) || /^blob:/i.test(value)) {
+  if (
+    /^https?:\/\//i.test(value)
+    || /^mailto:/i.test(value)
+    || /^tel:/i.test(value)
+    || /^data:(?:image|video)\//i.test(value)
+    || /^blob:/i.test(value)
+  ) {
     return value
   }
 

@@ -1,68 +1,5 @@
-<template>
-  <div
-    v-if="isRendered"
-    class="editor-url-dialog"
-    :class="[
-      `editor-url-dialog--${device}`,
-      { 'is-open': isOpen },
-    ]"
-  >
-    <div class="editor-url-dialog__backdrop" @click="emit('cancel')"></div>
-
-    <div class="editor-url-dialog__wrap">
-      <form class="editor-url-dialog__panel" @submit.prevent="handleConfirm">
-        <div class="editor-url-dialog__header">
-          <h3 class="editor-url-dialog__title">{{ title }}</h3>
-        </div>
-
-        <div class="editor-url-dialog__body">
-          <input
-            ref="inputRef"
-            v-model="inputValue"
-            class="editor-url-dialog__input"
-            type="url"
-            :placeholder="placeholder"
-            autocomplete="off"
-            spellcheck="false"
-          >
-        </div>
-
-        <div class="editor-url-dialog__footer">
-          <button type="button" class="editor-url-dialog__button" @click="emit('cancel')">
-            取消
-          </button>
-          <button
-            v-if="allowRemove"
-            type="button"
-            class="editor-url-dialog__button editor-url-dialog__button--danger"
-            @click="emit('remove')"
-          >
-            移除链接
-          </button>
-          <button
-            type="submit"
-            class="editor-url-dialog__button editor-url-dialog__button--primary"
-            :disabled="isConfirmDisabled"
-          >
-            {{ confirmLabel }}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-
-declare const window: Window & typeof globalThis
-
-type DialogType = 'link' | 'remote-video'
-type DialogMode = 'create' | 'edit'
-type Device = 'pc' | 'mobile'
-
-const OPEN_DELAY_MS = 16
-const CLOSE_ANIMATION_MS = 220
 
 const props = defineProps<{
   visible: boolean
@@ -78,6 +15,15 @@ const emit = defineEmits<{
   remove: []
   cancel: []
 }>()
+
+declare const window: Window & typeof globalThis
+
+type DialogType = 'link' | 'remote-video'
+type DialogMode = 'create' | 'edit'
+type Device = 'pc' | 'mobile'
+
+const OPEN_DELAY_MS = 16
+const CLOSE_ANIMATION_MS = 220
 
 const inputRef = ref<HTMLInputElement | null>(null)
 const inputValue = ref('')
@@ -142,10 +88,13 @@ function openDialog() {
 function closeDialog() {
   clearTimers()
   isOpen.value = false
-  closeTimer = window.setTimeout(() => {
-    isRendered.value = false
-    closeTimer = null
-  }, props.device === 'mobile' ? CLOSE_ANIMATION_MS : 120)
+  closeTimer = window.setTimeout(
+    () => {
+      isRendered.value = false
+      closeTimer = null
+    },
+    props.device === 'mobile' ? CLOSE_ANIMATION_MS : 120,
+  )
 }
 
 function handleConfirm() {
@@ -186,6 +135,55 @@ onBeforeUnmount(() => {
   clearTimers()
 })
 </script>
+
+<template>
+  <div v-if="isRendered" class="editor-url-dialog" :class="[`editor-url-dialog--${device}`, { 'is-open': isOpen }]">
+    <div class="editor-url-dialog__backdrop" @click="emit('cancel')"></div>
+
+    <div class="editor-url-dialog__wrap">
+      <form class="editor-url-dialog__panel" @submit.prevent="handleConfirm">
+        <div class="editor-url-dialog__header">
+          <h3 class="editor-url-dialog__title">
+            {{ title }}
+          </h3>
+        </div>
+
+        <div class="editor-url-dialog__body">
+          <input
+            ref="inputRef"
+            v-model="inputValue"
+            class="editor-url-dialog__input"
+            type="url"
+            :placeholder="placeholder"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+
+        <div class="editor-url-dialog__footer">
+          <button type="button" class="editor-url-dialog__button" @click="emit('cancel')">
+            取消
+          </button>
+          <button
+            v-if="allowRemove"
+            type="button"
+            class="editor-url-dialog__button editor-url-dialog__button--danger"
+            @click="emit('remove')"
+          >
+            移除链接
+          </button>
+          <button
+            type="submit"
+            class="editor-url-dialog__button editor-url-dialog__button--primary"
+            :disabled="isConfirmDisabled"
+          >
+            {{ confirmLabel }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</template>
 
 <style scoped>
 .editor-url-dialog {
@@ -240,7 +238,9 @@ onBeforeUnmount(() => {
   box-shadow: 0 20px 48px rgba(15, 23, 42, 0.18);
   opacity: 0;
   transform: translateY(8px) scale(0.98);
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
 }
 
 .editor-url-dialog--pc.is-open .editor-url-dialog__panel {
@@ -256,7 +256,9 @@ onBeforeUnmount(() => {
   box-shadow: none;
   transform: translateY(100%);
   opacity: 0;
-  transition: transform 300ms cubic-bezier(0.25, 0.8, 0.25, 1), opacity 300ms cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition:
+    transform 300ms cubic-bezier(0.25, 0.8, 0.25, 1),
+    opacity 300ms cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .editor-url-dialog--mobile.is-open .editor-url-dialog__panel {

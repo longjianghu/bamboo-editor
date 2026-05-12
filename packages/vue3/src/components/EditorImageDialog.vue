@@ -1,25 +1,244 @@
+<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import ToolbarIcon from './ToolbarIcon.vue'
+
+const props = defineProps<{
+  visible: boolean
+  device: Device
+  mode: DialogMode
+  initialData?: ImageDialogData
+  uploadHandler?: (file: File) => Promise<{ src: string, width?: number, height?: number }>
+}>()
+
+const emit = defineEmits<{
+  confirm: [data: ImageDialogData]
+  remove: []
+  cancel: []
+}>()
+
+declare const window: Window & typeof globalThis
+
+type DialogMode = 'create' | 'edit'
+type Device = 'pc' | 'mobile'
+
+interface ImageDialogData {
+  src: string
+  alt?: string
+  width?: number
+  height?: number
+  align?: 'left' | 'center' | 'right'
+}
+
+const OPEN_DELAY_MS = 16
+const CLOSE_ANIMATION_MS = 220
+
+const imageFileRef = ref<HTMLInputElement | null>(null)
+
+const inputImageUrl = ref('')
+const inputAlt = ref('')
+const inputWidth = ref('')
+const inputHeight = ref('')
+const inputAlign = ref<'left' | 'center' | 'right'>('left')
+
+const isUploading = ref(false)
+const isRendered = ref(props.visible)
+const isOpen = ref(false)
+
+let openTimer: number | null = null
+let closeTimer: number | null = null
+
+const title = computed(() => (props.mode === 'edit' ? '编辑图片' : '插入图片'))
+const confirmLabel = computed(() => (props.mode === 'edit' ? '保存' : '插入'))
+const hasImage = computed(() => !!inputImageUrl.value.trim())
+const isConfirmDisabled = computed(() => !hasImage.value)
+
+function clearTimers() {
+  if (openTimer !== null) {
+    window.clearTimeout(openTimer)
+    openTimer = null
+  }
+
+  if (closeTimer !== null) {
+    window.clearTimeout(closeTimer)
+    closeTimer = null
+  }
+}
+
+function focusInput() {
+  nextTick(() => {
+    imageFileRef.value?.parentElement?.querySelector('input')?.focus()
+  })
+}
+
+function openDialog() {
+  clearTimers()
+  inputImageUrl.value = props.initialData?.src ?? ''
+  inputAlt.value = props.initialData?.alt ?? ''
+  inputWidth.value = props.initialData?.width?.toString() ?? ''
+  inputHeight.value = props.initialData?.height?.toString() ?? ''
+  inputAlign.value = props.initialData?.align ?? 'left'
+  isRendered.value = true
+  openTimer = window.setTimeout(() => {
+    isOpen.value = true
+    openTimer = null
+    focusInput()
+  }, OPEN_DELAY_MS)
+}
+
+function closeDialog() {
+  clearTimers()
+  isOpen.value = false
+  closeTimer = window.setTimeout(
+    () => {
+      isRendered.value = false
+      closeTimer = null
+    },
+    props.device === 'mobile' ? CLOSE_ANIMATION_MS : 120,
+  )
+}
+
+function handleConfirm() {
+  const value = inputImageUrl.value.trim()
+  if (!value) {
+    return
+  }
+
+  emit('confirm', {
+    src: value,
+    alt: inputAlt.value.trim() || undefined,
+    width: inputWidth.value ? Number(inputWidth.value) : undefined,
+    height: inputHeight.value ? Number(inputHeight.value) : undefined,
+    align: inputAlign.value,
+  })
+}
+
+function triggerImageUpload() {
+  imageFileRef.value?.click()
+}
+
+async function handleImageFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) {
+    return
+  }
+
+  isUploading.value = true
+  try {
+    // Get dimensions from local file first
+    const dimensions = await getImageDimensionsFromFile(file).catch(() => ({ width: 0, height: 0 }))
+
+    if (dimensions.width > 0) {
+      inputWidth.value = dimensions.width.toString()
+    }
+    if (dimensions.height > 0) {
+      inputHeight.value = dimensions.height.toString()
+    }
+
+    if (props.uploadHandler) {
+      const result = await props.uploadHandler(file)
+      inputImageUrl.value = result.src
+      // If handler provides dimensions, they take precedence
+      if (result.width != null) {
+        inputWidth.value = result.width.toString()
+      }
+      if (result.height != null) {
+        inputHeight.value = result.height.toString()
+      }
+    }
+    else {
+      // No upload handler, use local preview
+      inputImageUrl.value = await readAsDataUrl(file)
+    }
+  }
+  catch (error) {
+    console.warn('[EditorImageDialog] image upload failed:', error)
+  }
+  finally {
+    isUploading.value = false
+    target.value = ''
+  }
+}
+
+function getImageDimensionsFromFile(file: File): Promise<{ width: number, height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      resolve({
+        width: img.naturalWidth || img.width,
+        height: img.naturalHeight || img.height,
+      })
+      URL.revokeObjectURL(img.src)
+    }
+    img.onerror = () => {
+      reject(new Error('Failed to load image'))
+      URL.revokeObjectURL(img.src)
+    }
+    img.src = URL.createObjectURL(file)
+  })
+}
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
+
+watch(
+  () => props.visible,
+  (val) => {
+    if (val) {
+      openDialog()
+    }
+    else {
+      closeDialog()
+    }
+  },
+)
+
+watch(
+  () => props.initialData,
+  (value) => {
+    if (props.visible && value) {
+      inputImageUrl.value = value.src ?? ''
+      inputAlt.value = value.alt ?? ''
+      inputWidth.value = value.width?.toString() ?? ''
+      inputHeight.value = value.height?.toString() ?? ''
+      inputAlign.value = value.align ?? 'left'
+    }
+  },
+  { deep: true },
+)
+
+onBeforeUnmount(() => {
+  clearTimers()
+})
+</script>
+
 <template>
-  <div
-    v-if="isRendered"
-    class="editor-image-dialog"
-    :class="[
-      `editor-image-dialog--${device}`,
-      { 'is-open': isOpen },
-    ]"
-  >
+  <div v-if="isRendered" class="editor-image-dialog" :class="[`editor-image-dialog--${device}`, { 'is-open': isOpen }]">
     <div class="editor-image-dialog__backdrop" @click="emit('cancel')"></div>
 
     <div class="editor-image-dialog__wrap">
       <form class="editor-image-dialog__panel" @submit.prevent>
         <div class="editor-image-dialog__header">
-          <h3 class="editor-image-dialog__title">{{ title }}</h3>
-          <button
-            type="button"
-            class="editor-image-dialog__close"
-            title="关闭"
-            @click="emit('cancel')"
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <h3 class="editor-image-dialog__title">
+            {{ title }}
+          </h3>
+          <button type="button" class="editor-image-dialog__close" title="关闭" @click="emit('cancel')">
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
@@ -37,22 +256,26 @@
                   placeholder="请输入图片地址"
                   autocomplete="off"
                   spellcheck="false"
-                >
+                />
                 <input
                   ref="imageFileRef"
                   type="file"
                   accept="image/*"
                   class="editor-image-dialog__file-input"
                   @change="handleImageFileChange"
-                >
+                />
                 <button
                   type="button"
                   class="editor-image-dialog__upload-btn"
                   :disabled="isUploading"
                   @click="triggerImageUpload"
                 >
-                  <template v-if="isUploading">上传中...</template>
-                  <template v-else>选择文件</template>
+                  <template v-if="isUploading">
+                    上传中...
+                  </template>
+                  <template v-else>
+                    选择文件
+                  </template>
                 </button>
               </div>
             </div>
@@ -68,7 +291,7 @@
                 placeholder="请输入图片描述（可选）"
                 autocomplete="off"
                 spellcheck="false"
-              >
+              />
             </div>
           </div>
 
@@ -84,9 +307,11 @@
                     type="number"
                     placeholder="auto"
                     min="0"
-                  >
+                  />
                 </div>
-                <div class="editor-image-dialog__size-divider">×</div>
+                <div class="editor-image-dialog__size-divider">
+                  ×
+                </div>
                 <div class="editor-image-dialog__size-item">
                   <span class="editor-image-dialog__size-label">高</span>
                   <input
@@ -95,7 +320,7 @@
                     type="number"
                     placeholder="auto"
                     min="0"
-                  >
+                  />
                 </div>
               </div>
             </div>
@@ -160,212 +385,6 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import ToolbarIcon from './ToolbarIcon.vue'
-
-declare const window: Window & typeof globalThis
-
-type DialogMode = 'create' | 'edit'
-type Device = 'pc' | 'mobile'
-
-interface ImageDialogData {
-  src: string
-  alt?: string
-  width?: number
-  height?: number
-  align?: 'left' | 'center' | 'right'
-}
-
-const OPEN_DELAY_MS = 16
-const CLOSE_ANIMATION_MS = 220
-
-const props = defineProps<{
-  visible: boolean
-  device: Device
-  mode: DialogMode
-  initialData?: ImageDialogData
-  uploadHandler?: (file: File) => Promise<{ src: string; width?: number; height?: number }>
-}>()
-
-const emit = defineEmits<{
-  confirm: [data: ImageDialogData]
-  remove: []
-  cancel: []
-}>()
-
-const imageFileRef = ref<HTMLInputElement | null>(null)
-
-const inputImageUrl = ref('')
-const inputAlt = ref('')
-const inputWidth = ref('')
-const inputHeight = ref('')
-const inputAlign = ref<'left' | 'center' | 'right'>('left')
-
-const isUploading = ref(false)
-const isRendered = ref(props.visible)
-const isOpen = ref(false)
-
-let openTimer: number | null = null
-let closeTimer: number | null = null
-
-const title = computed(() => props.mode === 'edit' ? '编辑图片' : '插入图片')
-const confirmLabel = computed(() => props.mode === 'edit' ? '保存' : '插入')
-const hasImage = computed(() => !!inputImageUrl.value.trim())
-const isConfirmDisabled = computed(() => !hasImage.value)
-
-function clearTimers() {
-  if (openTimer !== null) {
-    window.clearTimeout(openTimer)
-    openTimer = null
-  }
-
-  if (closeTimer !== null) {
-    window.clearTimeout(closeTimer)
-    closeTimer = null
-  }
-}
-
-function focusInput() {
-  nextTick(() => {
-    imageFileRef.value?.parentElement?.querySelector('input')?.focus()
-  })
-}
-
-function openDialog() {
-  clearTimers()
-  inputImageUrl.value = props.initialData?.src ?? ''
-  inputAlt.value = props.initialData?.alt ?? ''
-  inputWidth.value = props.initialData?.width?.toString() ?? ''
-  inputHeight.value = props.initialData?.height?.toString() ?? ''
-  inputAlign.value = props.initialData?.align ?? 'left'
-  isRendered.value = true
-  openTimer = window.setTimeout(() => {
-    isOpen.value = true
-    openTimer = null
-    focusInput()
-  }, OPEN_DELAY_MS)
-}
-
-function closeDialog() {
-  clearTimers()
-  isOpen.value = false
-  closeTimer = window.setTimeout(() => {
-    isRendered.value = false
-    closeTimer = null
-  }, props.device === 'mobile' ? CLOSE_ANIMATION_MS : 120)
-}
-
-function handleConfirm() {
-  const value = inputImageUrl.value.trim()
-  if (!value) {
-    return
-  }
-
-  emit('confirm', {
-    src: value,
-    alt: inputAlt.value.trim() || undefined,
-    width: inputWidth.value ? Number(inputWidth.value) : undefined,
-    height: inputHeight.value ? Number(inputHeight.value) : undefined,
-    align: inputAlign.value,
-  })
-}
-
-function triggerImageUpload() {
-  imageFileRef.value?.click()
-}
-
-async function handleImageFileChange(event: Event) {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) {
-    return
-  }
-
-  isUploading.value = true
-  try {
-    // Get dimensions from local file first
-    const dimensions = await getImageDimensionsFromFile(file).catch(() => ({ width: 0, height: 0 }))
-    
-    if (dimensions.width > 0) {
-      inputWidth.value = dimensions.width.toString()
-    }
-    if (dimensions.height > 0) {
-      inputHeight.value = dimensions.height.toString()
-    }
-
-    if (props.uploadHandler) {
-      const result = await props.uploadHandler(file)
-      inputImageUrl.value = result.src
-      // If handler provides dimensions, they take precedence
-      if (result.width != null) {
-        inputWidth.value = result.width.toString()
-      }
-      if (result.height != null) {
-        inputHeight.value = result.height.toString()
-      }
-    } else {
-      // No upload handler, use local preview
-      inputImageUrl.value = await readAsDataUrl(file)
-    }
-  } catch (error) {
-    console.warn('[EditorImageDialog] image upload failed:', error)
-  } finally {
-    isUploading.value = false
-    target.value = ''
-  }
-}
-
-function getImageDimensionsFromFile(file: File): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => {
-      resolve({ 
-        width: img.naturalWidth || img.width, 
-        height: img.naturalHeight || img.height 
-      })
-      URL.revokeObjectURL(img.src)
-    }
-    img.onerror = () => {
-      reject(new Error('Failed to load image'))
-      URL.revokeObjectURL(img.src)
-    }
-    img.src = URL.createObjectURL(file)
-  })
-}
-
-function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(reader.error)
-    reader.readAsDataURL(file)
-  })
-}
-
-watch(() => props.visible, (val) => {
-  if (val) {
-    openDialog()
-  } else {
-    closeDialog()
-  }
-})
-
-watch(() => props.initialData, (value) => {
-  if (props.visible && value) {
-    inputImageUrl.value = value.src ?? ''
-    inputAlt.value = value.alt ?? ''
-    inputWidth.value = value.width?.toString() ?? ''
-    inputHeight.value = value.height?.toString() ?? ''
-    inputAlign.value = value.align ?? 'left'
-  }
-}, { deep: true })
-
-onBeforeUnmount(() => {
-  clearTimers()
-})
-</script>
-
 <style scoped>
 .editor-image-dialog {
   z-index: 18;
@@ -421,7 +440,9 @@ onBeforeUnmount(() => {
   box-shadow: 0 20px 48px rgba(15, 23, 42, 0.18);
   opacity: 0;
   transform: translateY(8px) scale(0.98);
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
 }
 
 .editor-image-dialog--pc.is-open .editor-image-dialog__panel {
@@ -437,7 +458,9 @@ onBeforeUnmount(() => {
   box-shadow: none;
   transform: translateY(100%);
   opacity: 0;
-  transition: transform 300ms cubic-bezier(0.25, 0.8, 0.25, 1), opacity 300ms cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition:
+    transform 300ms cubic-bezier(0.25, 0.8, 0.25, 1),
+    opacity 300ms cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .editor-image-dialog--mobile.is-open .editor-image-dialog__panel {
@@ -472,7 +495,9 @@ onBeforeUnmount(() => {
   background: transparent;
   color: #a1a1aa;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s;
 }
 
 .editor-image-dialog__close:hover {

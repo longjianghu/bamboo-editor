@@ -1,139 +1,6 @@
-<template>
-  <main class="playground">
-    <header class="playground__header">
-      <div class="playground__brand">
-        <div class="playground__logo">
-          🎋
-        </div>
-        <div class="playground__title">
-          <h1>Bamboo Editor Playground</h1>
-          <p>小巧、简单的编辑器</p>
-        </div>
-      </div>
-      <div class="playground__controls">
-        <div class="playground__control-group">
-          <span class="playground__label">设备</span>
-          <div class="playground__switcher">
-            <button
-              type="button"
-              class="playground__switch"
-              :class="{ 'is-active': device === 'auto' }"
-              @click="device = 'auto'"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M12 8v4l3 3"/>
-              </svg>
-              自动
-            </button>
-            <button
-              type="button"
-              class="playground__switch"
-              :class="{ 'is-active': device === 'pc' }"
-              @click="device = 'pc'"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="2" y="3" width="20" height="14" rx="2"/>
-                <path d="M8 21h8M12 17v4"/>
-              </svg>
-              PC
-            </button>
-            <button
-              type="button"
-              class="playground__switch"
-              :class="{ 'is-active': device === 'mobile' }"
-              @click="device = 'mobile'"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="6" y="2" width="12" height="20" rx="2"/>
-                <path d="M12 18h.01"/>
-              </svg>
-              Mobile
-            </button>
-          </div>
-        </div>
-        <div class="playground__control-group">
-          <span class="playground__label">字数限制</span>
-          <div class="playground__switcher">
-            <button
-              type="button"
-              class="playground__switch"
-              :class="{ 'is-active': maxLength === undefined }"
-              @click="maxLength = undefined"
-            >
-              无限
-            </button>
-            <button
-              type="button"
-              class="playground__switch"
-              :class="{ 'is-active': maxLength === 500 }"
-              @click="maxLength = 500"
-            >
-              500
-            </button>
-          </div>
-        </div>
-      </div>
-    </header>
-
-    <section class="playground__grid">
-      <!-- Editor -->
-      <div class="editor-wrapper">
-        <BambooEditor v-model="html" height="auto" :device="device" :upload-handler="uploadHandler" :color-palette="colorPalette" :max-length="maxLength" :video-options="videoOptions" />
-      </div>
-
-      <!-- Output Panel (HTML + Preview Tabs) -->
-      <article class="panel panel--output">
-        <div class="panel__header">
-          <div class="output-tabs">
-            <button
-              type="button"
-              class="output-tab"
-              :class="{ 'is-active': activeTab === 'html' }"
-              @click="activeTab = 'html'"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="16 18 22 12 16 6"/>
-                <polyline points="8 6 2 12 8 18"/>
-              </svg>
-              HTML 代码
-            </button>
-            <button
-              type="button"
-              class="output-tab"
-              :class="{ 'is-active': activeTab === 'preview' }"
-              @click="activeTab = 'preview'"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-              渲染预览
-            </button>
-          </div>
-          <button v-if="activeTab === 'preview'" type="button" class="fullscreen-btn" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏预览'">
-            <svg v-if="!isFullscreen" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
-            <svg v-else xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
-          </button>
-        </div>
-        <div class="panel__content panel__content--output" ref="outputPanel">
-          <!-- HTML Tab -->
-          <div v-show="activeTab === 'html'" class="code-view">
-            <pre class="code-block"><code>{{ html }}</code></pre>
-          </div>
-          <!-- Preview Tab -->
-          <div v-show="activeTab === 'preview'" class="preview-view" :style="previewColorStyle">
-            <div class="bamboo-content" v-html="html"></div>
-          </div>
-        </div>
-      </article>
-    </section>
-  </main>
-</template>
-
 <script setup lang="ts">
-import { computed, ref } from 'vue'
 import { BambooEditor } from '@bamboo-editor/vue3'
+import { computed, ref } from 'vue'
 import '@bamboo-editor/styles/bamboo-content.css'
 
 const device = ref<'pc' | 'mobile' | 'auto'>('auto')
@@ -148,7 +15,8 @@ function toggleFullscreen() {
   if (!isFullscreen.value) {
     outputPanel.value?.requestFullscreen()
     isFullscreen.value = true
-  } else {
+  }
+  else {
     document.exitFullscreen()
     isFullscreen.value = false
   }
@@ -203,7 +71,7 @@ const colorPalette = [
 ]
 
 const previewColorStyle = computed(() => {
-  return Object.fromEntries(colorPalette.map((item) => [`--preview-color-${item.token}`, item.value]))
+  return Object.fromEntries(colorPalette.map(item => [`--preview-color-${item.token}`, item.value]))
 })
 
 async function uploadHandler(file: File) {
@@ -214,6 +82,185 @@ async function uploadHandler(file: File) {
   }
 }
 </script>
+
+<template>
+  <main class="playground">
+    <header class="playground__header">
+      <div class="playground__brand">
+        <div class="playground__logo">
+          🎋
+        </div>
+        <div class="playground__title">
+          <h1>Bamboo Editor Playground</h1>
+          <p>小巧、简单的编辑器</p>
+        </div>
+      </div>
+      <div class="playground__controls">
+        <div class="playground__control-group">
+          <span class="playground__label">设备</span>
+          <div class="playground__switcher">
+            <button
+              type="button"
+              class="playground__switch"
+              :class="{ 'is-active': device === 'auto' }"
+              @click="device = 'auto'"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 8v4l3 3" />
+              </svg>
+              自动
+            </button>
+            <button
+              type="button"
+              class="playground__switch"
+              :class="{ 'is-active': device === 'pc' }"
+              @click="device = 'pc'"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" />
+                <path d="M8 21h8M12 17v4" />
+              </svg>
+              PC
+            </button>
+            <button
+              type="button"
+              class="playground__switch"
+              :class="{ 'is-active': device === 'mobile' }"
+              @click="device = 'mobile'"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="6" y="2" width="12" height="20" rx="2" />
+                <path d="M12 18h.01" />
+              </svg>
+              Mobile
+            </button>
+          </div>
+        </div>
+        <div class="playground__control-group">
+          <span class="playground__label">字数限制</span>
+          <div class="playground__switcher">
+            <button
+              type="button"
+              class="playground__switch"
+              :class="{ 'is-active': maxLength === undefined }"
+              @click="maxLength = undefined"
+            >
+              无限
+            </button>
+            <button
+              type="button"
+              class="playground__switch"
+              :class="{ 'is-active': maxLength === 500 }"
+              @click="maxLength = 500"
+            >
+              500
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="playground__grid">
+      <!-- Editor -->
+      <div class="editor-wrapper">
+        <BambooEditor
+          v-model="html"
+          height="auto"
+          :device="device"
+          :upload-handler="uploadHandler"
+          :color-palette="colorPalette"
+          :max-length="maxLength"
+          :video-options="videoOptions"
+        />
+      </div>
+
+      <!-- Output Panel (HTML + Preview Tabs) -->
+      <article class="panel panel--output">
+        <div class="panel__header">
+          <div class="output-tabs">
+            <button
+              type="button"
+              class="output-tab"
+              :class="{ 'is-active': activeTab === 'html' }"
+              @click="activeTab = 'html'"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="16 18 22 12 16 6" />
+                <polyline points="8 6 2 12 8 18" />
+              </svg>
+              HTML 代码
+            </button>
+            <button
+              type="button"
+              class="output-tab"
+              :class="{ 'is-active': activeTab === 'preview' }"
+              @click="activeTab = 'preview'"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              渲染预览
+            </button>
+          </div>
+          <button
+            v-if="activeTab === 'preview'"
+            type="button"
+            class="fullscreen-btn"
+            :title="isFullscreen ? '退出全屏' : '全屏预览'"
+            @click="toggleFullscreen"
+          >
+            <svg
+              v-if="!isFullscreen"
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+              <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+              <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+              <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+            </svg>
+            <svg
+              v-else
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M8 3v3a2 2 0 0 1-2 2H3" />
+              <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+              <path d="M3 16h3a2 2 0 0 1 2 2v3" />
+              <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+            </svg>
+          </button>
+        </div>
+        <div ref="outputPanel" class="panel__content panel__content--output">
+          <!-- HTML Tab -->
+          <div v-show="activeTab === 'html'" class="code-view">
+            <pre class="code-block"><code>{{ html }}</code></pre>
+          </div>
+          <!-- Preview Tab -->
+          <div v-show="activeTab === 'preview'" class="preview-view" :style="previewColorStyle">
+            <div class="bamboo-content" v-html="html"></div>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+</template>
 
 <style>
 /* ===== Light Theme Design System ===== */
@@ -266,7 +313,9 @@ async function uploadHandler(file: File) {
 }
 
 /* ===== Base ===== */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -569,15 +618,33 @@ body {
 }
 
 /* ===== Preview Colors ===== */
-.bamboo-content span[data-color='cyan'] { color: var(--preview-color-cyan, #0891b2); }
-.bamboo-content span[data-color='success'] { color: var(--preview-color-success, #16a34a); }
-.bamboo-content span[data-color='warning'] { color: var(--preview-color-warning, #ea580c); }
-.bamboo-content span[data-color='danger'] { color: var(--preview-color-danger, #dc2626); }
-.bamboo-content span[data-color='muted'] { color: var(--preview-color-muted, #71717a); }
-.bamboo-content span[data-color='purple'] { color: var(--preview-color-purple, #7c3aed); }
-.bamboo-content span[data-color='pink'] { color: var(--preview-color-pink, #db2777); }
-.bamboo-content span[data-color='yellow'] { color: var(--preview-color-yellow, #ca8a04); }
-.bamboo-content span[data-color='blue'] { color: var(--preview-color-blue, #2563eb); }
+.bamboo-content span[data-color='cyan'] {
+  color: var(--preview-color-cyan, #0891b2);
+}
+.bamboo-content span[data-color='success'] {
+  color: var(--preview-color-success, #16a34a);
+}
+.bamboo-content span[data-color='warning'] {
+  color: var(--preview-color-warning, #ea580c);
+}
+.bamboo-content span[data-color='danger'] {
+  color: var(--preview-color-danger, #dc2626);
+}
+.bamboo-content span[data-color='muted'] {
+  color: var(--preview-color-muted, #71717a);
+}
+.bamboo-content span[data-color='purple'] {
+  color: var(--preview-color-purple, #7c3aed);
+}
+.bamboo-content span[data-color='pink'] {
+  color: var(--preview-color-pink, #db2777);
+}
+.bamboo-content span[data-color='yellow'] {
+  color: var(--preview-color-yellow, #ca8a04);
+}
+.bamboo-content span[data-color='blue'] {
+  color: var(--preview-color-blue, #2563eb);
+}
 
 /* ===== Fullscreen Mode ===== */
 .panel__content--output:fullscreen {

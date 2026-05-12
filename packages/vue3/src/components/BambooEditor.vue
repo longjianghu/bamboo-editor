@@ -1,212 +1,47 @@
-<template>
-  <div class="bamboo-editor" :class="{ 'is-fullscreen': isFullscreen }" :data-editor-scope="editorScopeId">
-    <div class="bamboo-editor__main" :class="{ 'is-mobile': resolvedDevice === 'mobile' }">
-      <ToolbarPC
-        v-if="resolvedDevice === 'pc'"
-        :editor="editor"
-        :disabled="disabled"
-        :fullscreen="isFullscreen"
-        :color-palette="resolvedColorPalette"
-        @open-image-dialog="handleOpenImageDialog"
-        @open-video-dialog="handleOpenVideoDialog"
-        @open-audio-dialog="handleOpenAudioDialog"
-        @open-link-dialog="handleOpenLinkDialog"
-        @text-color-select="handleTextColorSelect"
-        @undo="handleUndo"
-        @redo="handleRedo"
-        @clear-formatting="handleClearFormatting"
-        @insert-horizontal-rule="handleInsertHorizontalRule"
-        @toggle-fullscreen="toggleFullscreen"
-        @show-info="infoDialogVisible = true"
-      />
-
-      <div ref="surfaceRef" class="bamboo-editor__surface" :class="{ 'is-mobile': resolvedDevice === 'mobile' }" :style="surfaceStyle">
-        <template v-if="editor">
-          <EditorContent :editor="editor" class="bamboo-editor__content" />
-          <div
-            v-if="resolvedDevice === 'pc'"
-            class="bamboo-editor__word-count"
-            :class="[
-              { 'is-compact': isCompactWordCount },
-              maxLengthStatus === 'warning' ? 'is-warning' : '',
-              maxLengthStatus === 'danger' ? 'is-danger' : '',
-            ]"
-            :aria-label="wordCountAriaLabel"
-            @mouseenter="handleWordCountMouseEnter"
-            @mouseleave="handleWordCountMouseLeave"
-          >
-            <div class="bamboo-editor__word-count-summary">
-              <template v-if="maxLength != null">
-                <template v-if="currentLength > maxLength">
-                  <span>已超出 </span>
-                  <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(currentLength - maxLength) }}</span>
-                  <span> 字符</span>
-                </template>
-                <template v-else>
-                  <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(currentLength) }}</span>
-                  <span class="bamboo-editor__word-count-separator">/</span>
-                  <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(maxLength) }}</span>
-                </template>
-              </template>
-              <template v-else-if="wordCountState.hasSelectedText">
-                <span v-if="!isCompactWordCount">已选 </span>
-                <span class="bamboo-editor__word-count-value is-selected">{{ formatVisibleWordCount(wordCountState.selectedChineseCharacters) }}</span>
-                <span class="bamboo-editor__word-count-separator">/</span>
-                <span v-if="!isCompactWordCount">共 </span>
-                <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(wordCountState.totalCharacters) }}</span>
-                <span v-if="!isCompactWordCount"> 字符</span>
-              </template>
-              <template v-else>
-                <span v-if="!isCompactWordCount">共 </span>
-                <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(wordCountState.totalCharacters) }}</span>
-                <span v-if="!isCompactWordCount"> 字符</span>
-              </template>
-            </div>
-
-            <div v-if="isWordCountTooltipVisible" class="bamboo-editor__word-count-tooltip" role="tooltip">
-              <div class="bamboo-editor__word-count-tooltip-row">
-                <span>字符数（含空格）</span>
-                <span class="bamboo-editor__word-count-value">{{ formatFullWordCount(wordCountState.totalCharacters) }}</span>
-              </div>
-              <div class="bamboo-editor__word-count-tooltip-row">
-                <span>中文字数</span>
-                <span class="bamboo-editor__word-count-value">{{ formatFullWordCount(wordCountState.chineseCharacters) }}</span>
-              </div>
-              <div class="bamboo-editor__word-count-tooltip-row">
-                <span>段落数</span>
-                <span class="bamboo-editor__word-count-value">{{ formatFullWordCount(wordCountState.paragraphCount) }}</span>
-              </div>
-              <div class="bamboo-editor__word-count-tooltip-row">
-                <span>行数</span>
-                <span class="bamboo-editor__word-count-value">{{ formatFullWordCount(wordCountState.lineCount) }}</span>
-              </div>
-            </div>
-          </div>
-        </template>
-        <div v-else class="bamboo-editor__placeholder">Loading editor...</div>
-      </div>
-
-      <FloatingToolbarPC
-        v-if="resolvedDevice === 'mobile'"
-        :editor="editor"
-        :disabled="disabled"
-        :visible="floatingToolbarVisible"
-        :position="floatingToolbarPosition"
-        :color-palette="resolvedColorPalette"
-        @open-link-dialog="handleOpenLinkDialog"
-        @text-color-select="handleTextColorSelect"
-        @clear-formatting="handleClearFormatting"
-      />
-
-      <ToolbarMobile
-        v-if="resolvedDevice === 'mobile'"
-        :editor="editor"
-        :disabled="disabled"
-        :color-palette="resolvedColorPalette"
-        :stats="{
-          totalCharacters: wordCountState.totalCharacters,
-          chineseCharacters: wordCountState.chineseCharacters,
-          paragraphCount: wordCountState.paragraphCount,
-          lineCount: wordCountState.lineCount,
-          currentLength,
-          maxLength,
-          isNearLimit,
-          isAtLimit,
-        }"
-        @open-image-dialog="handleOpenImageDialog"
-        @open-video-dialog="handleOpenVideoDialog"
-        @open-audio-dialog="handleOpenAudioDialog"
-        @text-color-select="handleTextColorSelect"
-        @clear-formatting="handleClearFormatting"
-        @insert-horizontal-rule="handleInsertHorizontalRule"
-      />
-
-      <transition name="bamboo-editor-toast">
-        <div v-if="resolvedDevice === 'mobile' && mobileToastVisible" class="bamboo-editor__toast" role="status" aria-live="polite">
-          {{ mobileToastMessage }}
-        </div>
-      </transition>
-
-      <EditorUrlDialog
-        :visible="urlDialogVisible"
-        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
-        :type="urlDialogState.type"
-        :mode="urlDialogState.mode"
-        :initial-value="urlDialogState.initialValue"
-        :allow-remove="urlDialogState.allowRemove"
-        @confirm="handleUrlDialogConfirm"
-        @remove="handleUrlDialogRemove"
-        @cancel="closeUrlDialog"
-      />
-
-      <EditorVideoDialog
-        :visible="videoDialogVisible"
-        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
-        :mode="videoDialogState.mode"
-        :initial-data="videoDialogState.initialData"
-        :upload-handler="props.uploadHandler"
-        @confirm="handleVideoDialogConfirm"
-        @remove="handleVideoDialogRemove"
-        @cancel="closeVideoDialog"
-      />
-
-      <EditorImageDialog
-        :visible="imageDialogVisible"
-        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
-        :mode="imageDialogState.mode"
-        :initial-data="imageDialogState.initialData"
-        :upload-handler="props.uploadHandler"
-        @confirm="handleImageDialogConfirm"
-        @remove="handleImageDialogRemove"
-        @cancel="closeImageDialog"
-      />
-
-      <EditorAudioDialog
-        :visible="audioDialogVisible"
-        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
-        :mode="audioDialogState.mode"
-        :initial-data="audioDialogState.initialData"
-        :upload-handler="props.uploadHandler"
-        @confirm="handleAudioDialogConfirm"
-        @remove="handleAudioDialogRemove"
-        @cancel="closeAudioDialog"
-      />
-
-      <EditorInfoDialog
-        :visible="infoDialogVisible"
-        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
-        @close="infoDialogVisible = false"
-      />
-
-      <EditorErrorDialog
-        :visible="errorDialogVisible"
-        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
-        :message="errorDialogMessage"
-        @close="errorDialogVisible = false"
-      />
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue'
 import type { Editor } from '@tiptap/vue-3'
+import type { BambooColorOption, BambooDevice, CleanAudioOptions, CleanVideoOptions, UploadHandler } from '../composables/useBambooEditor'
 import { EditorContent } from '@tiptap/vue-3'
-import ToolbarPC from './ToolbarPC.vue'
-import ToolbarMobile from './ToolbarMobile.vue'
-import FloatingToolbarPC from './FloatingToolbarPC.vue'
+import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue'
+import { useBambooEditor } from '../composables/useBambooEditor'
+import EditorAudioDialog from './EditorAudioDialog.vue'
+import EditorErrorDialog from './EditorErrorDialog.vue'
+import EditorImageDialog from './EditorImageDialog.vue'
+import EditorInfoDialog from './EditorInfoDialog.vue'
 import EditorUrlDialog from './EditorUrlDialog.vue'
 import EditorVideoDialog from './EditorVideoDialog.vue'
-import EditorImageDialog from './EditorImageDialog.vue'
-import EditorAudioDialog from './EditorAudioDialog.vue'
-import EditorInfoDialog from './EditorInfoDialog.vue'
-import EditorErrorDialog from './EditorErrorDialog.vue'
-import { useBambooEditor } from '../composables/useBambooEditor'
-import type { BambooColorOption, BambooDevice, UploadHandler, CleanVideoOptions, CleanAudioOptions } from '../composables/useBambooEditor'
+import FloatingToolbarPC from './FloatingToolbarPC.vue'
+import ToolbarMobile from './ToolbarMobile.vue'
+import ToolbarPC from './ToolbarPC.vue'
+
+const props = withDefaults(defineProps<{
+  modelValue: string
+  device?: BambooDevice
+  placeholder?: string
+  disabled?: boolean
+  uploadHandler?: UploadHandler
+  height?: string
+  colorPalette?: BambooColorOption[]
+  maxLength?: number
+  editorId?: string
+  draftTtl?: number
+  videoOptions?: CleanVideoOptions
+  audioOptions?: CleanAudioOptions
+}>(), {
+  device: 'auto',
+  placeholder: '请输入内容',
+  disabled: false,
+  height: 'auto',
+  draftTtl: DRAFT_DEFAULT_TTL,
+})
+
+const emit = defineEmits<{
+  'update:modelValue': [value: string]
+}>()
 
 declare const window: Window & typeof globalThis
 
-type FloatingPosition = {
+interface FloatingPosition {
   top: number
   left: number
   editorTop?: number
@@ -222,7 +57,7 @@ const WORD_COUNT_SCROLLBAR_GAP = 20
 const DRAFT_DEBOUNCE_MS = 1000
 const DRAFT_DEFAULT_TTL = 3 * 24 * 60 * 60 * 1000
 
-type WordCountState = {
+interface WordCountState {
   totalCharacters: number
   chineseCharacters: number
   selectedChineseCharacters: number
@@ -250,31 +85,6 @@ const DEFAULT_COLOR_PALETTE: BambooColorOption[] = [
   { token: 'pink', label: '粉色', value: '#db2777' },
   { token: 'yellow', label: '黄色', value: '#ca8a04' },
 ]
-
-const props = withDefaults(defineProps<{
-  modelValue: string
-  device?: BambooDevice
-  placeholder?: string
-  disabled?: boolean
-  uploadHandler?: UploadHandler
-  height?: string
-  colorPalette?: BambooColorOption[]
-  maxLength?: number
-  editorId?: string
-  draftTtl?: number
-  videoOptions?: CleanVideoOptions
-  audioOptions?: CleanAudioOptions
-}>(), {
-  device: 'auto',
-  placeholder: '请输入内容',
-  disabled: false,
-  height: 'auto',
-  draftTtl: DRAFT_DEFAULT_TTL,
-})
-
-const emit = defineEmits<{
-  'update:modelValue': [value: string]
-}>()
 
 const isFullscreen = ref(false)
 const editorScopeId = `bamboo-editor-${Math.random().toString(36).slice(2)}`
@@ -420,7 +230,7 @@ watch(editor, (instance) => {
   }
 }, { immediate: true })
 
-function handleOpenAudioDialog(payload?: { pos?: number; node?: any; initialData?: any; mode?: 'create' | 'edit' }) {
+function handleOpenAudioDialog(payload?: { pos?: number, node?: any, initialData?: any, mode?: 'create' | 'edit' }) {
   if (props.disabled) {
     return
   }
@@ -437,8 +247,8 @@ function handleOpenAudioDialog(payload?: { pos?: number; node?: any; initialData
     mode: payload?.mode ?? 'create',
     initialData: {
       src: finalSrc,
-      align: finalAlign
-    }
+      align: finalAlign,
+    },
   }
   audioDialogVisible.value = true
 }
@@ -448,9 +258,10 @@ function closeAudioDialog() {
   window.setTimeout(() => editor.value?.commands.focus(), 0)
 }
 
-function handleAudioDialogConfirm(data: { src: string; align?: 'left' | 'center' | 'right' }) {
+function handleAudioDialogConfirm(data: { src: string, align?: 'left' | 'center' | 'right' }) {
   const instance = editor.value
-  if (!instance) return
+  if (!instance)
+    return
 
   closeAudioDialog()
 
@@ -463,7 +274,7 @@ function handleAudioDialogConfirm(data: { src: string; align?: 'left' | 'center'
           const pos = from
           tr.setNodeMarkup(pos, undefined, {
             ...node.attrs,
-            src: data.src,
+            'src': data.src,
             'data-align': data.align,
           })
           found = true
@@ -473,20 +284,22 @@ function handleAudioDialogConfirm(data: { src: string; align?: 'left' | 'center'
       })
       return true
     })
-  } else {
+  }
+  else {
     instance.commands.insertContent({
       type: 'audio',
       attrs: {
-        src: data.src,
+        'src': data.src,
         'data-align': data.align,
-      }
+      },
     })
   }
 }
 
 function handleAudioDialogRemove() {
   const instance = editor.value
-  if (!instance) return
+  if (!instance)
+    return
 
   instance.commands.deleteSelection()
   closeAudioDialog()
@@ -575,7 +388,7 @@ function scheduleDraftSave(html: string) {
   }, DRAFT_DEBOUNCE_MS)
 }
 
-function handleOpenImageDialog(payload?: { pos?: number; node?: any; initialData?: any; mode?: 'create' | 'edit' }) {
+function handleOpenImageDialog(payload?: { pos?: number, node?: any, initialData?: any, mode?: 'create' | 'edit' }) {
   if (props.disabled) {
     return
   }
@@ -587,8 +400,8 @@ function handleOpenImageDialog(payload?: { pos?: number; node?: any; initialData
       alt: '',
       width: undefined,
       height: undefined,
-      align: 'left'
-    }
+      align: 'left',
+    },
   }
   imageDialogVisible.value = true
 }
@@ -598,37 +411,40 @@ function closeImageDialog() {
   window.setTimeout(() => editor.value?.commands.focus(), 0)
 }
 
-function handleImageDialogConfirm(data: { src: string; alt?: string; width?: number; height?: number; align?: 'left' | 'center' | 'right' }) {
+function handleImageDialogConfirm(data: { src: string, alt?: string, width?: number, height?: number, align?: 'left' | 'center' | 'right' }) {
   const instance = editor.value
-  if (!instance) return
+  if (!instance)
+    return
 
   closeImageDialog()
 
   if (imageDialogState.value.mode === 'edit') {
     instance.commands.updateAttributes('image', {
-      src: data.src,
-      alt: data.alt,
-      width: data.width ? String(data.width) : null,
-      height: data.height ? String(data.height) : null,
+      'src': data.src,
+      'alt': data.alt,
+      'width': data.width ? String(data.width) : null,
+      'height': data.height ? String(data.height) : null,
       'data-align': data.align,
     })
-  } else {
+  }
+  else {
     instance.commands.insertContent({
       type: 'image',
       attrs: {
-        src: data.src,
-        alt: data.alt,
-        width: data.width ? String(data.width) : null,
-        height: data.height ? String(data.height) : null,
+        'src': data.src,
+        'alt': data.alt,
+        'width': data.width ? String(data.width) : null,
+        'height': data.height ? String(data.height) : null,
         'data-align': data.align,
-      }
+      },
     })
   }
 }
 
 function handleImageDialogRemove() {
   const instance = editor.value
-  if (!instance) return
+  if (!instance)
+    return
 
   instance.commands.deleteSelection()
   closeImageDialog()
@@ -695,7 +511,7 @@ function closeVideoDialog() {
   window.setTimeout(() => editor.value?.commands.focus(), 0)
 }
 
-function handleVideoDialogConfirm(data: { src: string; poster?: string; width?: number; height?: number; align?: 'left' | 'center' | 'right' }) {
+function handleVideoDialogConfirm(data: { src: string, poster?: string, width?: number, height?: number, align?: 'left' | 'center' | 'right' }) {
   console.log('[BambooEditor] handleVideoDialogConfirm', data)
   const instance = editor.value
   if (!instance) {
@@ -717,10 +533,10 @@ function handleVideoDialogConfirm(data: { src: string; poster?: string; width?: 
           const pos = from
           tr.setNodeMarkup(pos, undefined, {
             ...node.attrs,
-            src: data.src,
-            poster: data.poster ?? node.attrs.poster,
-            width: data.width ? String(data.width) : null,
-            height: data.height ? String(data.height) : null,
+            'src': data.src,
+            'poster': data.poster ?? node.attrs.poster,
+            'width': data.width ? String(data.width) : null,
+            'height': data.height ? String(data.height) : null,
             'data-align': data.align,
           })
           found = true
@@ -730,15 +546,16 @@ function handleVideoDialogConfirm(data: { src: string; poster?: string; width?: 
       })
       return true
     })
-  } else {
+  }
+  else {
     // Insert new video
     instance.commands.command(({ tr }: { tr: any }) => {
       const { from } = instance.state.selection
       const videoNode = instance.schema.nodes.video.create({
-        src: data.src,
-        poster: data.poster,
-        width: data.width ? String(data.width) : null,
-        height: data.height ? String(data.height) : null,
+        'src': data.src,
+        'poster': data.poster,
+        'width': data.width ? String(data.width) : null,
+        'height': data.height ? String(data.height) : null,
         'data-align': data.align,
       })
       tr.replaceSelectionWith(videoNode)
@@ -941,7 +758,7 @@ function countChineseCharacters(value: string) {
     return value.match(/\p{Unified_Ideograph}/gu)?.length ?? 0
   }
   catch {
-    return value.match(/[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/g)?.length ?? 0
+    return value.match(/[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/g)?.length ?? 0
   }
 }
 
@@ -1236,7 +1053,7 @@ watch([editor, resolvedDevice, () => props.disabled], (_, __, onCleanup) => {
 
   const handleFocus = () => updateFloatingToolbar()
 
-  const handleOpenVideoDialogEvent = ({ pos, node, data }: { pos: number; node: any; data?: any }) => {
+  const handleOpenVideoDialogEvent = ({ pos, node, data }: { pos: number, node: any, data?: any }) => {
     if (props.disabled) {
       return
     }
@@ -1311,7 +1128,7 @@ watch(editorColorCss, (value) => {
 
 function buildEditorColorCss(scopeId: string, colorPalette: readonly BambooColorOption[]) {
   return colorPalette
-    .map((item) => `[data-editor-scope='${escapeCssValue(scopeId)}'] .bamboo-editor__content .ProseMirror span[data-color='${escapeCssValue(item.token)}']{color:${item.value};}`)
+    .map(item => `[data-editor-scope='${escapeCssValue(scopeId)}'] .bamboo-editor__content .ProseMirror span[data-color='${escapeCssValue(item.token)}']{color:${item.value};}`)
     .join('\n')
 }
 
@@ -1344,6 +1161,198 @@ function escapeCssValue(value: string) {
 
 defineExpose({ clearDraft })
 </script>
+
+<template>
+  <div class="bamboo-editor" :class="{ 'is-fullscreen': isFullscreen }" :data-editor-scope="editorScopeId">
+    <div class="bamboo-editor__main" :class="{ 'is-mobile': resolvedDevice === 'mobile' }">
+      <ToolbarPC
+        v-if="resolvedDevice === 'pc'"
+        :editor="editor"
+        :disabled="disabled"
+        :fullscreen="isFullscreen"
+        :color-palette="resolvedColorPalette"
+        @open-image-dialog="handleOpenImageDialog"
+        @open-video-dialog="handleOpenVideoDialog"
+        @open-audio-dialog="handleOpenAudioDialog"
+        @open-link-dialog="handleOpenLinkDialog"
+        @text-color-select="handleTextColorSelect"
+        @undo="handleUndo"
+        @redo="handleRedo"
+        @clear-formatting="handleClearFormatting"
+        @insert-horizontal-rule="handleInsertHorizontalRule"
+        @toggle-fullscreen="toggleFullscreen"
+        @show-info="infoDialogVisible = true"
+      />
+
+      <div ref="surfaceRef" class="bamboo-editor__surface" :class="{ 'is-mobile': resolvedDevice === 'mobile' }" :style="surfaceStyle">
+        <template v-if="editor">
+          <EditorContent :editor="editor" class="bamboo-editor__content" />
+          <div
+            v-if="resolvedDevice === 'pc'"
+            class="bamboo-editor__word-count"
+            :class="[
+              { 'is-compact': isCompactWordCount },
+              maxLengthStatus === 'warning' ? 'is-warning' : '',
+              maxLengthStatus === 'danger' ? 'is-danger' : '',
+            ]"
+            :aria-label="wordCountAriaLabel"
+            @mouseenter="handleWordCountMouseEnter"
+            @mouseleave="handleWordCountMouseLeave"
+          >
+            <div class="bamboo-editor__word-count-summary">
+              <template v-if="maxLength != null">
+                <template v-if="currentLength > maxLength">
+                  <span>已超出 </span>
+                  <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(currentLength - maxLength) }}</span>
+                  <span> 字符</span>
+                </template>
+                <template v-else>
+                  <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(currentLength) }}</span>
+                  <span class="bamboo-editor__word-count-separator">/</span>
+                  <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(maxLength) }}</span>
+                </template>
+              </template>
+              <template v-else-if="wordCountState.hasSelectedText">
+                <span v-if="!isCompactWordCount">已选 </span>
+                <span class="bamboo-editor__word-count-value is-selected">{{ formatVisibleWordCount(wordCountState.selectedChineseCharacters) }}</span>
+                <span class="bamboo-editor__word-count-separator">/</span>
+                <span v-if="!isCompactWordCount">共 </span>
+                <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(wordCountState.totalCharacters) }}</span>
+                <span v-if="!isCompactWordCount"> 字符</span>
+              </template>
+              <template v-else>
+                <span v-if="!isCompactWordCount">共 </span>
+                <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(wordCountState.totalCharacters) }}</span>
+                <span v-if="!isCompactWordCount"> 字符</span>
+              </template>
+            </div>
+
+            <div v-if="isWordCountTooltipVisible" class="bamboo-editor__word-count-tooltip" role="tooltip">
+              <div class="bamboo-editor__word-count-tooltip-row">
+                <span>字符数（含空格）</span>
+                <span class="bamboo-editor__word-count-value">{{ formatFullWordCount(wordCountState.totalCharacters) }}</span>
+              </div>
+              <div class="bamboo-editor__word-count-tooltip-row">
+                <span>中文字数</span>
+                <span class="bamboo-editor__word-count-value">{{ formatFullWordCount(wordCountState.chineseCharacters) }}</span>
+              </div>
+              <div class="bamboo-editor__word-count-tooltip-row">
+                <span>段落数</span>
+                <span class="bamboo-editor__word-count-value">{{ formatFullWordCount(wordCountState.paragraphCount) }}</span>
+              </div>
+              <div class="bamboo-editor__word-count-tooltip-row">
+                <span>行数</span>
+                <span class="bamboo-editor__word-count-value">{{ formatFullWordCount(wordCountState.lineCount) }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
+        <div v-else class="bamboo-editor__placeholder">
+          Loading editor...
+        </div>
+      </div>
+
+      <FloatingToolbarPC
+        v-if="resolvedDevice === 'mobile'"
+        :editor="editor"
+        :disabled="disabled"
+        :visible="floatingToolbarVisible"
+        :position="floatingToolbarPosition"
+        :color-palette="resolvedColorPalette"
+        @open-link-dialog="handleOpenLinkDialog"
+        @text-color-select="handleTextColorSelect"
+        @clear-formatting="handleClearFormatting"
+      />
+
+      <ToolbarMobile
+        v-if="resolvedDevice === 'mobile'"
+        :editor="editor"
+        :disabled="disabled"
+        :color-palette="resolvedColorPalette"
+        :stats="{
+          totalCharacters: wordCountState.totalCharacters,
+          chineseCharacters: wordCountState.chineseCharacters,
+          paragraphCount: wordCountState.paragraphCount,
+          lineCount: wordCountState.lineCount,
+          currentLength,
+          maxLength,
+          isNearLimit,
+          isAtLimit,
+        }"
+        @open-image-dialog="handleOpenImageDialog"
+        @open-video-dialog="handleOpenVideoDialog"
+        @open-audio-dialog="handleOpenAudioDialog"
+        @text-color-select="handleTextColorSelect"
+        @clear-formatting="handleClearFormatting"
+        @insert-horizontal-rule="handleInsertHorizontalRule"
+      />
+
+      <transition name="bamboo-editor-toast">
+        <div v-if="resolvedDevice === 'mobile' && mobileToastVisible" class="bamboo-editor__toast" role="status" aria-live="polite">
+          {{ mobileToastMessage }}
+        </div>
+      </transition>
+
+      <EditorUrlDialog
+        :visible="urlDialogVisible"
+        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
+        :type="urlDialogState.type"
+        :mode="urlDialogState.mode"
+        :initial-value="urlDialogState.initialValue"
+        :allow-remove="urlDialogState.allowRemove"
+        @confirm="handleUrlDialogConfirm"
+        @remove="handleUrlDialogRemove"
+        @cancel="closeUrlDialog"
+      />
+
+      <EditorVideoDialog
+        :visible="videoDialogVisible"
+        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
+        :mode="videoDialogState.mode"
+        :initial-data="videoDialogState.initialData"
+        :upload-handler="props.uploadHandler"
+        @confirm="handleVideoDialogConfirm"
+        @remove="handleVideoDialogRemove"
+        @cancel="closeVideoDialog"
+      />
+
+      <EditorImageDialog
+        :visible="imageDialogVisible"
+        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
+        :mode="imageDialogState.mode"
+        :initial-data="imageDialogState.initialData"
+        :upload-handler="props.uploadHandler"
+        @confirm="handleImageDialogConfirm"
+        @remove="handleImageDialogRemove"
+        @cancel="closeImageDialog"
+      />
+
+      <EditorAudioDialog
+        :visible="audioDialogVisible"
+        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
+        :mode="audioDialogState.mode"
+        :initial-data="audioDialogState.initialData"
+        :upload-handler="props.uploadHandler"
+        @confirm="handleAudioDialogConfirm"
+        @remove="handleAudioDialogRemove"
+        @cancel="closeAudioDialog"
+      />
+
+      <EditorInfoDialog
+        :visible="infoDialogVisible"
+        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
+        @close="infoDialogVisible = false"
+      />
+
+      <EditorErrorDialog
+        :visible="errorDialogVisible"
+        :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
+        :message="errorDialogMessage"
+        @close="errorDialogVisible = false"
+      />
+    </div>
+  </div>
+</template>
 
 <style scoped>
 .bamboo-editor {

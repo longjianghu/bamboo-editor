@@ -1,6 +1,6 @@
 import BulletList from '@tiptap/extension-bullet-list'
-import OrderedList from '@tiptap/extension-ordered-list'
 import ListItem from '@tiptap/extension-list-item'
+import OrderedList from '@tiptap/extension-ordered-list'
 
 export const CleanBulletList = BulletList.extend({
   renderHTML() {

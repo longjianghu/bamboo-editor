@@ -23,15 +23,18 @@ export default antfu(
       // 允许使用 console 在编辑器项目中
       'no-console': 'off',
       // 优化 vue/html 格式
-      'vue/html-self-closing': ['error', {
-        html: {
-          void: 'always',
-          normal: 'never',
-          component: 'always',
+      'vue/html-self-closing': [
+        'error',
+        {
+          html: {
+            void: 'always',
+            normal: 'never',
+            component: 'always',
+          },
+          svg: 'always',
+          math: 'always',
         },
-        svg: 'always',
-        math: 'always',
-      }],
+      ],
     },
   },
 )

@@ -1,10 +1,26 @@
 {
   "name": "@bamboo-editor/styles",
+  "type": "module",
   "version": "0.1.5",
   "description": "Display styles for Bamboo Editor content on web and WeChat Mini Program.",
   "license": "MIT",
-  "type": "module",
   "style": "src/bamboo-content.css",
+  "homepage": "https://github.com/longjianghu/bamboo-editor#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/longjianghu/bamboo-editor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/longjianghu/bamboo-editor/issues"
+  },
+  "keywords": [
+    "bamboo-editor",
+    "css",
+    "styles",
+    "html",
+    "mp-html",
+    "weapp"
+  ],
   "exports": {
     "./bamboo-content.css": "./src/bamboo-content.css",
     "./weapp.css": "./src/bamboo-content.weapp.css",
@@ -17,22 +33,6 @@
   "files": [
     "src"
   ],
-  "keywords": [
-    "bamboo-editor",
-    "css",
-    "styles",
-    "html",
-    "mp-html",
-    "weapp"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/longjianghu/bamboo-editor.git"
-  },
-  "homepage": "https://github.com/longjianghu/bamboo-editor#readme",
-  "bugs": {
-    "url": "https://github.com/longjianghu/bamboo-editor/issues"
-  },
   "publishConfig": {
     "access": "public"
   },

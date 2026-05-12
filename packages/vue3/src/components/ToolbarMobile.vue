@@ -1,5 +1,371 @@
+<script setup lang="ts">
+import type { Editor } from '@tiptap/vue-3'
+import type { BambooColorOption } from '../composables/useBambooEditor'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import ToolbarIcon from './ToolbarIcon.vue'
+
+const props = defineProps<{
+  editor: Editor | null
+  disabled?: boolean
+  colorPalette?: readonly BambooColorOption[]
+  stats: {
+    totalCharacters: number
+    chineseCharacters: number
+    paragraphCount: number
+    lineCount: number
+    currentLength?: number
+    maxLength?: number
+    isNearLimit?: boolean
+    isAtLimit?: boolean
+  }
+}>()
+
+const emit = defineEmits<{
+  openImageDialog: []
+  openVideoDialog: []
+  openAudioDialog: []
+  openLinkDialog: [payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }]
+  textColorSelect: [token: string | null]
+  clearFormatting: []
+  insertHorizontalRule: []
+}>()
+
+declare const window: Window & typeof globalThis
+
+interface ListOption {
+  label: string
+  command: 'toggleBulletList' | 'toggleOrderedList'
+  active: 'bulletList' | 'orderedList'
+  icon: 'bullet-list' | 'ordered-list'
+}
+
+interface MediaOption {
+  label: string
+  icon: 'image' | 'remote-video' | 'audio'
+  action: 'open-image-dialog' | 'open-video-dialog' | 'open-audio-dialog'
+}
+
+interface DropdownPlacement {
+  horizontal: 'left' | 'right'
+  vertical: 'up'
+}
+
+type MenuKind = 'list' | 'media'
+
+type ToolbarEmitAction = 'clearFormatting' | 'insertHorizontalRule'
+
+const OPEN_DELAY_MS = 100
+const CLOSE_ANIMATION_MS = 200
+
+function _emitAndClosePanel(event: 'openImageDialog' | 'openVideoDialog' | 'openAudioDialog') {
+  emit(event)
+  closePlusPanel()
+}
+
+const listOptions = [
+  { label: '无序列表', command: 'toggleBulletList', active: 'bulletList', icon: 'bullet-list' },
+  { label: '有序列表', command: 'toggleOrderedList', active: 'orderedList', icon: 'ordered-list' },
+] as const satisfies readonly ListOption[]
+
+const mediaOptions = [
+  { label: '图片', icon: 'image', action: 'open-image-dialog' },
+  { label: '视频', icon: 'remote-video', action: 'open-video-dialog' },
+  { label: '音频', icon: 'audio', action: 'open-audio-dialog' },
+] as const satisfies readonly MediaOption[]
+
+const isListMenuOpen = ref(false)
+const isMediaMenuOpen = ref(false)
+const isPlusPanelVisible = ref(false)
+const isPlusPanelOpen = ref(false)
+
+const listMenuRef = ref<HTMLElement | null>(null)
+const listTriggerRef = ref<HTMLElement | null>(null)
+const mediaMenuRef = ref<HTMLElement | null>(null)
+const mediaTriggerRef = ref<HTMLElement | null>(null)
+const plusMenuRef = ref<HTMLElement | null>(null)
+const plusTriggerRef = ref<HTMLElement | null>(null)
+const shellRef = ref<HTMLElement | null>(null)
+
+const panelWrapStyle = ref<Record<string, string>>({})
+const listDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'up' })
+const listDropdownMenuStyle = ref<Record<string, string>>({})
+const mediaDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'up' })
+const mediaDropdownMenuStyle = ref<Record<string, string>>({})
+
+let openTimer: number | null = null
+let closeTimer: number | null = null
+
+const currentListOption = computed(() => (props.editor?.isActive('orderedList') ? listOptions[1] : listOptions[0]))
+const currentListLabel = computed(() => currentListOption.value.label)
+const currentListIcon = computed(() => currentListOption.value.icon)
+const isListMenuActive = computed(() =>
+  Boolean(props.editor?.isActive('bulletList') || props.editor?.isActive('orderedList')),
+)
+const statsStatusClass = computed(() => ({
+  'is-warning': Boolean(props.stats.maxLength != null && props.stats.isNearLimit && !props.stats.isAtLimit),
+  'is-danger': Boolean(props.stats.maxLength != null && props.stats.isAtLimit),
+}))
+
+function formatCount(value: number) {
+  return value.toLocaleString('zh-CN')
+}
+
+function clearPanelTimers() {
+  if (openTimer !== null) {
+    window.clearTimeout(openTimer)
+    openTimer = null
+  }
+  if (closeTimer !== null) {
+    window.clearTimeout(closeTimer)
+    closeTimer = null
+  }
+}
+
+function blurEditor() {
+  props.editor?.commands.blur()
+}
+
+function focusEditor() {
+  nextTick(() => props.editor?.commands.focus())
+}
+
+function run(command: string, attrs?: Record<string, unknown>) {
+  const chain = props.editor?.chain().focus()
+  if (!chain)
+    return
+  const target = attrs ? (chain as any)[command](attrs) : (chain as any)[command]()
+  target?.run?.()
+}
+
+function runAndClosePanel(command: string, attrs?: Record<string, unknown>) {
+  run(command, attrs)
+  closePlusPanel()
+}
+
+function isDisabled(command: string, attrs?: Record<string, unknown>) {
+  if (props.disabled)
+    return true
+  const chain = props.editor?.can().chain().focus()
+  if (!chain)
+    return true
+  const target = attrs ? (chain as any)[command](attrs) : (chain as any)[command]()
+  return !target?.run?.()
+}
+
+function buttonClass(name: string, attrs?: Record<string, unknown>) {
+  const active = attrs ? props.editor?.isActive(name, attrs) : props.editor?.isActive(name)
+  return { 'is-active': Boolean(active) }
+}
+
+function selectList(option: ListOption) {
+  run(option.command)
+  closeMenus()
+}
+
+function selectMedia(option: MediaOption) {
+  if (option.action === 'open-image-dialog') {
+    emit('openImageDialog')
+  }
+  else if (option.action === 'open-video-dialog') {
+    emit('openVideoDialog')
+  }
+  else if (option.action === 'open-audio-dialog') {
+    emit('openAudioDialog')
+  }
+  closeMenus()
+}
+
+function _emitActionAndClosePanel(action: ToolbarEmitAction) {
+  if (props.disabled)
+    return
+  if (action === 'clear-formatting') {
+    emit('clearFormatting')
+  }
+  else {
+    emit('insertHorizontalRule')
+  }
+  closePlusPanel()
+}
+
+function updatePanelPosition() {
+  const shell = shellRef.value
+  if (!shell || typeof window === 'undefined')
+    return
+
+  const toolbar = shell.querySelector('.toolbar-mobile') as HTMLElement | null
+  const toolbarRect = toolbar?.getBoundingClientRect()
+  if (!toolbarRect)
+    return
+
+  panelWrapStyle.value = {
+    left: `${toolbarRect.left + toolbarRect.width / 2}px`,
+    bottom: `${Math.max(0, window.innerHeight - toolbarRect.top)}px`,
+    width: `${toolbarRect.width}px`,
+    maxWidth: `${toolbarRect.width}px`,
+  }
+}
+
+function getMenuState(kind: MenuKind) {
+  if (kind === 'media') {
+    return isMediaMenuOpen
+  }
+  return isListMenuOpen
+}
+
+function getMenuElements(kind: MenuKind) {
+  if (kind === 'media') {
+    return {
+      menuRef: mediaMenuRef,
+      triggerRef: mediaTriggerRef,
+      placementRef: mediaDropdownPlacement,
+      styleRef: mediaDropdownMenuStyle,
+      width: 120,
+    }
+  }
+  return {
+    menuRef: listMenuRef,
+    triggerRef: listTriggerRef,
+    placementRef: listDropdownPlacement,
+    styleRef: listDropdownMenuStyle,
+    width: 160,
+  }
+}
+
+function closeMenus() {
+  isListMenuOpen.value = false
+  isMediaMenuOpen.value = false
+}
+
+function openPlusPanel() {
+  if (props.disabled)
+    return
+  closeMenus()
+  clearPanelTimers()
+  blurEditor()
+  updatePanelPosition()
+  isPlusPanelVisible.value = true
+  openTimer = window.setTimeout(() => {
+    updatePanelPosition()
+    isPlusPanelOpen.value = true
+    openTimer = null
+  }, OPEN_DELAY_MS)
+}
+
+function closePlusPanel() {
+  clearPanelTimers()
+  isPlusPanelOpen.value = false
+  closeTimer = window.setTimeout(() => {
+    isPlusPanelVisible.value = false
+    closeTimer = null
+    focusEditor()
+  }, CLOSE_ANIMATION_MS)
+}
+
+function togglePlusPanel() {
+  if (isPlusPanelVisible.value || isPlusPanelOpen.value) {
+    closePlusPanel()
+    return
+  }
+  openPlusPanel()
+}
+
+function toggleMenu(kind: MenuKind) {
+  if (props.disabled)
+    return
+  const state = getMenuState(kind)
+  const nextState = !state.value
+  closePlusPanelIfNeeded(false)
+  closeMenus()
+  state.value = nextState
+  if (!nextState)
+    return
+  nextTick(() => updateDropdownPosition(kind))
+}
+
+function closePlusPanelIfNeeded(refocus = true) {
+  if (!isPlusPanelVisible.value && !isPlusPanelOpen.value)
+    return
+  clearPanelTimers()
+  isPlusPanelOpen.value = false
+  closeTimer = window.setTimeout(() => {
+    isPlusPanelVisible.value = false
+    closeTimer = null
+    if (refocus) {
+      focusEditor()
+    }
+  }, CLOSE_ANIMATION_MS)
+}
+
+function updateDropdownPosition(kind: MenuKind) {
+  const { menuRef, triggerRef, placementRef, styleRef, width: menuWidth } = getMenuElements(kind)
+  const trigger = triggerRef.value
+  const container = menuRef.value
+  if (!trigger || !container || typeof window === 'undefined')
+    return
+
+  const viewportPadding = 12
+  const triggerRect = trigger.getBoundingClientRect()
+  const toolbarRect = container.closest('.toolbar-mobile')?.getBoundingClientRect() ?? null
+  const boundaryLeft = toolbarRect ? Math.max(viewportPadding, toolbarRect.left) : viewportPadding
+  const boundaryRight = toolbarRect
+    ? Math.min(window.innerWidth - viewportPadding, toolbarRect.right)
+    : window.innerWidth - viewportPadding
+  const availableRight = Math.max(0, boundaryRight - triggerRect.left)
+  const availableLeft = Math.max(0, triggerRect.right - boundaryLeft)
+  const width = Math.max(148, Math.min(menuWidth, Math.max(availableRight, availableLeft, 148)))
+  const wouldOverflowToolbarRight = triggerRect.left + width > boundaryRight
+  const alignRight = wouldOverflowToolbarRight && availableLeft >= width
+
+  placementRef.value = { horizontal: alignRight ? 'right' : 'left', vertical: 'up' }
+  styleRef.value = {
+    width: `${Math.floor(width)}px`,
+    maxWidth: `${Math.max(148, Math.floor(boundaryRight - boundaryLeft))}px`,
+  }
+}
+
+function menuPlacementClass(placement: DropdownPlacement) {
+  return { 'is-align-right': placement.horizontal === 'right', 'is-drop-up': placement.vertical === 'up' }
+}
+
+function onClickOutside(event: MouseEvent) {
+  const targets = [listMenuRef.value, mediaMenuRef.value].filter(Boolean)
+  if (!targets.length)
+    return
+  const eventTarget = event.target
+  if (eventTarget instanceof Node && !targets.some(target => target?.contains(eventTarget)))
+    closeMenus()
+}
+
+function onViewportChange() {
+  if (isListMenuOpen.value)
+    updateDropdownPosition('list')
+  if (isMediaMenuOpen.value)
+    updateDropdownPosition('media')
+  if (isPlusPanelVisible.value || isPlusPanelOpen.value)
+    updatePanelPosition()
+}
+
+onMounted(() => {
+  updatePanelPosition()
+  document.addEventListener('mousedown', onClickOutside)
+  window.addEventListener('resize', onViewportChange)
+  window.addEventListener('scroll', onViewportChange, true)
+})
+
+onBeforeUnmount(() => {
+  clearPanelTimers()
+  document.removeEventListener('mousedown', onClickOutside)
+  window.removeEventListener('resize', onViewportChange)
+  window.removeEventListener('scroll', onViewportChange, true)
+})
+</script>
+
 <template>
-  <div class="toolbar-mobile-shell" :class="{ 'is-panel-visible': isPlusPanelVisible, 'is-panel-open': isPlusPanelOpen }" ref="shellRef">
+  <div
+    ref="shellRef"
+    class="toolbar-mobile-shell"
+    :class="{ 'is-panel-visible': isPlusPanelVisible, 'is-panel-open': isPlusPanelOpen }"
+  >
     <div
       class="toolbar-mobile__panel-wrap"
       :class="{ 'is-visible': isPlusPanelVisible, 'is-open': isPlusPanelOpen }"
@@ -39,11 +405,7 @@
             <span>重做</span>
           </button>
 
-          <button
-            type="button"
-            class="toolbar-mobile__panel-button"
-            @click="closePlusPanel()"
-          >
+          <button type="button" class="toolbar-mobile__panel-button" @click="closePlusPanel()">
             <ToolbarIcon name="chevron-down" />
             <span>收起</span>
           </button>
@@ -94,20 +456,20 @@
         :disabled="disabled"
         title="分割线"
         aria-label="分割线"
-        @click="emit('insert-horizontal-rule')"
+        @click="emit('insertHorizontalRule')"
       >
         <ToolbarIcon name="horizontal-rule" />
       </button>
 
-      <div class="toolbar-mobile__dropdown" :class="{ 'is-open': isListMenuOpen }" ref="listMenuRef">
+      <div ref="listMenuRef" class="toolbar-mobile__dropdown" :class="{ 'is-open': isListMenuOpen }">
         <button
+          ref="listTriggerRef"
           type="button"
           class="toolbar-mobile__button toolbar-mobile__dropdown-trigger"
           :class="{ 'is-active': isListMenuOpen || isListMenuActive }"
           :disabled="disabled"
           :title="currentListLabel"
           :aria-label="currentListLabel"
-          ref="listTriggerRef"
           @click="toggleMenu('list')"
         >
           <ToolbarIcon :name="currentListIcon" />
@@ -135,14 +497,14 @@
         </div>
       </div>
 
-      <div class="toolbar-mobile__dropdown" :class="{ 'is-open': isMediaMenuOpen }" ref="mediaMenuRef">
+      <div ref="mediaMenuRef" class="toolbar-mobile__dropdown" :class="{ 'is-open': isMediaMenuOpen }">
         <button
+          ref="mediaTriggerRef"
           type="button"
           class="toolbar-mobile__button toolbar-mobile__dropdown-trigger"
           :disabled="disabled"
           title="插入媒体"
           aria-label="插入媒体"
-          ref="mediaTriggerRef"
           @click="toggleMenu('media')"
         >
           <ToolbarIcon name="media" />
@@ -169,349 +531,22 @@
         </div>
       </div>
 
-      <div class="toolbar-mobile__dropdown" ref="plusMenuRef">
+      <div ref="plusMenuRef" class="toolbar-mobile__dropdown">
         <button
+          ref="plusTriggerRef"
           type="button"
           class="toolbar-mobile__button toolbar-mobile__dropdown-trigger toolbar-mobile__button--plus"
           :disabled="disabled"
           title="更多"
           aria-label="更多"
-          ref="plusTriggerRef"
           @click="togglePlusPanel"
         >
           <ToolbarIcon name="plus" />
         </button>
       </div>
-
-
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import type { Editor } from '@tiptap/vue-3'
-import type { BambooColorOption } from '../composables/useBambooEditor'
-import ToolbarIcon from './ToolbarIcon.vue'
-
-declare const window: Window & typeof globalThis
-
-type ListOption = {
-  label: string
-  command: 'toggleBulletList' | 'toggleOrderedList'
-  active: 'bulletList' | 'orderedList'
-  icon: 'bullet-list' | 'ordered-list'
-}
-
-type MediaOption = {
-  label: string
-  icon: 'image' | 'remote-video' | 'audio'
-  action: 'open-image-dialog' | 'open-video-dialog' | 'open-audio-dialog'
-}
-
-type DropdownPlacement = {
-  horizontal: 'left' | 'right'
-  vertical: 'up'
-}
-
-type MenuKind = 'list' | 'media'
-
-type ToolbarEmitAction = 'clear-formatting' | 'insert-horizontal-rule'
-
-const OPEN_DELAY_MS = 100
-const CLOSE_ANIMATION_MS = 200
-
-const props = defineProps<{
-  editor: Editor | null
-  disabled?: boolean
-  colorPalette?: readonly BambooColorOption[]
-  stats: {
-    totalCharacters: number
-    chineseCharacters: number
-    paragraphCount: number
-    lineCount: number
-    currentLength?: number
-    maxLength?: number
-    isNearLimit?: boolean
-    isAtLimit?: boolean
-  }
-}>()
-
-const emit = defineEmits<{
-  'open-image-dialog': []
-  'open-video-dialog': []
-  'open-audio-dialog': []
-  'open-link-dialog': [payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }]
-  'text-color-select': [token: string | null]
-  'clear-formatting': []
-  'insert-horizontal-rule': []
-}>()
-
-function emitAndClosePanel(event: 'open-image-dialog' | 'open-video-dialog' | 'open-audio-dialog') {
-  emit(event as any)
-  closePlusPanel()
-}
-
-const listOptions = [
-  { label: '无序列表', command: 'toggleBulletList', active: 'bulletList', icon: 'bullet-list' },
-  { label: '有序列表', command: 'toggleOrderedList', active: 'orderedList', icon: 'ordered-list' },
-] as const satisfies readonly ListOption[]
-
-const mediaOptions = [
-  { label: '图片', icon: 'image', action: 'open-image-dialog' },
-  { label: '视频', icon: 'remote-video', action: 'open-video-dialog' },
-  { label: '音频', icon: 'audio', action: 'open-audio-dialog' },
-] as const satisfies readonly MediaOption[]
-
-const isListMenuOpen = ref(false)
-const isMediaMenuOpen = ref(false)
-const isPlusPanelVisible = ref(false)
-const isPlusPanelOpen = ref(false)
-
-const listMenuRef = ref<HTMLElement | null>(null)
-const listTriggerRef = ref<HTMLElement | null>(null)
-const mediaMenuRef = ref<HTMLElement | null>(null)
-const mediaTriggerRef = ref<HTMLElement | null>(null)
-const plusMenuRef = ref<HTMLElement | null>(null)
-const plusTriggerRef = ref<HTMLElement | null>(null)
-const shellRef = ref<HTMLElement | null>(null)
-
-const panelWrapStyle = ref<Record<string, string>>({})
-const listDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'up' })
-const listDropdownMenuStyle = ref<Record<string, string>>({})
-const mediaDropdownPlacement = ref<DropdownPlacement>({ horizontal: 'left', vertical: 'up' })
-const mediaDropdownMenuStyle = ref<Record<string, string>>({})
-
-let openTimer: number | null = null
-let closeTimer: number | null = null
-
-const currentListOption = computed(() => props.editor?.isActive('orderedList') ? listOptions[1] : listOptions[0])
-const currentListLabel = computed(() => currentListOption.value.label)
-const currentListIcon = computed(() => currentListOption.value.icon)
-const isListMenuActive = computed(() => Boolean(props.editor?.isActive('bulletList') || props.editor?.isActive('orderedList')))
-const statsStatusClass = computed(() => ({
-  'is-warning': Boolean(props.stats.maxLength != null && props.stats.isNearLimit && !props.stats.isAtLimit),
-  'is-danger': Boolean(props.stats.maxLength != null && props.stats.isAtLimit),
-}))
-
-function formatCount(value: number) {
-  return value.toLocaleString('zh-CN')
-}
-
-function clearPanelTimers() {
-  if (openTimer !== null) {
-    window.clearTimeout(openTimer)
-    openTimer = null
-  }
-  if (closeTimer !== null) {
-    window.clearTimeout(closeTimer)
-    closeTimer = null
-  }
-}
-
-function blurEditor() {
-  props.editor?.commands.blur()
-}
-
-function focusEditor() {
-  nextTick(() => props.editor?.commands.focus())
-}
-
-function run(command: string, attrs?: Record<string, unknown>) {
-  const chain = props.editor?.chain().focus()
-  if (!chain) return
-  const target = attrs ? (chain as any)[command](attrs) : (chain as any)[command]()
-  target?.run?.()
-}
-
-function runAndClosePanel(command: string, attrs?: Record<string, unknown>) {
-  run(command, attrs)
-  closePlusPanel()
-}
-
-function isDisabled(command: string, attrs?: Record<string, unknown>) {
-  if (props.disabled) return true
-  const chain = props.editor?.can().chain().focus()
-  if (!chain) return true
-  const target = attrs ? (chain as any)[command](attrs) : (chain as any)[command]()
-  return !target?.run?.()
-}
-
-function buttonClass(name: string, attrs?: Record<string, unknown>) {
-  const active = attrs ? props.editor?.isActive(name, attrs) : props.editor?.isActive(name)
-  return { 'is-active': Boolean(active) }
-}
-
-function selectList(option: ListOption) {
-  run(option.command)
-  closeMenus()
-}
-
-function selectMedia(option: MediaOption) {
-  if (option.action === 'open-image-dialog') {
-    emit('open-image-dialog')
-  } else if (option.action === 'open-video-dialog') {
-    emit('open-video-dialog')
-  } else if (option.action === 'open-audio-dialog') {
-    emit('open-audio-dialog')
-  }
-  closeMenus()
-}
-
-function emitActionAndClosePanel(action: ToolbarEmitAction) {
-  if (props.disabled) return
-  if (action === 'clear-formatting') {
-    emit('clear-formatting')
-  }
-  else {
-    emit('insert-horizontal-rule')
-  }
-  closePlusPanel()
-}
-
-function updatePanelPosition() {
-  const shell = shellRef.value
-  if (!shell || typeof window === 'undefined') return
-
-  const toolbar = shell.querySelector('.toolbar-mobile') as HTMLElement | null
-  const toolbarRect = toolbar?.getBoundingClientRect()
-  if (!toolbarRect) return
-
-  panelWrapStyle.value = {
-    left: `${toolbarRect.left + toolbarRect.width / 2}px`,
-    bottom: `${Math.max(0, window.innerHeight - toolbarRect.top)}px`,
-    width: `${toolbarRect.width}px`,
-    maxWidth: `${toolbarRect.width}px`,
-  }
-}
-
-function getMenuState(kind: MenuKind) {
-  if (kind === 'media') {
-    return isMediaMenuOpen
-  }
-  return isListMenuOpen
-}
-
-function getMenuElements(kind: MenuKind) {
-  if (kind === 'media') {
-    return { menuRef: mediaMenuRef, triggerRef: mediaTriggerRef, placementRef: mediaDropdownPlacement, styleRef: mediaDropdownMenuStyle, width: 120 }
-  }
-  return { menuRef: listMenuRef, triggerRef: listTriggerRef, placementRef: listDropdownPlacement, styleRef: listDropdownMenuStyle, width: 160 }
-}
-
-function closeMenus() {
-  isListMenuOpen.value = false
-  isMediaMenuOpen.value = false
-}
-
-function openPlusPanel() {
-  if (props.disabled) return
-  closeMenus()
-  clearPanelTimers()
-  blurEditor()
-  updatePanelPosition()
-  isPlusPanelVisible.value = true
-  openTimer = window.setTimeout(() => {
-    updatePanelPosition()
-    isPlusPanelOpen.value = true
-    openTimer = null
-  }, OPEN_DELAY_MS)
-}
-
-function closePlusPanel() {
-  clearPanelTimers()
-  isPlusPanelOpen.value = false
-  closeTimer = window.setTimeout(() => {
-    isPlusPanelVisible.value = false
-    closeTimer = null
-    focusEditor()
-  }, CLOSE_ANIMATION_MS)
-}
-
-function togglePlusPanel() {
-  if (isPlusPanelVisible.value || isPlusPanelOpen.value) {
-    closePlusPanel()
-    return
-  }
-  openPlusPanel()
-}
-
-function toggleMenu(kind: MenuKind) {
-  if (props.disabled) return
-  const state = getMenuState(kind)
-  const nextState = !state.value
-  closePlusPanelIfNeeded(false)
-  closeMenus()
-  state.value = nextState
-  if (!nextState) return
-  nextTick(() => updateDropdownPosition(kind))
-}
-
-function closePlusPanelIfNeeded(refocus = true) {
-  if (!isPlusPanelVisible.value && !isPlusPanelOpen.value) return
-  clearPanelTimers()
-  isPlusPanelOpen.value = false
-  closeTimer = window.setTimeout(() => {
-    isPlusPanelVisible.value = false
-    closeTimer = null
-    if (refocus) {
-      focusEditor()
-    }
-  }, CLOSE_ANIMATION_MS)
-}
-
-function updateDropdownPosition(kind: MenuKind) {
-  const { menuRef, triggerRef, placementRef, styleRef, width: menuWidth } = getMenuElements(kind)
-  const trigger = triggerRef.value
-  const container = menuRef.value
-  if (!trigger || !container || typeof window === 'undefined') return
-
-  const viewportPadding = 12
-  const triggerRect = trigger.getBoundingClientRect()
-  const toolbarRect = container.closest('.toolbar-mobile')?.getBoundingClientRect() ?? null
-  const boundaryLeft = toolbarRect ? Math.max(viewportPadding, toolbarRect.left) : viewportPadding
-  const boundaryRight = toolbarRect ? Math.min(window.innerWidth - viewportPadding, toolbarRect.right) : window.innerWidth - viewportPadding
-  const availableRight = Math.max(0, boundaryRight - triggerRect.left)
-  const availableLeft = Math.max(0, triggerRect.right - boundaryLeft)
-  const width = Math.max(148, Math.min(menuWidth, Math.max(availableRight, availableLeft, 148)))
-  const wouldOverflowToolbarRight = triggerRect.left + width > boundaryRight
-  const alignRight = wouldOverflowToolbarRight && availableLeft >= width
-
-  placementRef.value = { horizontal: alignRight ? 'right' : 'left', vertical: 'up' }
-  styleRef.value = { width: `${Math.floor(width)}px`, maxWidth: `${Math.max(148, Math.floor(boundaryRight - boundaryLeft))}px` }
-}
-
-function menuPlacementClass(placement: DropdownPlacement) {
-  return { 'is-align-right': placement.horizontal === 'right', 'is-drop-up': placement.vertical === 'up' }
-}
-
-function onClickOutside(event: MouseEvent) {
-  const targets = [listMenuRef.value, mediaMenuRef.value].filter(Boolean)
-  if (!targets.length) return
-  const eventTarget = event.target
-  if (eventTarget instanceof Node && !targets.some((target) => target?.contains(eventTarget))) closeMenus()
-}
-
-function onViewportChange() {
-  if (isListMenuOpen.value) updateDropdownPosition('list')
-  if (isMediaMenuOpen.value) updateDropdownPosition('media')
-  if (isPlusPanelVisible.value || isPlusPanelOpen.value) updatePanelPosition()
-}
-
-onMounted(() => {
-  updatePanelPosition()
-  document.addEventListener('mousedown', onClickOutside)
-  window.addEventListener('resize', onViewportChange)
-  window.addEventListener('scroll', onViewportChange, true)
-})
-
-onBeforeUnmount(() => {
-  clearPanelTimers()
-  document.removeEventListener('mousedown', onClickOutside)
-  window.removeEventListener('resize', onViewportChange)
-  window.removeEventListener('scroll', onViewportChange, true)
-})
-</script>
 
 <style scoped>
 .toolbar-mobile-shell {
@@ -530,7 +565,9 @@ onBeforeUnmount(() => {
   pointer-events: none;
   box-sizing: border-box;
   transform: translateX(-50%);
-  transition: opacity 300ms cubic-bezier(0.25, 0.8, 0.25, 1), visibility 300ms cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition:
+    opacity 300ms cubic-bezier(0.25, 0.8, 0.25, 1),
+    visibility 300ms cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .toolbar-mobile__panel-wrap.is-visible {
@@ -572,7 +609,10 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .toolbar-mobile__button.is-active,
@@ -685,7 +725,9 @@ onBeforeUnmount(() => {
   box-shadow: none;
   transform: translateY(100%);
   opacity: 0;
-  transition: transform 300ms cubic-bezier(0.25, 0.8, 0.25, 1), opacity 300ms cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition:
+    transform 300ms cubic-bezier(0.25, 0.8, 0.25, 1),
+    opacity 300ms cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .toolbar-mobile__panel-wrap.is-open .toolbar-mobile__panel {

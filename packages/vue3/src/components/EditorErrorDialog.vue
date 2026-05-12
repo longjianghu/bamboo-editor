@@ -1,55 +1,5 @@
-<template>
-  <div
-    v-if="isRendered"
-    class="editor-error-dialog"
-    :class="[
-      `editor-error-dialog--${device}`,
-      { 'is-open': isOpen },
-    ]"
-  >
-    <div class="editor-error-dialog__backdrop" @click="emit('close')"></div>
-
-    <div class="editor-error-dialog__wrap">
-      <div class="editor-error-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="editor-error-dialog-title">
-        <div class="editor-error-dialog__header">
-          <h3 id="editor-error-dialog-title" class="editor-error-dialog__title">提示</h3>
-          <button type="button" class="editor-error-dialog__close" aria-label="关闭" @click="emit('close')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div class="editor-error-dialog__body">
-          <div class="editor-error-dialog__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 8v4" />
-              <path d="M12 16h.01" />
-            </svg>
-          </div>
-          <p class="editor-error-dialog__message">{{ message }}</p>
-        </div>
-
-        <div class="editor-error-dialog__footer">
-          <button type="button" class="editor-error-dialog__button editor-error-dialog__button--primary" @click="emit('close')">
-            确定
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
-
-declare const window: Window & typeof globalThis
-
-type Device = 'pc' | 'mobile'
-
-const OPEN_DELAY_MS = 16
-const CLOSE_ANIMATION_MS = 220
 
 const props = defineProps<{
   visible: boolean
@@ -60,6 +10,13 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
 }>()
+
+declare const window: Window & typeof globalThis
+
+type Device = 'pc' | 'mobile'
+
+const OPEN_DELAY_MS = 16
+const CLOSE_ANIMATION_MS = 220
 
 const isRendered = ref(props.visible)
 const isOpen = ref(false)
@@ -91,10 +48,13 @@ function openDialog() {
 function closeDialog() {
   clearTimers()
   isOpen.value = false
-  closeTimer = window.setTimeout(() => {
-    isRendered.value = false
-    closeTimer = null
-  }, props.device === 'mobile' ? CLOSE_ANIMATION_MS : 120)
+  closeTimer = window.setTimeout(
+    () => {
+      isRendered.value = false
+      closeTimer = null
+    },
+    props.device === 'mobile' ? CLOSE_ANIMATION_MS : 120,
+  )
 }
 
 watch(
@@ -114,6 +74,69 @@ onBeforeUnmount(() => {
   clearTimers()
 })
 </script>
+
+<template>
+  <div v-if="isRendered" class="editor-error-dialog" :class="[`editor-error-dialog--${device}`, { 'is-open': isOpen }]">
+    <div class="editor-error-dialog__backdrop" @click="emit('close')"></div>
+
+    <div class="editor-error-dialog__wrap">
+      <div
+        class="editor-error-dialog__panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="editor-error-dialog-title"
+      >
+        <div class="editor-error-dialog__header">
+          <h3 id="editor-error-dialog-title" class="editor-error-dialog__title">
+            提示
+          </h3>
+          <button type="button" class="editor-error-dialog__close" aria-label="关闭" @click="emit('close')">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="editor-error-dialog__body">
+          <div class="editor-error-dialog__icon">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v4" />
+              <path d="M12 16h.01" />
+            </svg>
+          </div>
+          <p class="editor-error-dialog__message">
+            {{ message }}
+          </p>
+        </div>
+
+        <div class="editor-error-dialog__footer">
+          <button
+            type="button"
+            class="editor-error-dialog__button editor-error-dialog__button--primary"
+            @click="emit('close')"
+          >
+            确定
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
 
 <style scoped>
 .editor-error-dialog {
@@ -168,7 +191,9 @@ onBeforeUnmount(() => {
   box-shadow: 0 20px 48px rgba(15, 23, 42, 0.18);
   opacity: 0;
   transform: translateY(8px) scale(0.98);
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
 }
 
 .editor-error-dialog--pc.is-open .editor-error-dialog__panel {
@@ -184,7 +209,9 @@ onBeforeUnmount(() => {
   box-shadow: none;
   transform: translateY(100%);
   opacity: 0;
-  transition: transform 300ms cubic-bezier(0.25, 0.8, 0.25, 1), opacity 300ms cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition:
+    transform 300ms cubic-bezier(0.25, 0.8, 0.25, 1),
+    opacity 300ms cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .editor-error-dialog--mobile.is-open .editor-error-dialog__panel {

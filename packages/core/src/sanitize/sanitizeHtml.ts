@@ -1,5 +1,5 @@
-import { isValidColorToken, normalizeColorTokens } from '../colors'
 import type { SanitizeOptions } from './types'
+import { isValidColorToken, normalizeColorTokens } from '../colors'
 
 const ALLOWED_TAGS = new Set([
   'h1',
@@ -38,12 +38,7 @@ const ALLOWED_ATTRIBUTES: Record<string, Set<string>> = {
 }
 
 function isDangerousUrl(value: string) {
-  return /^\s*(javascript:|data:(?!image\/|video\/|audio\/))/i.test(value)
-}
-
-function isValidSrcUrl(value: string) {
-  // Allow blob:, data: (for image/video/audio), https:, http:
-  return /^blob:/i.test(value) || /^data:/i.test(value) || /^https?:\/\//i.test(value)
+  return /^\s*(?:javascript:|data:(?!image\/|video\/|audio\/))/i.test(value)
 }
 
 function isValidAlign(value: string) {

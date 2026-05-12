@@ -1,214 +1,8 @@
-<template>
-  <div
-    v-if="visible"
-    ref="toolbarRef"
-    class="floating-toolbar-pc"
-    :style="toolbarStyle"
-    role="toolbar"
-    aria-label="Floating editor toolbar"
-    @mousedown.prevent
-  >
-    <div class="floating-toolbar-pc__dropdown" :class="{ 'is-open': isHeadingMenuOpen }" ref="headingMenuRef">
-      <button
-        type="button"
-        class="floating-toolbar-pc__button floating-toolbar-pc__dropdown-trigger floating-toolbar-pc__dropdown-trigger--text"
-        :class="{ 'is-active': isHeadingMenuOpen || !isParagraphActive() }"
-        :disabled="disabled"
-        :title="currentHeadingLabel"
-        :aria-label="currentHeadingLabel"
-        @click="toggleMenu('heading')"
-      >
-        <span class="floating-toolbar-pc__trigger-text">{{ currentHeadingShortLabel }}</span>
-        <ToolbarIcon name="chevron-down" />
-      </button>
-
-      <div v-if="isHeadingMenuOpen" class="floating-toolbar-pc__dropdown-menu floating-toolbar-pc__option-list" :class="headingMenuClass" :style="headingMenuStyle">
-        <button
-          v-for="option in headingOptions"
-          :key="option.label"
-          type="button"
-          class="floating-toolbar-pc__option-button"
-          :class="{ 'is-active': isHeadingOptionActive(option) }"
-          :disabled="option.command ? isDisabled(option.command, option.attrs) : disabled"
-          @click="selectHeading(option)"
-        >
-          <span class="floating-toolbar-pc__option-label">{{ option.label }}</span>
-        </button>
-      </div>
-    </div>
-
-    <button
-      type="button"
-      class="floating-toolbar-pc__button"
-      :class="buttonClass('bold')"
-      :disabled="isDisabled('toggleBold')"
-      title="加粗"
-      aria-label="加粗"
-      @click="run('toggleBold')"
-    >
-      <ToolbarIcon name="bold" />
-    </button>
-
-    <div class="floating-toolbar-pc__dropdown" :class="{ 'is-open': isAlignMenuOpen }" ref="alignMenuRef">
-      <button
-        type="button"
-        class="floating-toolbar-pc__button floating-toolbar-pc__dropdown-trigger"
-        :class="{ 'is-active': isAlignMenuOpen || !isTextAlignActive('left') }"
-        :disabled="disabled"
-        :title="currentAlignLabel"
-        :aria-label="currentAlignLabel"
-        @click="toggleMenu('align')"
-      >
-        <ToolbarIcon :name="currentAlignIcon" />
-        <ToolbarIcon name="chevron-down" />
-      </button>
-
-      <div v-if="isAlignMenuOpen" class="floating-toolbar-pc__dropdown-menu floating-toolbar-pc__option-list" :class="alignMenuClass" :style="alignMenuStyle">
-        <button
-          v-for="option in alignOptions"
-          :key="option.label"
-          type="button"
-          class="floating-toolbar-pc__option-button floating-toolbar-pc__option-button--icon"
-          :class="{ 'is-active': isTextAlignActive(option.value) }"
-          :disabled="disabled"
-          @click="selectAlign(option.value)"
-        >
-          <ToolbarIcon :name="option.icon" />
-          <span class="floating-toolbar-pc__option-label">{{ option.label }}</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="floating-toolbar-pc__dropdown" :class="{ 'is-open': isColorMenuOpen }" ref="colorMenuRef">
-      <button
-        type="button"
-        class="floating-toolbar-pc__button floating-toolbar-pc__dropdown-trigger"
-        :class="{ 'is-active': !isColorCleared() || isColorMenuOpen }"
-        :disabled="disabled"
-        :title="currentColorLabel"
-        :aria-label="currentColorLabel"
-        @click="toggleMenu('color')"
-      >
-        <span class="floating-toolbar-pc__color-chip" :style="{ backgroundColor: currentColorValue }"></span>
-        <ToolbarIcon name="chevron-down" />
-      </button>
-
-      <div
-        v-if="isColorMenuOpen"
-        class="floating-toolbar-pc__dropdown-menu floating-toolbar-pc__dropdown-menu--palette"
-        :class="colorMenuClass"
-        :style="colorMenuStyle"
-      >
-        <div class="floating-toolbar-pc__palette-grid">
-          <button
-            type="button"
-            class="floating-toolbar-pc__palette-swatch"
-            :class="{ 'is-active': isColorCleared() }"
-            title="默认颜色"
-            aria-label="默认颜色"
-            @click="selectTextColor(null)"
-          >
-            <span class="floating-toolbar-pc__palette-swatch-color" :style="{ backgroundColor: '#18181b' }"></span>
-          </button>
-
-          <button
-            v-for="item in colorPalette"
-            :key="item.token"
-            type="button"
-            class="floating-toolbar-pc__palette-swatch"
-            :class="{ 'is-active': isTextColorActive(item.token) }"
-            :title="item.label"
-            :aria-label="item.label"
-            @click="selectTextColor(item.token)"
-          >
-            <span class="floating-toolbar-pc__palette-swatch-color" :style="{ backgroundColor: item.value }"></span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <button
-      type="button"
-      class="floating-toolbar-pc__button"
-      :class="buttonClass('link')"
-      :disabled="disabled"
-      title="链接"
-      aria-label="链接"
-      @click="onLinkClick"
-    >
-      <ToolbarIcon name="link" />
-    </button>
-
-    <button
-      type="button"
-      class="floating-toolbar-pc__button"
-      :disabled="disabled"
-      title="清除格式"
-      aria-label="清除格式"
-      @click="emit('clear-formatting')"
-    >
-      <ToolbarIcon name="clear-format" />
-    </button>
-
-    <button
-      v-for="item in extraInlineStyleItems"
-      :key="item.label"
-      type="button"
-      class="floating-toolbar-pc__button"
-      :class="buttonClass(item.active)"
-      :disabled="isDisabled(item.command)"
-      :title="item.label"
-      :aria-label="item.label"
-      @click="run(item.command)"
-    >
-      <ToolbarIcon :name="item.icon" />
-    </button>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { Editor } from '@tiptap/vue-3'
 import type { BambooColorOption } from '../composables/useBambooEditor'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import ToolbarIcon from './ToolbarIcon.vue'
-
-declare const window: Window & typeof globalThis
-
-export type FloatingPosition = {
-  top: number
-  left: number
-  editorTop?: number
-  editorBottom?: number
-  editorLeft?: number
-  editorRight?: number
-}
-
-type DropdownPlacement = {
-  horizontal: 'left' | 'right'
-  vertical: 'up' | 'down'
-}
-
-type ToolbarButtonItem = {
-  label: string
-  icon: 'bold' | 'italic' | 'strike' | 'code'
-  command: 'toggleBold' | 'toggleItalic' | 'toggleStrike' | 'toggleCode'
-  active: 'bold' | 'italic' | 'strike' | 'code'
-}
-
-type HeadingOption = {
-  label: string
-  shortLabel: string
-  command: string
-  attrs?: Record<string, unknown>
-}
-
-type AlignOption = {
-  label: string
-  value: 'left' | 'center' | 'right'
-  icon: 'align-left' | 'align-center' | 'align-right'
-}
-
-type MenuKind = 'heading' | 'align' | 'color'
 
 const props = defineProps<{
   editor: Editor | null
@@ -219,10 +13,48 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'open-link-dialog': [payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }]
-  'text-color-select': [token: string | null]
-  'clear-formatting': []
+  openLinkDialog: [payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }]
+  textColorSelect: [token: string | null]
+  clearFormatting: []
 }>()
+
+declare const window: Window & typeof globalThis
+
+export interface FloatingPosition {
+  top: number
+  left: number
+  editorTop?: number
+  editorBottom?: number
+  editorLeft?: number
+  editorRight?: number
+}
+
+interface DropdownPlacement {
+  horizontal: 'left' | 'right'
+  vertical: 'up' | 'down'
+}
+
+interface ToolbarButtonItem {
+  label: string
+  icon: 'bold' | 'italic' | 'strike' | 'code'
+  command: 'toggleBold' | 'toggleItalic' | 'toggleStrike' | 'toggleCode'
+  active: 'bold' | 'italic' | 'strike' | 'code'
+}
+
+interface HeadingOption {
+  label: string
+  shortLabel: string
+  command: string
+  attrs?: Record<string, unknown>
+}
+
+interface AlignOption {
+  label: string
+  value: 'left' | 'center' | 'right'
+  icon: 'align-left' | 'align-center' | 'align-right'
+}
+
+type MenuKind = 'heading' | 'align' | 'color'
 
 const headingOptions: readonly HeadingOption[] = [
   { label: '正文', shortLabel: '正文', command: 'setParagraph' },
@@ -257,9 +89,9 @@ const headingMenuStyle = ref<Record<string, string>>({})
 const alignMenuStyle = ref<Record<string, string>>({})
 const colorMenuStyle = ref<Record<string, string>>({})
 const colorPalette = computed(() => props.colorPalette ?? [])
-const activeColor = computed(() => colorPalette.value.find((item) => isTextColorActive(item.token)) ?? null)
+const activeColor = computed(() => colorPalette.value.find(item => isTextColorActive(item.token)) ?? null)
 const currentColorValue = computed(() => activeColor.value?.value ?? '#18181b')
-const currentColorLabel = computed(() => activeColor.value ? `文字颜色：${activeColor.value.label}` : '文字颜色')
+const currentColorLabel = computed(() => (activeColor.value ? `文字颜色：${activeColor.value.label}` : '文字颜色'))
 const currentHeadingOption = computed(() => {
   if (props.editor?.isActive('heading', { level: 1 })) {
     return headingOptions[1]
@@ -412,11 +244,11 @@ function isColorCleared() {
     return false
   }
 
-  return !colorPalette.value.some((item) => isTextColorActive(item.token))
+  return !colorPalette.value.some(item => isTextColorActive(item.token))
 }
 
 function selectTextColor(token: string | null) {
-  emit('text-color-select', token)
+  emit('textColorSelect', token)
   closeMenus()
 }
 
@@ -522,7 +354,7 @@ function onLinkClick() {
   closeMenus()
 
   if (props.editor?.isActive('link')) {
-    emit('open-link-dialog', {
+    emit('openLinkDialog', {
       initialValue: props.editor.getAttributes('link').href ?? '',
       mode: 'edit',
       allowRemove: true,
@@ -530,7 +362,7 @@ function onLinkClick() {
     return
   }
 
-  emit('open-link-dialog', {
+  emit('openLinkDialog', {
     mode: 'create',
     initialValue: '',
     allowRemove: false,
@@ -577,7 +409,7 @@ function onClickOutside(event: MouseEvent) {
   }
 
   const eventTarget = event.target
-  if (eventTarget instanceof Node && !targets.some((target) => target?.contains(eventTarget))) {
+  if (eventTarget instanceof Node && !targets.some(target => target?.contains(eventTarget))) {
     closeMenus()
   }
 }
@@ -616,6 +448,184 @@ onBeforeUnmount(() => {
   window.removeEventListener('scroll', onWindowChange, true)
 })
 </script>
+
+<template>
+  <div
+    v-if="visible"
+    ref="toolbarRef"
+    class="floating-toolbar-pc"
+    :style="toolbarStyle"
+    role="toolbar"
+    aria-label="Floating editor toolbar"
+    @mousedown.prevent
+  >
+    <div ref="headingMenuRef" class="floating-toolbar-pc__dropdown" :class="{ 'is-open': isHeadingMenuOpen }">
+      <button
+        type="button"
+        class="floating-toolbar-pc__button floating-toolbar-pc__dropdown-trigger floating-toolbar-pc__dropdown-trigger--text"
+        :class="{ 'is-active': isHeadingMenuOpen || !isParagraphActive() }"
+        :disabled="disabled"
+        :title="currentHeadingLabel"
+        :aria-label="currentHeadingLabel"
+        @click="toggleMenu('heading')"
+      >
+        <span class="floating-toolbar-pc__trigger-text">{{ currentHeadingShortLabel }}</span>
+        <ToolbarIcon name="chevron-down" />
+      </button>
+
+      <div
+        v-if="isHeadingMenuOpen"
+        class="floating-toolbar-pc__dropdown-menu floating-toolbar-pc__option-list"
+        :class="headingMenuClass"
+        :style="headingMenuStyle"
+      >
+        <button
+          v-for="option in headingOptions"
+          :key="option.label"
+          type="button"
+          class="floating-toolbar-pc__option-button"
+          :class="{ 'is-active': isHeadingOptionActive(option) }"
+          :disabled="option.command ? isDisabled(option.command, option.attrs) : disabled"
+          @click="selectHeading(option)"
+        >
+          <span class="floating-toolbar-pc__option-label">{{ option.label }}</span>
+        </button>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      class="floating-toolbar-pc__button"
+      :class="buttonClass('bold')"
+      :disabled="isDisabled('toggleBold')"
+      title="加粗"
+      aria-label="加粗"
+      @click="run('toggleBold')"
+    >
+      <ToolbarIcon name="bold" />
+    </button>
+
+    <div ref="alignMenuRef" class="floating-toolbar-pc__dropdown" :class="{ 'is-open': isAlignMenuOpen }">
+      <button
+        type="button"
+        class="floating-toolbar-pc__button floating-toolbar-pc__dropdown-trigger"
+        :class="{ 'is-active': isAlignMenuOpen || !isTextAlignActive('left') }"
+        :disabled="disabled"
+        :title="currentAlignLabel"
+        :aria-label="currentAlignLabel"
+        @click="toggleMenu('align')"
+      >
+        <ToolbarIcon :name="currentAlignIcon" />
+        <ToolbarIcon name="chevron-down" />
+      </button>
+
+      <div
+        v-if="isAlignMenuOpen"
+        class="floating-toolbar-pc__dropdown-menu floating-toolbar-pc__option-list"
+        :class="alignMenuClass"
+        :style="alignMenuStyle"
+      >
+        <button
+          v-for="option in alignOptions"
+          :key="option.label"
+          type="button"
+          class="floating-toolbar-pc__option-button floating-toolbar-pc__option-button--icon"
+          :class="{ 'is-active': isTextAlignActive(option.value) }"
+          :disabled="disabled"
+          @click="selectAlign(option.value)"
+        >
+          <ToolbarIcon :name="option.icon" />
+          <span class="floating-toolbar-pc__option-label">{{ option.label }}</span>
+        </button>
+      </div>
+    </div>
+
+    <div ref="colorMenuRef" class="floating-toolbar-pc__dropdown" :class="{ 'is-open': isColorMenuOpen }">
+      <button
+        type="button"
+        class="floating-toolbar-pc__button floating-toolbar-pc__dropdown-trigger"
+        :class="{ 'is-active': !isColorCleared() || isColorMenuOpen }"
+        :disabled="disabled"
+        :title="currentColorLabel"
+        :aria-label="currentColorLabel"
+        @click="toggleMenu('color')"
+      >
+        <span class="floating-toolbar-pc__color-chip" :style="{ backgroundColor: currentColorValue }"></span>
+        <ToolbarIcon name="chevron-down" />
+      </button>
+
+      <div
+        v-if="isColorMenuOpen"
+        class="floating-toolbar-pc__dropdown-menu floating-toolbar-pc__dropdown-menu--palette"
+        :class="colorMenuClass"
+        :style="colorMenuStyle"
+      >
+        <div class="floating-toolbar-pc__palette-grid">
+          <button
+            type="button"
+            class="floating-toolbar-pc__palette-swatch"
+            :class="{ 'is-active': isColorCleared() }"
+            title="默认颜色"
+            aria-label="默认颜色"
+            @click="selectTextColor(null)"
+          >
+            <span class="floating-toolbar-pc__palette-swatch-color" :style="{ backgroundColor: '#18181b' }"></span>
+          </button>
+
+          <button
+            v-for="item in colorPalette"
+            :key="item.token"
+            type="button"
+            class="floating-toolbar-pc__palette-swatch"
+            :class="{ 'is-active': isTextColorActive(item.token) }"
+            :title="item.label"
+            :aria-label="item.label"
+            @click="selectTextColor(item.token)"
+          >
+            <span class="floating-toolbar-pc__palette-swatch-color" :style="{ backgroundColor: item.value }"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      class="floating-toolbar-pc__button"
+      :class="buttonClass('link')"
+      :disabled="disabled"
+      title="链接"
+      aria-label="链接"
+      @click="onLinkClick"
+    >
+      <ToolbarIcon name="link" />
+    </button>
+
+    <button
+      type="button"
+      class="floating-toolbar-pc__button"
+      :disabled="disabled"
+      title="清除格式"
+      aria-label="清除格式"
+      @click="emit('clearFormatting')"
+    >
+      <ToolbarIcon name="clear-format" />
+    </button>
+
+    <button
+      v-for="item in extraInlineStyleItems"
+      :key="item.label"
+      type="button"
+      class="floating-toolbar-pc__button"
+      :class="buttonClass(item.active)"
+      :disabled="isDisabled(item.command)"
+      :title="item.label"
+      :aria-label="item.label"
+      @click="run(item.command)"
+    >
+      <ToolbarIcon :name="item.icon" />
+    </button>
+  </div>
+</template>
 
 <style scoped>
 .floating-toolbar-pc {

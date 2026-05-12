@@ -1,9 +1,7 @@
 import Heading from '@tiptap/extension-heading'
 
 function getAlignAttrs(textAlign: unknown) {
-  return textAlign === 'center' || textAlign === 'right'
-    ? { 'data-align': textAlign }
-    : {}
+  return textAlign === 'center' || textAlign === 'right' ? { 'data-align': textAlign } : {}
 }
 
 export const CleanHeading = Heading.extend({

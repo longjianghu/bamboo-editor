@@ -1,7 +1,7 @@
-import { DOMParser as ProseMirrorDOMParser } from '@tiptap/pm/model'
 import type { EditorState } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import type { SanitizeOptions } from './sanitize/types'
+import { DOMParser as ProseMirrorDOMParser } from '@tiptap/pm/model'
 import { sanitizeHtml } from './sanitize/sanitizeHtml'
 
 export const MAX_LENGTH_FEEDBACK_EVENT = 'bamboo-editor:max-length-feedback'
@@ -156,9 +156,11 @@ export function dispatchMaxLengthFeedback(view: EditorView, detail: MaxLengthFee
     return
   }
 
-  view.dom.dispatchEvent(new CustomEvent<MaxLengthFeedbackDetail>(MAX_LENGTH_FEEDBACK_EVENT, {
-    detail,
-  }))
+  view.dom.dispatchEvent(
+    new CustomEvent<MaxLengthFeedbackDetail>(MAX_LENGTH_FEEDBACK_EVENT, {
+      detail,
+    }),
+  )
 }
 
 function trimChildren(parent: Node, state: { remaining: number }) {
@@ -210,7 +212,12 @@ function trimNode(node: Node, state: { remaining: number }) {
 
   trimChildren(element, state)
 
-  if (BLOCK_TAGS.has(tag) && hasRenderableContent(element) && state.remaining > 0 && hasFollowingRenderableSibling(element)) {
+  if (
+    BLOCK_TAGS.has(tag)
+    && hasRenderableContent(element)
+    && state.remaining > 0
+    && hasFollowingRenderableSibling(element)
+  ) {
     state.remaining -= 1
   }
 
@@ -266,7 +273,10 @@ function extractTextFromNode(node: Node): string {
   const children = Array.from(element.childNodes)
   children.forEach((child, index) => {
     result += extractTextFromNode(child)
-    if (BLOCK_TAGS.has((child as HTMLElement | undefined)?.tagName?.toLowerCase?.() ?? '') && index < children.length - 1) {
+    if (
+      BLOCK_TAGS.has((child as HTMLElement | undefined)?.tagName?.toLowerCase?.() ?? '')
+      && index < children.length - 1
+    ) {
       result += '\n'
     }
   })

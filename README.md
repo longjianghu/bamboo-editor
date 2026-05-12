@@ -94,8 +94,8 @@ pnpm add @bamboo-editor/core
 
 ```vue
 <script setup lang="ts">
-import { ref } from 'vue'
 import { BambooEditor } from '@bamboo-editor/vue3'
+import { ref } from 'vue'
 import '@bamboo-editor/vue3/style.css'
 import '@bamboo-editor/styles/src/bamboo-content.css'
 
@@ -119,7 +119,7 @@ async function uploadHandler(file: File) {
     throw new Error(`上传失败: ${resp.status}`)
   }
 
-  const data = await resp.json() as {
+  const data = (await resp.json()) as {
     url: string
     alt?: string
     width?: number
@@ -254,7 +254,7 @@ async function onSave() {
 </script>
 
 <template>
-  <BambooEditor ref="editorRef" :editor-id="`article-body-${articleId}`" v-model="content" />
+  <BambooEditor ref="editorRef" v-model="content" :editor-id="`article-body-${articleId}`" />
 </template>
 ```
 
@@ -339,7 +339,7 @@ Bamboo Editor 保存的不是“任意 HTML”，而是一个**受控 HTML 子�
 编辑态允许有临时上传状态，但最终持久化输出会收敛为：
 
 ```html
-<img src="https://cdn.com/img.jpg" alt="示例图片" data-width="800">
+<img src="https://cdn.com/img.jpg" alt="示例图片" data-width="800" />
 ```
 
 ### 对齐输出
@@ -349,7 +349,7 @@ Bamboo Editor 保存的不是“任意 HTML”，而是一个**受控 HTML 子�
 ```html
 <p data-align="center">这是一段居中内容</p>
 <h2 data-align="right">这是一个右对齐标题</h2>
-<img src="https://cdn.com/example.jpg" alt="示例图片" data-align="center">
+<img src="https://cdn.com/example.jpg" alt="示例图片" data-align="center" />
 ```
 
 ### 文字颜色输出
@@ -368,7 +368,7 @@ Bamboo Editor 保存的不是“任意 HTML”，而是一个**受控 HTML 子�
 分割线以纯净语义标签输出，不带额外属性：
 
 ```html
-<hr>
+<hr />
 ```
 
 ## 编辑能力说明

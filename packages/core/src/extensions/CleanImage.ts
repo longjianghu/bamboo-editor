@@ -1,11 +1,27 @@
 import Image from '@tiptap/extension-image'
+import { parseAlign } from '../utils/align'
 
 export interface CleanImageOptions {
   allowBase64?: boolean
 }
 
-function parseAlign(value: string | null): 'left' | 'center' | 'right' | null {
-  return value === 'left' || value === 'center' || value === 'right' ? value as any : 'left'
+interface CleanImageAttrs {
+  'src': string | null
+  'alt'?: string | null
+  'title'?: string | null
+  'width'?: string | null
+  'height'?: string | null
+  'data-align'?: 'left' | 'center' | 'right' | null
+  'data-local-id'?: string | null
+  'data-uploading'?: string | null
+}
+
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    cleanImage: {
+      setCleanImage: (attrs: Partial<CleanImageAttrs>) => ReturnType
+    }
+  }
 }
 
 export const CleanImage = Image.extend<CleanImageOptions>({
@@ -18,29 +34,30 @@ export const CleanImage = Image.extend<CleanImageOptions>({
 
   addAttributes() {
     return {
-      src: {
+      'src': {
         default: null,
       },
-      alt: {
+      'alt': {
         default: null,
       },
-      title: {
+      'title': {
         default: null,
       },
-      width: {
+      'width': {
         default: null,
-        parseHTML: (element) => element.getAttribute('width'),
+        parseHTML: element => element.getAttribute('width'),
       },
-      height: {
+      'height': {
         default: null,
-        parseHTML: (element) => element.getAttribute('height'),
+        parseHTML: element => element.getAttribute('height'),
       },
       'data-align': {
         default: 'left',
-        parseHTML: (element) => parseAlign(element.getAttribute('data-align') || element.getAttribute('align')),
+        parseHTML: element => parseAlign(element.getAttribute('data-align') || element.getAttribute('align')),
         renderHTML: (attributes) => {
           const value = parseAlign(attributes['data-align'])
-          if (value === 'left' || !value) return {}
+          if (value === 'left' || !value)
+            return {}
           return { 'data-align': value }
         },
       },
@@ -68,6 +85,19 @@ export const CleanImage = Image.extend<CleanImageOptions>({
     return ['img', attrs]
   },
 
+  addCommands() {
+    return {
+      setCleanImage:
+        (attrs: Partial<CleanImageAttrs>) =>
+          ({ commands }) => {
+            return commands.insertContent({
+              type: this.name,
+              attrs,
+            })
+          },
+    }
+  },
+
   addNodeView() {
     return ({ node, editor, getPos }) => {
       let currentNode = node
@@ -79,15 +109,17 @@ export const CleanImage = Image.extend<CleanImageOptions>({
       // 对齐逻辑
       if (align === 'center') {
         container.style.textAlign = 'center'
-      } else if (align === 'right') {
+      }
+      else if (align === 'right') {
         container.style.textAlign = 'right'
-      } else {
+      }
+      else {
         container.style.textAlign = 'left'
       }
 
       const img = document.createElement('img')
       img.className = 'clean-image'
-      
+
       if (src) {
         img.setAttribute('src', src)
       }
@@ -99,7 +131,8 @@ export const CleanImage = Image.extend<CleanImageOptions>({
         img.setAttribute('width', width)
         img.style.width = `${width}px`
         img.style.maxWidth = '100%'
-      } else {
+      }
+      else {
         img.style.width = 'auto'
         img.style.maxWidth = '100%'
       }
@@ -135,8 +168,8 @@ export const CleanImage = Image.extend<CleanImageOptions>({
         e.stopPropagation()
         const pos = typeof getPos === 'function' ? getPos() : undefined
         if (pos !== undefined) {
-          ;(editor as any).emit('open-image-dialog', { 
-            pos, 
+          ;(editor as any).emit('open-image-dialog', {
+            pos,
             node: currentNode,
             mode: 'edit',
             initialData: {
@@ -144,8 +177,8 @@ export const CleanImage = Image.extend<CleanImageOptions>({
               alt: currentNode.attrs.alt,
               width: currentNode.attrs.width,
               height: currentNode.attrs.height,
-              align: currentNode.attrs['data-align'] || 'left'
-            }
+              align: currentNode.attrs['data-align'] || 'left',
+            },
           })
         }
       })
@@ -177,23 +210,27 @@ export const CleanImage = Image.extend<CleanImageOptions>({
           if (newAlt !== img.getAttribute('alt')) {
             if (newAlt) {
               img.setAttribute('alt', newAlt)
-            } else {
+            }
+            else {
               img.removeAttribute('alt')
             }
           }
 
           if (newAlign === 'center') {
             container.style.textAlign = 'center'
-          } else if (newAlign === 'right') {
+          }
+          else if (newAlign === 'right') {
             container.style.textAlign = 'right'
-          } else {
+          }
+          else {
             container.style.textAlign = 'left'
           }
 
           if (newWidth) {
             img.setAttribute('width', newWidth)
             img.style.width = `${newWidth}px`
-          } else {
+          }
+          else {
             img.removeAttribute('width')
             img.style.width = 'auto'
           }
@@ -201,7 +238,8 @@ export const CleanImage = Image.extend<CleanImageOptions>({
           if (newHeight) {
             img.setAttribute('height', newHeight)
             img.style.height = `${newHeight}px`
-          } else {
+          }
+          else {
             img.removeAttribute('height')
             img.style.height = ''
           }
@@ -210,7 +248,8 @@ export const CleanImage = Image.extend<CleanImageOptions>({
           if (wasUploading) {
             img.classList.add('is-uploading')
             loadingOverlay.style.display = 'flex'
-          } else {
+          }
+          else {
             img.classList.remove('is-uploading')
             loadingOverlay.style.display = 'none'
           }

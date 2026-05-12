@@ -1,325 +1,8 @@
-<template>
-  <div class="toolbar-pc" role="toolbar" aria-label="PC editor toolbar">
-    <button
-      v-for="item in historyItems"
-      :key="item.label"
-      type="button"
-      class="toolbar-pc__button"
-      :disabled="item.command ? isDisabled(item.command!, item.attrs) : disabled"
-      :title="item.label"
-      :aria-label="item.label"
-      @click="item.action ? handleAction(item.action) : run(item.command!, item.attrs)"
-    >
-      <ToolbarIcon :name="item.icon" />
-    </button>
-
-    <div class="toolbar-pc__dropdown" :class="{ 'is-open': isHeadingMenuOpen }" ref="headingMenuRef">
-      <button
-        type="button"
-        class="toolbar-pc__button toolbar-pc__dropdown-trigger toolbar-pc__dropdown-trigger--text"
-        :disabled="disabled"
-        :title="currentHeadingLabel"
-        :aria-label="currentHeadingLabel"
-        ref="headingTriggerRef"
-        @click="toggleMenu('heading')"
-      >
-        <span class="toolbar-pc__trigger-text">{{ currentHeadingShortLabel }}</span>
-        <ToolbarIcon name="chevron-down" />
-      </button>
-
-      <div
-        v-if="isHeadingMenuOpen"
-        class="toolbar-pc__dropdown-menu toolbar-pc__option-list"
-        :class="menuPlacementClass(headingDropdownPlacement)"
-        :style="headingDropdownMenuStyle"
-      >
-        <button
-          v-for="option in headingOptions"
-          :key="option.label"
-          type="button"
-          class="toolbar-pc__option-button"
-          :disabled="option.command ? isDisabled(option.command, option.attrs) : disabled"
-          @click="selectHeading(option)"
-        >
-          <span class="toolbar-pc__option-label">{{ option.label }}</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="toolbar-pc__dropdown" :class="{ 'is-open': isAlignMenuOpen }" ref="alignMenuRef">
-      <button
-        type="button"
-        class="toolbar-pc__button toolbar-pc__dropdown-trigger"
-        :disabled="disabled"
-        :title="currentAlignLabel"
-        :aria-label="currentAlignLabel"
-        ref="alignTriggerRef"
-        @click="toggleMenu('align')"
-      >
-        <ToolbarIcon :name="currentAlignIcon" />
-        <ToolbarIcon name="chevron-down" />
-      </button>
-
-      <div
-        v-if="isAlignMenuOpen"
-        class="toolbar-pc__dropdown-menu toolbar-pc__option-list"
-        :class="menuPlacementClass(alignDropdownPlacement)"
-        :style="alignDropdownMenuStyle"
-      >
-        <button
-          v-for="option in alignOptions"
-          :key="option.label"
-          type="button"
-          class="toolbar-pc__option-button toolbar-pc__option-button--icon"
-          :disabled="disabled"
-          @click="selectAlign(option.value)"
-        >
-          <ToolbarIcon :name="option.icon" />
-          <span class="toolbar-pc__option-label">{{ option.label }}</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="toolbar-pc__dropdown" :class="{ 'is-open': isColorMenuOpen }" ref="colorMenuRef">
-      <button
-        type="button"
-        class="toolbar-pc__button toolbar-pc__dropdown-trigger"
-        :disabled="disabled"
-        :title="currentColorLabel"
-        :aria-label="currentColorLabel"
-        ref="colorTriggerRef"
-        @click="toggleMenu('color')"
-      >
-        <span class="toolbar-pc__color-chip" :style="{ backgroundColor: currentColorValue }"></span>
-        <ToolbarIcon name="chevron-down" />
-      </button>
-
-      <div
-        v-if="isColorMenuOpen"
-        class="toolbar-pc__dropdown-menu"
-        :class="menuPlacementClass(colorDropdownPlacement)"
-        :style="colorDropdownMenuStyle"
-      >
-        <div class="toolbar-pc__palette-grid">
-          <button
-            type="button"
-            class="toolbar-pc__palette-swatch"
-            title="默认颜色"
-            aria-label="默认颜色"
-            @click="selectTextColor(null)"
-          >
-            <span class="toolbar-pc__palette-swatch-color" :style="{ backgroundColor: '#000000' }"></span>
-          </button>
-
-          <button
-            v-for="item in colorPalette"
-            :key="item.token"
-            type="button"
-            class="toolbar-pc__palette-swatch"
-            :title="item.label"
-            :aria-label="item.label"
-            @click="selectTextColor(item.token)"
-          >
-            <span class="toolbar-pc__palette-swatch-color" :style="{ backgroundColor: item.value }"></span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <button
-      v-for="item in inlineStyleItems"
-      :key="item.label"
-      type="button"
-      class="toolbar-pc__button"
-      :disabled="disabled"
-      :title="item.label"
-      :aria-label="item.label"
-      @click="item.action ? handleAction(item.action) : run(item.command!, item.attrs)"
-    >
-      <ToolbarIcon :name="item.icon" />
-    </button>
-
-    <button
-      type="button"
-      class="toolbar-pc__button"
-      :disabled="disabled"
-      title="链接"
-      aria-label="链接"
-      @click="onLinkClick"
-    >
-      <ToolbarIcon name="link" />
-    </button>
-
-    <div class="toolbar-pc__dropdown" :class="{ 'is-open': isMediaMenuOpen }" ref="mediaMenuRef">
-      <button
-        type="button"
-        class="toolbar-pc__button toolbar-pc__dropdown-trigger"
-        :disabled="disabled"
-        title="插入媒体"
-        aria-label="插入媒体"
-        ref="mediaTriggerRef"
-        @click="toggleMenu('media')"
-      >
-        <ToolbarIcon name="media" />
-        <ToolbarIcon name="chevron-down" />
-      </button>
-
-      <div
-        v-if="isMediaMenuOpen"
-        class="toolbar-pc__dropdown-menu toolbar-pc__option-list"
-        :class="menuPlacementClass(mediaDropdownPlacement)"
-        :style="mediaDropdownMenuStyle"
-      >
-        <button
-          v-for="option in mediaOptions"
-          :key="option.label"
-          type="button"
-          class="toolbar-pc__option-button toolbar-pc__option-button--icon"
-          :disabled="disabled"
-          @click="selectMedia(option)"
-        >
-          <ToolbarIcon :name="option.icon" />
-          <span class="toolbar-pc__option-label">{{ option.label }}</span>
-        </button>
-      </div>
-    </div>
-
-    <button
-      v-for="item in insertItems"
-      :key="item.label"
-      type="button"
-      class="toolbar-pc__button"
-      :disabled="disabled"
-      :title="item.label"
-      :aria-label="item.label"
-      @click="item.action ? handleAction(item.action) : run(item.command!, item.attrs)"
-    >
-      <ToolbarIcon :name="item.icon" />
-    </button>
-
-    <div class="toolbar-pc__dropdown" :class="{ 'is-open': isListMenuOpen }" ref="listMenuRef">
-      <button
-        type="button"
-        class="toolbar-pc__button toolbar-pc__dropdown-trigger"
-        :disabled="disabled"
-        :title="currentListLabel"
-        :aria-label="currentListLabel"
-        ref="listTriggerRef"
-        @click="toggleMenu('list')"
-      >
-        <ToolbarIcon :name="currentListIcon" />
-        <ToolbarIcon name="chevron-down" />
-      </button>
-
-      <div
-        v-if="isListMenuOpen"
-        class="toolbar-pc__dropdown-menu toolbar-pc__option-list"
-        :class="menuPlacementClass(listDropdownPlacement)"
-        :style="listDropdownMenuStyle"
-      >
-        <button
-          v-for="option in listOptions"
-          :key="option.label"
-          type="button"
-          class="toolbar-pc__option-button toolbar-pc__option-button--icon"
-          :disabled="isDisabled(option.command)"
-          @click="selectList(option)"
-        >
-          <ToolbarIcon :name="option.icon" />
-          <span class="toolbar-pc__option-label">{{ option.label }}</span>
-        </button>
-      </div>
-    </div>
-
-    <button
-      v-for="item in blockItems"
-      :key="item.label"
-      type="button"
-      class="toolbar-pc__button"
-      :disabled="disabled"
-      :title="item.label"
-      :aria-label="item.label"
-      @click="item.action ? handleAction(item.action) : run(item.command!, item.attrs)"
-    >
-      <ToolbarIcon :name="item.icon" />
-    </button>
-
-    <button
-      type="button"
-      class="toolbar-pc__button toolbar-pc__fullscreen"
-      :title="fullscreen ? '退出全屏' : '全屏编辑'"
-      :aria-label="fullscreen ? '退出全屏' : '全屏编辑'"
-      :disabled="disabled"
-      @click="emit('toggle-fullscreen')"
-    >
-      <ToolbarIcon :name="fullscreen ? 'fullscreen-exit' : 'fullscreen-enter'" />
-    </button>
-
-    <button
-      type="button"
-      class="toolbar-pc__button toolbar-pc__info"
-      title="关于"
-      aria-label="关于"
-      @click="emit('show-info')"
-    >
-      <ToolbarIcon name="info" />
-    </button>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { Editor } from '@tiptap/vue-3'
 import type { BambooColorOption } from '../composables/useBambooEditor'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import ToolbarIcon from './ToolbarIcon.vue'
-
-declare const window: Window & typeof globalThis
-
-type ToolbarCommand = string
-
-type ToolbarAction = 'clearFormatting' | 'insertHorizontalRule'
-
-type ToolbarButtonItem = {
-  label: string
-  icon: any
-  command?: ToolbarCommand
-  active?: string
-  attrs?: Record<string, unknown>
-  action?: ToolbarAction
-}
-
-type HeadingOption = {
-  label: string
-  shortLabel: string
-  command: ToolbarCommand
-  attrs?: Record<string, unknown>
-}
-
-type AlignOption = {
-  label: string
-  value: 'left' | 'center' | 'right'
-  icon: 'align-left' | 'align-center' | 'align-right'
-}
-
-type ListOption = {
-  label: string
-  command: 'toggleBulletList' | 'toggleOrderedList'
-  active: 'bulletList' | 'orderedList'
-  icon: 'bullet-list' | 'ordered-list'
-}
-
-type DropdownPlacement = {
-  horizontal: 'left' | 'right'
-  vertical: 'down' | 'up'
-}
-
-type MenuKind = 'heading' | 'align' | 'color' | 'list' | 'media'
-
-type MediaOption = {
-  label: string
-  icon: 'image' | 'remote-video' | 'audio'
-  action: 'open-image-dialog' | 'open-video-dialog' | 'open-audio-dialog'
-}
 
 const props = defineProps<{
   editor: Editor | null
@@ -329,18 +12,66 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'open-image-dialog': []
-  'open-video-dialog': []
-  'open-audio-dialog': []
-  'open-link-dialog': [payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }]
-  'text-color-select': [token: string | null]
-  'undo': []
-  'redo': []
-  'clear-formatting': []
-  'insert-horizontal-rule': []
-  'toggle-fullscreen': []
-  'show-info': []
+  openImageDialog: []
+  openVideoDialog: []
+  openAudioDialog: []
+  openLinkDialog: [payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }]
+  textColorSelect: [token: string | null]
+  undo: []
+  redo: []
+  clearFormatting: []
+  insertHorizontalRule: []
+  toggleFullscreen: []
+  showInfo: []
 }>()
+
+declare const window: Window & typeof globalThis
+
+type ToolbarCommand = string
+
+type ToolbarAction = 'clearFormatting' | 'insertHorizontalRule'
+
+interface ToolbarButtonItem {
+  label: string
+  icon: any
+  command?: ToolbarCommand
+  active?: string
+  attrs?: Record<string, unknown>
+  action?: ToolbarAction
+}
+
+interface HeadingOption {
+  label: string
+  shortLabel: string
+  command: ToolbarCommand
+  attrs?: Record<string, unknown>
+}
+
+interface AlignOption {
+  label: string
+  value: 'left' | 'center' | 'right'
+  icon: 'align-left' | 'align-center' | 'align-right'
+}
+
+interface ListOption {
+  label: string
+  command: 'toggleBulletList' | 'toggleOrderedList'
+  active: 'bulletList' | 'orderedList'
+  icon: 'bullet-list' | 'ordered-list'
+}
+
+interface DropdownPlacement {
+  horizontal: 'left' | 'right'
+  vertical: 'down' | 'up'
+}
+
+type MenuKind = 'heading' | 'align' | 'color' | 'list' | 'media'
+
+interface MediaOption {
+  label: string
+  icon: 'image' | 'remote-video' | 'audio'
+  action: 'open-image-dialog' | 'open-video-dialog' | 'open-audio-dialog'
+}
 
 const historyItems: readonly ToolbarButtonItem[] = [
   { label: '撤销', icon: 'undo', command: 'undo' },
@@ -419,9 +150,9 @@ const colorDropdownMenuStyle = ref<Record<string, string>>({})
 const listDropdownMenuStyle = ref<Record<string, string>>({})
 const mediaDropdownMenuStyle = ref<Record<string, string>>({})
 
-const activeColor = computed(() => colorPalette.find((item) => isTextColorActive(item.token)) ?? null)
+const activeColor = computed(() => colorPalette.find(item => isTextColorActive(item.token)) ?? null)
 const currentColorValue = computed(() => activeColor.value?.value ?? '#000000')
-const currentColorLabel = computed(() => activeColor.value ? `文字颜色：${activeColor.value.label}` : '文字颜色')
+const currentColorLabel = computed(() => (activeColor.value ? `文字颜色：${activeColor.value.label}` : '文字颜色'))
 
 const currentHeadingOption = computed(() => {
   if (props.editor?.isActive('heading', { level: 1 })) {
@@ -471,7 +202,7 @@ const currentListOption = computed(() => {
 
 const currentListLabel = computed(() => currentListOption.value.label)
 const currentListIcon = computed(() => currentListOption.value.icon)
-const isListMenuActive = computed(() => Boolean(props.editor?.isActive(currentListOption.value.active)))
+const _isListMenuActive = computed(() => Boolean(props.editor?.isActive(currentListOption.value.active)))
 
 function run(command: string, attrs?: Record<string, unknown>) {
   const chain = props.editor?.chain().focus()
@@ -491,11 +222,11 @@ function handleAction(action: ToolbarAction) {
   closeMenus()
 
   if (action === 'clearFormatting') {
-    emit('clear-formatting')
+    emit('clearFormatting')
     return
   }
 
-  emit('insert-horizontal-rule')
+  emit('insertHorizontalRule')
 }
 
 function isImageSelected() {
@@ -522,7 +253,7 @@ function isDisabled(command: string, attrs?: Record<string, unknown>) {
   return !target?.run?.()
 }
 
-function buttonClass(name: string, attrs?: Record<string, unknown>, disableWhenImageSelected?: boolean) {
+function _buttonClass(name: string, attrs?: Record<string, unknown>, disableWhenImageSelected?: boolean) {
   if (disableWhenImageSelected && isImageSelected()) {
     return { 'is-active': false }
   }
@@ -534,7 +265,7 @@ function isParagraphActive() {
   return props.editor?.isActive('paragraph') ?? false
 }
 
-function isHeadingOptionActive(option: HeadingOption) {
+function _isHeadingOptionActive(option: HeadingOption) {
   if (option.command === 'setParagraph') {
     return isParagraphActive()
   }
@@ -559,7 +290,7 @@ function onLinkClick() {
   closeMenus()
 
   if (props.editor?.isActive('link')) {
-    emit('open-link-dialog', {
+    emit('openLinkDialog', {
       initialValue: props.editor.getAttributes('link').href ?? '',
       mode: 'edit',
       allowRemove: true,
@@ -567,7 +298,7 @@ function onLinkClick() {
     return
   }
 
-  emit('open-link-dialog', {
+  emit('openLinkDialog', {
     mode: 'create',
     initialValue: '',
     allowRemove: false,
@@ -605,11 +336,13 @@ function selectList(option: ListOption) {
 
 function selectMedia(option: MediaOption) {
   if (option.action === 'open-image-dialog') {
-    emit('open-image-dialog')
-  } else if (option.action === 'open-video-dialog') {
-    emit('open-video-dialog')
-  } else if (option.action === 'open-audio-dialog') {
-    emit('open-audio-dialog')
+    emit('openImageDialog')
+  }
+  else if (option.action === 'open-video-dialog') {
+    emit('openVideoDialog')
+  }
+  else if (option.action === 'open-audio-dialog') {
+    emit('openAudioDialog')
   }
   closeMenus()
 }
@@ -639,12 +372,12 @@ function isTextColorActive(token: string) {
   return props.editor?.isActive('textColor', { 'data-color': token }) ?? false
 }
 
-function isColorCleared() {
+function _isColorCleared() {
   if (!props.editor) {
     return false
   }
 
-  return !colorPalette.some((item) => isTextColorActive(item.token))
+  return !colorPalette.some(item => isTextColorActive(item.token))
 }
 
 function getMenuState(kind: MenuKind) {
@@ -743,7 +476,7 @@ function toggleMenu(kind: MenuKind) {
 }
 
 function selectTextColor(token: string | null) {
-  emit('text-color-select', token)
+  emit('textColorSelect', token)
   closeMenus()
 }
 
@@ -759,7 +492,9 @@ function updateDropdownPosition(kind: MenuKind) {
   const triggerRect = trigger.getBoundingClientRect()
   const toolbarRect = container.closest('.toolbar-pc')?.getBoundingClientRect() ?? null
   const boundaryLeft = toolbarRect ? Math.max(viewportPadding, toolbarRect.left) : viewportPadding
-  const boundaryRight = toolbarRect ? Math.min(window.innerWidth - viewportPadding, toolbarRect.right) : window.innerWidth - viewportPadding
+  const boundaryRight = toolbarRect
+    ? Math.min(window.innerWidth - viewportPadding, toolbarRect.right)
+    : window.innerWidth - viewportPadding
   const availableRight = Math.max(0, boundaryRight - triggerRect.left)
   const availableLeft = Math.max(0, triggerRect.right - boundaryLeft)
   const width = Math.max(148, Math.min(menuWidth, Math.max(availableRight, availableLeft, 148)))
@@ -785,13 +520,19 @@ function menuPlacementClass(placement: DropdownPlacement) {
 }
 
 function onClickOutside(event: MouseEvent) {
-  const targets = [headingMenuRef.value, alignMenuRef.value, colorMenuRef.value, listMenuRef.value, mediaMenuRef.value].filter(Boolean)
+  const targets = [
+    headingMenuRef.value,
+    alignMenuRef.value,
+    colorMenuRef.value,
+    listMenuRef.value,
+    mediaMenuRef.value,
+  ].filter(Boolean)
   if (!targets.length) {
     return
   }
 
   const eventTarget = event.target
-  if (eventTarget instanceof Node && !targets.some((target) => target?.contains(eventTarget))) {
+  if (eventTarget instanceof Node && !targets.some(target => target?.contains(eventTarget))) {
     closeMenus()
   }
 }
@@ -818,7 +559,6 @@ function onViewportChange() {
   }
 }
 
-
 onMounted(() => {
   document.addEventListener('mousedown', onClickOutside)
   window.addEventListener('resize', onViewportChange)
@@ -831,6 +571,275 @@ onBeforeUnmount(() => {
   window.removeEventListener('scroll', onViewportChange, true)
 })
 </script>
+
+<template>
+  <div class="toolbar-pc" role="toolbar" aria-label="PC editor toolbar">
+    <button
+      v-for="item in historyItems"
+      :key="item.label"
+      type="button"
+      class="toolbar-pc__button"
+      :disabled="item.command ? isDisabled(item.command!, item.attrs) : disabled"
+      :title="item.label"
+      :aria-label="item.label"
+      @click="item.action ? handleAction(item.action) : run(item.command!, item.attrs)"
+    >
+      <ToolbarIcon :name="item.icon" />
+    </button>
+
+    <div ref="headingMenuRef" class="toolbar-pc__dropdown" :class="{ 'is-open': isHeadingMenuOpen }">
+      <button
+        ref="headingTriggerRef"
+        type="button"
+        class="toolbar-pc__button toolbar-pc__dropdown-trigger toolbar-pc__dropdown-trigger--text"
+        :disabled="disabled"
+        :title="currentHeadingLabel"
+        :aria-label="currentHeadingLabel"
+        @click="toggleMenu('heading')"
+      >
+        <span class="toolbar-pc__trigger-text">{{ currentHeadingShortLabel }}</span>
+        <ToolbarIcon name="chevron-down" />
+      </button>
+
+      <div
+        v-if="isHeadingMenuOpen"
+        class="toolbar-pc__dropdown-menu toolbar-pc__option-list"
+        :class="menuPlacementClass(headingDropdownPlacement)"
+        :style="headingDropdownMenuStyle"
+      >
+        <button
+          v-for="option in headingOptions"
+          :key="option.label"
+          type="button"
+          class="toolbar-pc__option-button"
+          :disabled="option.command ? isDisabled(option.command, option.attrs) : disabled"
+          @click="selectHeading(option)"
+        >
+          <span class="toolbar-pc__option-label">{{ option.label }}</span>
+        </button>
+      </div>
+    </div>
+
+    <div ref="alignMenuRef" class="toolbar-pc__dropdown" :class="{ 'is-open': isAlignMenuOpen }">
+      <button
+        ref="alignTriggerRef"
+        type="button"
+        class="toolbar-pc__button toolbar-pc__dropdown-trigger"
+        :disabled="disabled"
+        :title="currentAlignLabel"
+        :aria-label="currentAlignLabel"
+        @click="toggleMenu('align')"
+      >
+        <ToolbarIcon :name="currentAlignIcon" />
+        <ToolbarIcon name="chevron-down" />
+      </button>
+
+      <div
+        v-if="isAlignMenuOpen"
+        class="toolbar-pc__dropdown-menu toolbar-pc__option-list"
+        :class="menuPlacementClass(alignDropdownPlacement)"
+        :style="alignDropdownMenuStyle"
+      >
+        <button
+          v-for="option in alignOptions"
+          :key="option.label"
+          type="button"
+          class="toolbar-pc__option-button toolbar-pc__option-button--icon"
+          :disabled="disabled"
+          @click="selectAlign(option.value)"
+        >
+          <ToolbarIcon :name="option.icon" />
+          <span class="toolbar-pc__option-label">{{ option.label }}</span>
+        </button>
+      </div>
+    </div>
+
+    <div ref="colorMenuRef" class="toolbar-pc__dropdown" :class="{ 'is-open': isColorMenuOpen }">
+      <button
+        ref="colorTriggerRef"
+        type="button"
+        class="toolbar-pc__button toolbar-pc__dropdown-trigger"
+        :disabled="disabled"
+        :title="currentColorLabel"
+        :aria-label="currentColorLabel"
+        @click="toggleMenu('color')"
+      >
+        <span class="toolbar-pc__color-chip" :style="{ backgroundColor: currentColorValue }"></span>
+        <ToolbarIcon name="chevron-down" />
+      </button>
+
+      <div
+        v-if="isColorMenuOpen"
+        class="toolbar-pc__dropdown-menu"
+        :class="menuPlacementClass(colorDropdownPlacement)"
+        :style="colorDropdownMenuStyle"
+      >
+        <div class="toolbar-pc__palette-grid">
+          <button
+            type="button"
+            class="toolbar-pc__palette-swatch"
+            title="默认颜色"
+            aria-label="默认颜色"
+            @click="selectTextColor(null)"
+          >
+            <span class="toolbar-pc__palette-swatch-color" :style="{ backgroundColor: '#000000' }"></span>
+          </button>
+
+          <button
+            v-for="item in colorPalette"
+            :key="item.token"
+            type="button"
+            class="toolbar-pc__palette-swatch"
+            :title="item.label"
+            :aria-label="item.label"
+            @click="selectTextColor(item.token)"
+          >
+            <span class="toolbar-pc__palette-swatch-color" :style="{ backgroundColor: item.value }"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <button
+      v-for="item in inlineStyleItems"
+      :key="item.label"
+      type="button"
+      class="toolbar-pc__button"
+      :disabled="disabled"
+      :title="item.label"
+      :aria-label="item.label"
+      @click="item.action ? handleAction(item.action) : run(item.command!, item.attrs)"
+    >
+      <ToolbarIcon :name="item.icon" />
+    </button>
+
+    <button
+      type="button"
+      class="toolbar-pc__button"
+      :disabled="disabled"
+      title="链接"
+      aria-label="链接"
+      @click="onLinkClick"
+    >
+      <ToolbarIcon name="link" />
+    </button>
+
+    <div ref="mediaMenuRef" class="toolbar-pc__dropdown" :class="{ 'is-open': isMediaMenuOpen }">
+      <button
+        ref="mediaTriggerRef"
+        type="button"
+        class="toolbar-pc__button toolbar-pc__dropdown-trigger"
+        :disabled="disabled"
+        title="插入媒体"
+        aria-label="插入媒体"
+        @click="toggleMenu('media')"
+      >
+        <ToolbarIcon name="media" />
+        <ToolbarIcon name="chevron-down" />
+      </button>
+
+      <div
+        v-if="isMediaMenuOpen"
+        class="toolbar-pc__dropdown-menu toolbar-pc__option-list"
+        :class="menuPlacementClass(mediaDropdownPlacement)"
+        :style="mediaDropdownMenuStyle"
+      >
+        <button
+          v-for="option in mediaOptions"
+          :key="option.label"
+          type="button"
+          class="toolbar-pc__option-button toolbar-pc__option-button--icon"
+          :disabled="disabled"
+          @click="selectMedia(option)"
+        >
+          <ToolbarIcon :name="option.icon" />
+          <span class="toolbar-pc__option-label">{{ option.label }}</span>
+        </button>
+      </div>
+    </div>
+
+    <button
+      v-for="item in insertItems"
+      :key="item.label"
+      type="button"
+      class="toolbar-pc__button"
+      :disabled="disabled"
+      :title="item.label"
+      :aria-label="item.label"
+      @click="item.action ? handleAction(item.action) : run(item.command!, item.attrs)"
+    >
+      <ToolbarIcon :name="item.icon" />
+    </button>
+
+    <div ref="listMenuRef" class="toolbar-pc__dropdown" :class="{ 'is-open': isListMenuOpen }">
+      <button
+        ref="listTriggerRef"
+        type="button"
+        class="toolbar-pc__button toolbar-pc__dropdown-trigger"
+        :disabled="disabled"
+        :title="currentListLabel"
+        :aria-label="currentListLabel"
+        @click="toggleMenu('list')"
+      >
+        <ToolbarIcon :name="currentListIcon" />
+        <ToolbarIcon name="chevron-down" />
+      </button>
+
+      <div
+        v-if="isListMenuOpen"
+        class="toolbar-pc__dropdown-menu toolbar-pc__option-list"
+        :class="menuPlacementClass(listDropdownPlacement)"
+        :style="listDropdownMenuStyle"
+      >
+        <button
+          v-for="option in listOptions"
+          :key="option.label"
+          type="button"
+          class="toolbar-pc__option-button toolbar-pc__option-button--icon"
+          :disabled="isDisabled(option.command)"
+          @click="selectList(option)"
+        >
+          <ToolbarIcon :name="option.icon" />
+          <span class="toolbar-pc__option-label">{{ option.label }}</span>
+        </button>
+      </div>
+    </div>
+
+    <button
+      v-for="item in blockItems"
+      :key="item.label"
+      type="button"
+      class="toolbar-pc__button"
+      :disabled="disabled"
+      :title="item.label"
+      :aria-label="item.label"
+      @click="item.action ? handleAction(item.action) : run(item.command!, item.attrs)"
+    >
+      <ToolbarIcon :name="item.icon" />
+    </button>
+
+    <button
+      type="button"
+      class="toolbar-pc__button toolbar-pc__fullscreen"
+      :title="fullscreen ? '退出全屏' : '全屏编辑'"
+      :aria-label="fullscreen ? '退出全屏' : '全屏编辑'"
+      :disabled="disabled"
+      @click="emit('toggleFullscreen')"
+    >
+      <ToolbarIcon :name="fullscreen ? 'fullscreen-exit' : 'fullscreen-enter'" />
+    </button>
+
+    <button
+      type="button"
+      class="toolbar-pc__button toolbar-pc__info"
+      title="关于"
+      aria-label="关于"
+      @click="emit('showInfo')"
+    >
+      <ToolbarIcon name="info" />
+    </button>
+  </div>
+</template>
 
 <style scoped>
 .toolbar-pc {

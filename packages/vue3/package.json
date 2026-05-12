@@ -1,13 +1,25 @@
 {
   "name": "@bamboo-editor/vue3",
+  "type": "module",
   "version": "0.1.5",
   "description": "Vue 3 Bamboo Editor component with PC and mobile rich-text editing UI.",
   "license": "MIT",
-  "type": "module",
-  "main": "dist/index.js",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "style": "dist/index.css",
+  "homepage": "https://github.com/longjianghu/bamboo-editor#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/longjianghu/bamboo-editor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/longjianghu/bamboo-editor/issues"
+  },
+  "keywords": [
+    "bamboo-editor",
+    "vue",
+    "vue3",
+    "editor",
+    "rich-text",
+    "tiptap"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -18,25 +30,13 @@
     "./dist/index.css": "./dist/index.css",
     "./package.json": "./package.json"
   },
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "style": "dist/index.css",
   "files": [
     "dist"
   ],
-  "keywords": [
-    "bamboo-editor",
-    "vue",
-    "vue3",
-    "editor",
-    "rich-text",
-    "tiptap"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/longjianghu/bamboo-editor.git"
-  },
-  "homepage": "https://github.com/longjianghu/bamboo-editor#readme",
-  "bugs": {
-    "url": "https://github.com/longjianghu/bamboo-editor/issues"
-  },
   "publishConfig": {
     "access": "public"
   },
@@ -44,12 +44,12 @@
     "build": "vite build && vue-tsc --declaration --emitDeclarationOnly -p tsconfig.json",
     "prepack": "pnpm run build"
   },
-  "dependencies": {
-    "@bamboo-editor/core": "workspace:*"
-  },
   "peerDependencies": {
     "@tiptap/vue-3": "^2.11.5",
     "vue": "^3.5.0"
+  },
+  "dependencies": {
+    "@bamboo-editor/core": "workspace:*"
   },
   "devDependencies": {
     "@tiptap/vue-3": "^2.11.5",

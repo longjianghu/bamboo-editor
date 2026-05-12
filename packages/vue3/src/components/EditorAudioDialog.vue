@@ -1,25 +1,167 @@
+<script setup lang="ts">
+import { computed, nextTick, ref, watch } from 'vue'
+import ToolbarIcon from './ToolbarIcon.vue'
+
+const props = defineProps<{
+  visible: boolean
+  device: 'pc' | 'mobile'
+  mode: 'create' | 'edit'
+  initialData?: {
+    'src': string
+    'align'?: 'left' | 'center' | 'right'
+    'data-align'?: 'left' | 'center' | 'right'
+  }
+  uploadHandler?: (file: File) => Promise<{ src: string }>
+}>()
+
+const emit = defineEmits<{
+  cancel: []
+  confirm: [data: { src: string, align?: 'left' | 'center' | 'right' }]
+  remove: []
+}>()
+
+const OPEN_DELAY_MS = 10
+const CLOSE_ANIMATION_MS = 200
+
+const isRendered = ref(false)
+const isOpen = ref(false)
+const isUploading = ref(false)
+
+const inputAudioUrl = ref('')
+const inputAlign = ref<'left' | 'center' | 'right'>('left')
+const audioFileRef = ref<HTMLInputElement | null>(null)
+
+const alignOptions = [
+  { label: '居左', value: 'left' },
+  { label: '居中', value: 'center' },
+  { label: '居右', value: 'right' },
+] as const
+
+const title = computed(() => (props.mode === 'edit' ? '编辑音频' : '插入音频'))
+const isValid = computed(() => {
+  return inputAudioUrl.value.trim().length > 0
+})
+
+let openTimer: number | null = null
+let closeTimer: number | null = null
+
+function clearTimers() {
+  if (openTimer !== null) {
+    window.clearTimeout(openTimer)
+    openTimer = null
+  }
+  if (closeTimer !== null) {
+    window.clearTimeout(closeTimer)
+    closeTimer = null
+  }
+}
+
+function openDialog() {
+  clearTimers()
+  isRendered.value = true
+
+  if (props.mode === 'edit' && props.initialData) {
+    inputAudioUrl.value = props.initialData.src || ''
+    inputAlign.value = props.initialData['data-align'] || props.initialData.align || 'left'
+  }
+  else {
+    inputAudioUrl.value = ''
+    inputAlign.value = 'left'
+  }
+
+  nextTick(() => {
+    openTimer = window.setTimeout(() => {
+      isOpen.value = true
+      openTimer = null
+    }, OPEN_DELAY_MS)
+  })
+}
+
+function closeDialog() {
+  clearTimers()
+  isOpen.value = false
+  closeTimer = window.setTimeout(
+    () => {
+      isRendered.value = false
+      closeTimer = null
+    },
+    props.device === 'mobile' ? CLOSE_ANIMATION_MS : 120,
+  )
+}
+
+function handleConfirm() {
+  if (!isValid.value)
+    return
+  emit('confirm', {
+    src: inputAudioUrl.value.trim(),
+    align: inputAlign.value,
+  })
+}
+
+function triggerAudioUpload() {
+  audioFileRef.value?.click()
+}
+
+async function handleAudioFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file)
+    return
+
+  isUploading.value = true
+  try {
+    if (props.uploadHandler) {
+      const result = await props.uploadHandler(file)
+      inputAudioUrl.value = result.src
+    }
+    else {
+      // No upload handler, use local preview
+      inputAudioUrl.value = URL.createObjectURL(file)
+    }
+  }
+  catch (error) {
+    console.warn('[EditorAudioDialog] audio upload failed:', error)
+  }
+  finally {
+    isUploading.value = false
+    target.value = ''
+  }
+}
+
+watch(
+  () => props.visible,
+  (val) => {
+    if (val) {
+      openDialog()
+    }
+    else {
+      closeDialog()
+    }
+  },
+)
+</script>
+
 <template>
-  <div
-    v-if="isRendered"
-    class="editor-audio-dialog"
-    :class="[
-      `editor-audio-dialog--${device}`,
-      { 'is-open': isOpen },
-    ]"
-  >
+  <div v-if="isRendered" class="editor-audio-dialog" :class="[`editor-audio-dialog--${device}`, { 'is-open': isOpen }]">
     <div class="editor-audio-dialog__backdrop" @click="emit('cancel')"></div>
 
     <div class="editor-audio-dialog__wrap">
       <form class="editor-audio-dialog__panel" @submit.prevent>
         <div class="editor-audio-dialog__header">
-          <h3 class="editor-audio-dialog__title">{{ title }}</h3>
-          <button
-            type="button"
-            class="editor-audio-dialog__close"
-            title="关闭"
-            @click="emit('cancel')"
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <h3 class="editor-audio-dialog__title">
+            {{ title }}
+          </h3>
+          <button type="button" class="editor-audio-dialog__close" title="关闭" @click="emit('cancel')">
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
@@ -37,22 +179,26 @@
                   placeholder="请输入音频地址"
                   autocomplete="off"
                   spellcheck="false"
-                >
+                />
                 <input
                   ref="audioFileRef"
                   type="file"
                   accept="audio/*"
                   class="editor-audio-dialog__file-input"
                   @change="handleAudioFileChange"
-                >
+                />
                 <button
                   type="button"
                   class="editor-audio-dialog__upload-btn"
                   :disabled="isUploading"
                   @click="triggerAudioUpload"
                 >
-                  <template v-if="isUploading">上传中...</template>
-                  <template v-else>选择文件</template>
+                  <template v-if="isUploading">
+                    上传中...
+                  </template>
+                  <template v-else>
+                    选择文件
+                  </template>
                 </button>
               </div>
             </div>
@@ -103,136 +249,6 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
-import ToolbarIcon from './ToolbarIcon.vue'
-
-const props = defineProps<{
-  visible: boolean
-  device: 'pc' | 'mobile'
-  mode: 'create' | 'edit'
-  initialData?: {
-    src: string
-    align?: 'left' | 'center' | 'right'
-    'data-align'?: 'left' | 'center' | 'right'
-  }
-  uploadHandler?: (file: File) => Promise<{ src: string }>
-}>()
-
-const emit = defineEmits<{
-  cancel: []
-  confirm: [data: { src: string; align?: 'left' | 'center' | 'right' }]
-  remove: []
-}>()
-
-const OPEN_DELAY_MS = 10
-const CLOSE_ANIMATION_MS = 200
-
-const isRendered = ref(false)
-const isOpen = ref(false)
-const isUploading = ref(false)
-
-const inputAudioUrl = ref('')
-const inputAlign = ref<'left' | 'center' | 'right'>('left')
-const audioFileRef = ref<HTMLInputElement | null>(null)
-
-const alignOptions = [
-  { label: '居左', value: 'left' },
-  { label: '居中', value: 'center' },
-  { label: '居右', value: 'right' },
-] as const
-
-const title = computed(() => props.mode === 'edit' ? '编辑音频' : '插入音频')
-const isValid = computed(() => {
-  return inputAudioUrl.value.trim().length > 0
-})
-
-let openTimer: number | null = null
-let closeTimer: number | null = null
-
-function clearTimers() {
-  if (openTimer !== null) {
-    window.clearTimeout(openTimer)
-    openTimer = null
-  }
-  if (closeTimer !== null) {
-    window.clearTimeout(closeTimer)
-    closeTimer = null
-  }
-}
-
-function openDialog() {
-  clearTimers()
-  isRendered.value = true
-  
-  if (props.mode === 'edit' && props.initialData) {
-    inputAudioUrl.value = props.initialData.src || ''
-    inputAlign.value = props.initialData['data-align'] || props.initialData.align || 'left'
-  } else {
-    inputAudioUrl.value = ''
-    inputAlign.value = 'left'
-  }
-
-  nextTick(() => {
-    openTimer = window.setTimeout(() => {
-      isOpen.value = true
-      openTimer = null
-    }, OPEN_DELAY_MS)
-  })
-}
-
-function closeDialog() {
-  clearTimers()
-  isOpen.value = false
-  closeTimer = window.setTimeout(() => {
-    isRendered.value = false
-    closeTimer = null
-  }, props.device === 'mobile' ? CLOSE_ANIMATION_MS : 120)
-}
-
-function handleConfirm() {
-  if (!isValid.value) return
-  emit('confirm', {
-    src: inputAudioUrl.value.trim(),
-    align: inputAlign.value,
-  })
-}
-
-function triggerAudioUpload() {
-  audioFileRef.value?.click()
-}
-
-async function handleAudioFileChange(event: Event) {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) return
-
-  isUploading.value = true
-  try {
-    if (props.uploadHandler) {
-      const result = await props.uploadHandler(file)
-      inputAudioUrl.value = result.src
-    } else {
-      // No upload handler, use local preview
-      inputAudioUrl.value = URL.createObjectURL(file)
-    }
-  } catch (error) {
-    console.warn('[EditorAudioDialog] audio upload failed:', error)
-  } finally {
-    isUploading.value = false
-    target.value = ''
-  }
-}
-
-watch(() => props.visible, (val) => {
-  if (val) {
-    openDialog()
-  } else {
-    closeDialog()
-  }
-})
-</script>
 
 <style scoped>
 .editor-audio-dialog {
@@ -290,7 +306,9 @@ watch(() => props.visible, (val) => {
 .editor-audio-dialog__panel {
   background: #fff;
   border-radius: 16px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   overflow: hidden;
 }
 
@@ -325,7 +343,9 @@ watch(() => props.visible, (val) => {
   background: transparent;
   color: #a1a1aa;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s;
 }
 
 .editor-audio-dialog__close:hover {

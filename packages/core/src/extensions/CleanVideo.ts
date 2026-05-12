@@ -1,5 +1,5 @@
-import type { RawCommands } from '@tiptap/core'
 import { Node } from '@tiptap/core'
+import { parseAlign } from '../utils/align'
 
 export interface CleanVideoOptions {
   accept?: string
@@ -7,14 +7,23 @@ export interface CleanVideoOptions {
 }
 
 export interface VideoAttrs {
-  src: string | null
-  poster?: string | null
-  'data-width'?: string | null
+  'src': string | null
+  'poster'?: string | null
+  'width'?: string | null
+  'height'?: string | null
   'data-align'?: 'left' | 'center' | 'right' | null
+  'data-width'?: string | null
+  'data-height'?: string | null
+  'data-local-id'?: string | null
+  'data-uploading'?: string | null
 }
 
-function parseAlign(value: string | null): 'left' | 'center' | 'right' | null {
-  return value === 'left' || value === 'center' || value === 'right' ? value as any : 'left'
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    cleanVideo: {
+      setCleanVideo: (attrs: Partial<VideoAttrs>) => ReturnType
+    }
+  }
 }
 
 export const CleanVideo = Node.create<CleanVideoOptions>({
@@ -37,46 +46,49 @@ export const CleanVideo = Node.create<CleanVideoOptions>({
 
   addAttributes() {
     return {
-      src: {
+      'src': {
         default: null,
       },
-      poster: {
+      'poster': {
         default: null,
       },
-      controls: {
+      'controls': {
         default: 'controls',
-        parseHTML: (element) => element.hasAttribute('controls') ? 'controls' : null,
+        parseHTML: element => (element.hasAttribute('controls') ? 'controls' : null),
         renderHTML: () => ({ controls: 'controls' }),
       },
-      width: {
+      'width': {
         default: null,
-        parseHTML: (element) => element.getAttribute('width') || element.getAttribute('data-width'),
+        parseHTML: element => element.getAttribute('width') || element.getAttribute('data-width'),
         renderHTML: (attributes) => {
-          if (!attributes.width) return {}
+          if (!attributes.width)
+            return {}
           return {
-            width: attributes.width,
+            'width': attributes.width,
             'data-width': attributes.width,
           }
         },
       },
-      height: {
+      'height': {
         default: null,
-        parseHTML: (element) => element.getAttribute('height') || element.getAttribute('data-height'),
+        parseHTML: element => element.getAttribute('height') || element.getAttribute('data-height'),
         renderHTML: (attributes) => {
-          if (!attributes.height) return {}
+          if (!attributes.height)
+            return {}
           return {
-            height: attributes.height,
+            'height': attributes.height,
             'data-height': attributes.height,
           }
         },
       },
       'data-align': {
         default: 'left',
-        parseHTML: (element) => parseAlign(element.getAttribute('data-align') || element.getAttribute('align')),
+        parseHTML: element => parseAlign(element.getAttribute('data-align') || element.getAttribute('align')),
         renderHTML: (attributes) => {
           const value = parseAlign(attributes['data-align'])
           // 如果是居左（默认），则不生成 data-align 属性
-          if (value === 'left' || !value) return {}
+          if (value === 'left' || !value)
+            return {}
           return { 'data-align': value }
         },
       },
@@ -130,9 +142,11 @@ export const CleanVideo = Node.create<CleanVideoOptions>({
       // 对齐逻辑
       if (align === 'center') {
         container.style.textAlign = 'center'
-      } else if (align === 'right') {
+      }
+      else if (align === 'right') {
         container.style.textAlign = 'right'
-      } else {
+      }
+      else {
         container.style.textAlign = 'left'
       }
 
@@ -143,7 +157,8 @@ export const CleanVideo = Node.create<CleanVideoOptions>({
       if (width) {
         video.style.width = `${width}px`
         video.style.maxWidth = '100%'
-      } else {
+      }
+      else {
         video.style.width = '100%'
         video.style.maxWidth = '100%'
       }
@@ -187,16 +202,16 @@ export const CleanVideo = Node.create<CleanVideoOptions>({
         video.pause()
         const pos = typeof getPos === 'function' ? getPos() : undefined
         if (pos !== undefined) {
-          ;(editor as any).emit('open-video-dialog', { 
-            pos, 
-            node: currentNode, 
+          ;(editor as any).emit('open-video-dialog', {
+            pos,
+            node: currentNode,
             data: {
               src: currentNode.attrs.src,
               poster: currentNode.attrs.poster,
               width: currentNode.attrs.width,
               height: currentNode.attrs.height,
-              align: currentNode.attrs['data-align'] || 'left'
-            }
+              align: currentNode.attrs['data-align'] || 'left',
+            },
           })
         }
       })
@@ -228,29 +243,34 @@ export const CleanVideo = Node.create<CleanVideoOptions>({
           if (newPoster !== video.getAttribute('poster')) {
             if (newPoster) {
               video.setAttribute('poster', newPoster)
-            } else {
+            }
+            else {
               video.removeAttribute('poster')
             }
           }
 
           if (newAlign === 'center') {
             container.style.textAlign = 'center'
-          } else if (newAlign === 'right') {
+          }
+          else if (newAlign === 'right') {
             container.style.textAlign = 'right'
-          } else {
+          }
+          else {
             container.style.textAlign = 'left'
           }
 
           if (newWidth) {
             video.style.width = `${newWidth}px`
             video.style.maxWidth = '100%'
-          } else {
+          }
+          else {
             video.style.width = '100%'
           }
 
           if (newHeight) {
             video.style.height = `${newHeight}px`
-          } else {
+          }
+          else {
             video.style.height = ''
           }
 
@@ -258,7 +278,8 @@ export const CleanVideo = Node.create<CleanVideoOptions>({
           if (wasUploading) {
             video.classList.add('is-uploading')
             loadingOverlay.style.display = 'flex'
-          } else {
+          }
+          else {
             video.classList.remove('is-uploading')
             loadingOverlay.style.display = 'none'
           }
@@ -271,16 +292,14 @@ export const CleanVideo = Node.create<CleanVideoOptions>({
 
   addCommands() {
     return {
-      setVideo: (attrs: Partial<VideoAttrs>) => ({
-        chain,
-      }: {
-        chain: () => { insertContent: (content: { type: string; attrs: VideoAttrs }) => { run: () => boolean } }
-      }) => {
-        return chain().insertContent({
-          type: this.name,
-          attrs: attrs as VideoAttrs,
-        }).run()
-      },
-    } as Partial<RawCommands>
+      setCleanVideo:
+        (attrs: Partial<VideoAttrs>) =>
+          ({ commands }) => {
+            return commands.insertContent({
+              type: this.name,
+              attrs: attrs as VideoAttrs,
+            })
+          },
+    }
   },
 })

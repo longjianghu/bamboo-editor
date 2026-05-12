@@ -1,21 +1,21 @@
-import StarterKit from '@tiptap/starter-kit'
-import CharacterCount from '@tiptap/extension-character-count'
-import HardBreak from '@tiptap/extension-hard-break'
-import Placeholder from '@tiptap/extension-placeholder'
-import HorizontalRule from '@tiptap/extension-horizontal-rule'
 import type { AnyExtension, EditorOptions } from '@tiptap/core'
 import type { EditorView } from '@tiptap/pm/view'
+import CharacterCount from '@tiptap/extension-character-count'
+import HardBreak from '@tiptap/extension-hard-break'
+import HorizontalRule from '@tiptap/extension-horizontal-rule'
+import Placeholder from '@tiptap/extension-placeholder'
+import StarterKit from '@tiptap/starter-kit'
 import { DEFAULT_COLOR_TOKENS } from './colors'
-import { CleanHeading } from './extensions/CleanHeading'
-import { CleanImage, type CleanImageOptions } from './extensions/CleanImage'
-import { CleanBulletList, CleanListItem, CleanOrderedList } from './extensions/CleanList'
+import { CleanAudio, type CleanAudioOptions } from './extensions/CleanAudio'
 import { CleanBlockquote } from './extensions/CleanBlockquote'
 import { CleanCodeBlock } from './extensions/CleanCodeBlock'
-import { CleanLink } from './extensions/CleanLink'
-import { CleanTextAlign } from './extensions/CleanTextAlign'
 import { CleanColor } from './extensions/CleanColor'
+import { CleanHeading } from './extensions/CleanHeading'
+import { CleanImage, type CleanImageOptions } from './extensions/CleanImage'
+import { CleanLink } from './extensions/CleanLink'
+import { CleanBulletList, CleanListItem, CleanOrderedList } from './extensions/CleanList'
+import { CleanTextAlign } from './extensions/CleanTextAlign'
 import { CleanVideo, type CleanVideoOptions } from './extensions/CleanVideo'
-import { CleanAudio, type CleanAudioOptions } from './extensions/CleanAudio'
 import {
   countTextCharacters,
   dispatchMaxLengthFeedback,
@@ -28,8 +28,8 @@ import {
   truncateHtmlToCharacterLimit,
   truncateText,
 } from './maxLength'
-import { sanitizeHtml } from './sanitize/sanitizeHtml'
 import { sanitizePastedHtml } from './sanitize/pasteSanitizer'
+import { sanitizeHtml } from './sanitize/sanitizeHtml'
 import { validateHtml } from './sanitize/validateHtml'
 
 export interface BambooEditorOptions {
@@ -60,7 +60,7 @@ export function getDefaultExtensions(options: BambooEditorOptions = {}): AnyExte
     }),
     CharacterCount.configure({
       limit: options.maxLength,
-      textCounter: (text) => countTextCharacters(text),
+      textCounter: text => countTextCharacters(text),
     }),
     CleanHeading,
     CleanImage.configure(options.image ?? {}),
@@ -94,13 +94,20 @@ export function createBambooEditorOptions(options: BambooEditorOptions = {}): Pa
       },
       transformPastedHTML: (html) => {
         const transformed = baseEditorProps.transformPastedHTML
-          ? (baseEditorProps.transformPastedHTML as (html: string, view?: EditorView | null) => string)(html, maxLengthContext.view)
+          ? (baseEditorProps.transformPastedHTML as (html: string, view?: EditorView | null) => string)(
+              html,
+              maxLengthContext.view,
+            )
           : html
         return sanitizePastedHtml(transformed, { colorTokens: options.colorTokens })
       },
       transformPastedText: (text, plain) => {
         const transformed = baseEditorProps.transformPastedText
-          ? (baseEditorProps.transformPastedText as (text: string, plain: boolean, view?: EditorView | null) => string)(text, plain, maxLengthContext.view)
+          ? (baseEditorProps.transformPastedText as (text: string, plain: boolean, view?: EditorView | null) => string)(
+              text,
+              plain,
+              maxLengthContext.view,
+            )
           : text
 
         if (!options.maxLength || !maxLengthContext.view) {
@@ -123,7 +130,15 @@ export function createBambooEditorOptions(options: BambooEditorOptions = {}): Pa
       handleTextInput: (view, from, to, text) => {
         maxLengthContext.view = view
         const handled = baseEditorProps.handleTextInput
-          ? (baseEditorProps.handleTextInput as unknown as (view: EditorView, from: number, to: number, text: string, deflt: () => boolean) => boolean)(view, from, to, text, () => false)
+          ? (
+              baseEditorProps.handleTextInput as unknown as (
+                view: EditorView,
+                from: number,
+                to: number,
+                text: string,
+                deflt: () => boolean,
+              ) => boolean
+            )(view, from, to, text, () => false)
           : false
         if (handled || !options.maxLength || maxLengthContext.isComposing) {
           return handled ?? false
@@ -238,25 +253,25 @@ function createMaxLengthContext(options: BambooEditorOptions) {
 }
 
 export {
+  CleanAudio,
+  CleanBlockquote,
+  CleanBulletList,
+  CleanCodeBlock,
+  CleanColor,
   CleanHeading,
   CleanImage,
-  CleanVideo,
-  CleanAudio,
   CleanLink,
-  CleanTextAlign,
-  CleanColor,
-  CleanBulletList,
-  CleanOrderedList,
   CleanListItem,
-  CleanBlockquote,
-  CleanCodeBlock,
-  sanitizeHtml,
-  validateHtml,
-  sanitizePastedHtml,
+  CleanOrderedList,
+  CleanTextAlign,
+  CleanVideo,
   MAX_LENGTH_FEEDBACK_EVENT,
+  sanitizeHtml,
+  sanitizePastedHtml,
+  validateHtml,
 }
 
-export type { ValidationError, ValidationResult } from './sanitize/types'
-export type { MaxLengthFeedbackDetail } from './maxLength'
+export type { AudioAttrs, CleanAudioOptions } from './extensions/CleanAudio'
 export type { CleanVideoOptions, VideoAttrs } from './extensions/CleanVideo'
-export type { CleanAudioOptions } from './extensions/CleanAudio'
+export type { MaxLengthFeedbackDetail } from './maxLength'
+export type { ValidationError, ValidationResult } from './sanitize/types'

@@ -1,23 +1,17 @@
 {
   "name": "@bamboo-editor/core",
+  "type": "module",
   "version": "0.1.5",
   "description": "Core Tiptap extensions and controlled HTML utilities for Bamboo Editor.",
   "license": "MIT",
-  "type": "module",
-  "main": "dist/index.js",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
-    },
-    "./package.json": "./package.json"
+  "homepage": "https://github.com/longjianghu/bamboo-editor#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/longjianghu/bamboo-editor.git"
   },
-  "files": [
-    "dist"
-  ],
+  "bugs": {
+    "url": "https://github.com/longjianghu/bamboo-editor/issues"
+  },
   "keywords": [
     "bamboo-editor",
     "editor",
@@ -26,14 +20,20 @@
     "html",
     "sanitize"
   ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/longjianghu/bamboo-editor.git"
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
   },
-  "homepage": "https://github.com/longjianghu/bamboo-editor#readme",
-  "bugs": {
-    "url": "https://github.com/longjianghu/bamboo-editor/issues"
-  },
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "publishConfig": {
     "access": "public"
   },
@@ -44,17 +44,17 @@
   "dependencies": {
     "@tiptap/core": "^2.11.5",
     "@tiptap/extension-blockquote": "^2.11.5",
+    "@tiptap/extension-bullet-list": "^2.11.5",
     "@tiptap/extension-character-count": "^2.11.5",
     "@tiptap/extension-code-block": "^2.11.5",
     "@tiptap/extension-hard-break": "^2.11.5",
     "@tiptap/extension-heading": "^2.11.5",
+    "@tiptap/extension-horizontal-rule": "^2.11.5",
     "@tiptap/extension-image": "^2.11.5",
     "@tiptap/extension-link": "^2.11.5",
     "@tiptap/extension-list-item": "^2.11.5",
     "@tiptap/extension-ordered-list": "^2.11.5",
-    "@tiptap/extension-bullet-list": "^2.11.5",
     "@tiptap/extension-placeholder": "^2.11.5",
-    "@tiptap/extension-horizontal-rule": "^2.11.5",
     "@tiptap/extension-text-align": "^2.11.5",
     "@tiptap/pm": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5"

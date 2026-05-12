@@ -1,25 +1,269 @@
+<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import ToolbarIcon from './ToolbarIcon.vue'
+
+const props = defineProps<{
+  visible: boolean
+  device: Device
+  mode: DialogMode
+  initialData?: VideoDialogData
+  uploadHandler?: (file: File) => Promise<{ src: string, width?: number, height?: number }>
+}>()
+
+const emit = defineEmits<{
+  confirm: [data: VideoDialogData]
+  remove: []
+  cancel: []
+}>()
+
+declare const window: Window & typeof globalThis
+
+type DialogMode = 'create' | 'edit'
+type Device = 'pc' | 'mobile'
+
+interface VideoDialogData {
+  src: string
+  poster?: string
+  width?: number
+  height?: number
+  align?: 'left' | 'center' | 'right'
+}
+
+const OPEN_DELAY_MS = 16
+const CLOSE_ANIMATION_MS = 220
+
+const videoFileRef = ref<HTMLInputElement | null>(null)
+const posterFileRef = ref<HTMLInputElement | null>(null)
+
+const inputVideoUrl = ref('')
+const inputPosterUrl = ref('')
+const inputWidth = ref('')
+const inputHeight = ref('')
+const inputAlign = ref<'left' | 'center' | 'right'>('left')
+
+const isUploadingVideo = ref(false)
+const isUploadingPoster = ref(false)
+
+const isRendered = ref(props.visible)
+const isOpen = ref(false)
+
+let openTimer: number | null = null
+let closeTimer: number | null = null
+
+const title = computed(() => (props.mode === 'edit' ? '编辑视频' : '插入视频'))
+const confirmLabel = computed(() => (props.mode === 'edit' ? '保存' : '插入'))
+const hasVideo = computed(() => !!inputVideoUrl.value.trim())
+const isConfirmDisabled = computed(() => !hasVideo.value)
+
+function clearTimers() {
+  if (openTimer !== null) {
+    window.clearTimeout(openTimer)
+    openTimer = null
+  }
+
+  if (closeTimer !== null) {
+    window.clearTimeout(closeTimer)
+    closeTimer = null
+  }
+}
+
+function focusInput() {
+  nextTick(() => {
+    videoFileRef.value?.parentElement?.querySelector('input')?.focus()
+  })
+}
+
+function openDialog() {
+  clearTimers()
+  inputVideoUrl.value = props.initialData?.src ?? ''
+  inputPosterUrl.value = props.initialData?.poster ?? ''
+  inputWidth.value = props.initialData?.width?.toString() ?? ''
+  inputHeight.value = props.initialData?.height?.toString() ?? ''
+  inputAlign.value = (props.initialData as any)?.align ?? 'left'
+  isRendered.value = true
+  openTimer = window.setTimeout(() => {
+    isOpen.value = true
+    openTimer = null
+    focusInput()
+  }, OPEN_DELAY_MS)
+}
+
+function closeDialog() {
+  clearTimers()
+  isOpen.value = false
+  closeTimer = window.setTimeout(
+    () => {
+      isRendered.value = false
+      closeTimer = null
+    },
+    props.device === 'mobile' ? CLOSE_ANIMATION_MS : 120,
+  )
+}
+
+function handleConfirm() {
+  const value = inputVideoUrl.value.trim()
+  if (!value) {
+    return
+  }
+
+  emit('confirm', {
+    src: value,
+    poster: inputPosterUrl.value.trim() || undefined,
+    width: inputWidth.value ? Number(inputWidth.value) : undefined,
+    height: inputHeight.value ? Number(inputHeight.value) : undefined,
+    align: inputAlign.value,
+  })
+}
+
+function triggerVideoUpload() {
+  videoFileRef.value?.click()
+}
+
+function triggerPosterUpload() {
+  posterFileRef.value?.click()
+}
+
+async function handleVideoFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) {
+    return
+  }
+
+  isUploadingVideo.value = true
+  try {
+    // Get video dimensions from local file
+    const dimensions = await getVideoDimensions(file).catch(() => ({ width: 0, height: 0 }))
+
+    if (dimensions.width > 0 && !inputWidth.value) {
+      inputWidth.value = dimensions.width.toString()
+    }
+    if (dimensions.height > 0 && !inputHeight.value) {
+      inputHeight.value = dimensions.height.toString()
+    }
+
+    if (props.uploadHandler) {
+      const result = await props.uploadHandler(file)
+      inputVideoUrl.value = result.src
+    }
+    else {
+      // No upload handler, use local preview
+      inputVideoUrl.value = await readAsDataUrl(file)
+    }
+  }
+  catch (error) {
+    console.warn('[EditorVideoDialog] video upload failed:', error)
+  }
+  finally {
+    isUploadingVideo.value = false
+    target.value = ''
+  }
+}
+
+function getVideoDimensions(file: File): Promise<{ width: number, height: number }> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video')
+    video.preload = 'metadata'
+    video.muted = true
+    video.onloadedmetadata = () => {
+      resolve({
+        width: video.videoWidth,
+        height: video.videoHeight,
+      })
+      URL.revokeObjectURL(video.src)
+      video.remove()
+    }
+    video.onerror = () => {
+      reject(new Error('Failed to load video'))
+      URL.revokeObjectURL(video.src)
+      video.remove()
+    }
+    video.src = URL.createObjectURL(file)
+  })
+}
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
+
+async function handlePosterFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file || !props.uploadHandler) {
+    return
+  }
+
+  isUploadingPoster.value = true
+  try {
+    const result = await props.uploadHandler(file)
+    inputPosterUrl.value = result.src
+  }
+  catch (error) {
+    console.warn('[EditorVideoDialog] poster upload failed:', error)
+  }
+  finally {
+    isUploadingPoster.value = false
+    target.value = ''
+  }
+}
+
+watch(
+  () => props.visible,
+  (val) => {
+    if (val) {
+      openDialog()
+    }
+    else {
+      closeDialog()
+    }
+  },
+)
+
+watch(
+  () => props.initialData,
+  (value) => {
+    if (props.visible && value) {
+      inputVideoUrl.value = value.src ?? ''
+      inputPosterUrl.value = value.poster ?? ''
+      inputWidth.value = value.width?.toString() ?? ''
+      inputHeight.value = value.height?.toString() ?? ''
+      inputAlign.value = value.align ?? 'left'
+    }
+  },
+  { deep: true },
+)
+
+onBeforeUnmount(() => {
+  clearTimers()
+})
+</script>
+
 <template>
-  <div
-    v-if="isRendered"
-    class="editor-video-dialog"
-    :class="[
-      `editor-video-dialog--${device}`,
-      { 'is-open': isOpen },
-    ]"
-  >
+  <div v-if="isRendered" class="editor-video-dialog" :class="[`editor-video-dialog--${device}`, { 'is-open': isOpen }]">
     <div class="editor-video-dialog__backdrop" @click="emit('cancel')"></div>
 
     <div class="editor-video-dialog__wrap">
       <form class="editor-video-dialog__panel" @submit.prevent>
         <div class="editor-video-dialog__header">
-          <h3 class="editor-video-dialog__title">{{ title }}</h3>
-          <button
-            type="button"
-            class="editor-video-dialog__close"
-            title="关闭"
-            @click="emit('cancel')"
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <h3 class="editor-video-dialog__title">
+            {{ title }}
+          </h3>
+          <button type="button" class="editor-video-dialog__close" title="关闭" @click="emit('cancel')">
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
@@ -37,22 +281,26 @@
                   placeholder="请输入视频地址"
                   autocomplete="off"
                   spellcheck="false"
-                >
+                />
                 <input
                   ref="videoFileRef"
                   type="file"
                   accept="video/*"
                   class="editor-video-dialog__file-input"
                   @change="handleVideoFileChange"
-                >
+                />
                 <button
                   type="button"
                   class="editor-video-dialog__upload-btn"
                   :disabled="isUploadingVideo"
                   @click="triggerVideoUpload"
                 >
-                  <template v-if="isUploadingVideo">上传中...</template>
-                  <template v-else>选择文件</template>
+                  <template v-if="isUploadingVideo">
+                    上传中...
+                  </template>
+                  <template v-else>
+                    选择文件
+                  </template>
                 </button>
               </div>
             </div>
@@ -69,22 +317,26 @@
                   placeholder="请输入封面图片地址"
                   autocomplete="off"
                   spellcheck="false"
-                >
+                />
                 <input
                   ref="posterFileRef"
                   type="file"
                   accept="image/*"
                   class="editor-video-dialog__file-input"
                   @change="handlePosterFileChange"
-                >
+                />
                 <button
                   type="button"
                   class="editor-video-dialog__upload-btn"
                   :disabled="isUploadingPoster"
                   @click="triggerPosterUpload"
                 >
-                  <template v-if="isUploadingPoster">上传中...</template>
-                  <template v-else>选择文件</template>
+                  <template v-if="isUploadingPoster">
+                    上传中...
+                  </template>
+                  <template v-else>
+                    选择文件
+                  </template>
                 </button>
               </div>
             </div>
@@ -102,9 +354,11 @@
                     type="number"
                     placeholder="auto"
                     min="0"
-                  >
+                  />
                 </div>
-                <div class="editor-video-dialog__size-divider">×</div>
+                <div class="editor-video-dialog__size-divider">
+                  ×
+                </div>
                 <div class="editor-video-dialog__size-item">
                   <span class="editor-video-dialog__size-label">高</span>
                   <input
@@ -113,7 +367,7 @@
                     type="number"
                     placeholder="auto"
                     min="0"
-                  >
+                  />
                 </div>
               </div>
             </div>
@@ -178,235 +432,6 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import ToolbarIcon from './ToolbarIcon.vue'
-
-declare const window: Window & typeof globalThis
-
-type DialogMode = 'create' | 'edit'
-type Device = 'pc' | 'mobile'
-
-interface VideoDialogData {
-  src: string
-  poster?: string
-  width?: number
-  height?: number
-  align?: 'left' | 'center' | 'right'
-}
-
-const OPEN_DELAY_MS = 16
-const CLOSE_ANIMATION_MS = 220
-
-const props = defineProps<{
-  visible: boolean
-  device: Device
-  mode: DialogMode
-  initialData?: VideoDialogData
-  uploadHandler?: (file: File) => Promise<{ src: string; width?: number; height?: number }>
-}>()
-
-const emit = defineEmits<{
-  confirm: [data: VideoDialogData]
-  remove: []
-  cancel: []
-}>()
-
-const videoFileRef = ref<HTMLInputElement | null>(null)
-const posterFileRef = ref<HTMLInputElement | null>(null)
-
-const inputVideoUrl = ref('')
-const inputPosterUrl = ref('')
-const inputWidth = ref('')
-const inputHeight = ref('')
-const inputAlign = ref<'left' | 'center' | 'right'>('left')
-
-const isUploadingVideo = ref(false)
-const isUploadingPoster = ref(false)
-
-const isRendered = ref(props.visible)
-const isOpen = ref(false)
-
-let openTimer: number | null = null
-let closeTimer: number | null = null
-
-const title = computed(() => props.mode === 'edit' ? '编辑视频' : '插入视频')
-const confirmLabel = computed(() => props.mode === 'edit' ? '保存' : '插入')
-const hasVideo = computed(() => !!inputVideoUrl.value.trim())
-const isConfirmDisabled = computed(() => !hasVideo.value)
-
-function clearTimers() {
-  if (openTimer !== null) {
-    window.clearTimeout(openTimer)
-    openTimer = null
-  }
-
-  if (closeTimer !== null) {
-    window.clearTimeout(closeTimer)
-    closeTimer = null
-  }
-}
-
-function focusInput() {
-  nextTick(() => {
-    videoFileRef.value?.parentElement?.querySelector('input')?.focus()
-  })
-}
-
-function openDialog() {
-  clearTimers()
-  inputVideoUrl.value = props.initialData?.src ?? ''
-  inputPosterUrl.value = props.initialData?.poster ?? ''
-  inputWidth.value = props.initialData?.width?.toString() ?? ''
-  inputHeight.value = props.initialData?.height?.toString() ?? ''
-  inputAlign.value = (props.initialData as any)?.align ?? 'left'
-  isRendered.value = true
-  openTimer = window.setTimeout(() => {
-    isOpen.value = true
-    openTimer = null
-    focusInput()
-  }, OPEN_DELAY_MS)
-}
-
-function closeDialog() {
-  clearTimers()
-  isOpen.value = false
-  closeTimer = window.setTimeout(() => {
-    isRendered.value = false
-    closeTimer = null
-  }, props.device === 'mobile' ? CLOSE_ANIMATION_MS : 120)
-}
-
-function handleConfirm() {
-  const value = inputVideoUrl.value.trim()
-  if (!value) {
-    return
-  }
-
-  emit('confirm', {
-    src: value,
-    poster: inputPosterUrl.value.trim() || undefined,
-    width: inputWidth.value ? Number(inputWidth.value) : undefined,
-    height: inputHeight.value ? Number(inputHeight.value) : undefined,
-    align: inputAlign.value,
-  })
-}
-
-function triggerVideoUpload() {
-  videoFileRef.value?.click()
-}
-
-function triggerPosterUpload() {
-  posterFileRef.value?.click()
-}
-
-async function handleVideoFileChange(event: Event) {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) {
-    return
-  }
-
-  isUploadingVideo.value = true
-  try {
-    // Get video dimensions from local file
-    const dimensions = await getVideoDimensions(file).catch(() => ({ width: 0, height: 0 }))
-
-    if (dimensions.width > 0 && !inputWidth.value) {
-      inputWidth.value = dimensions.width.toString()
-    }
-    if (dimensions.height > 0 && !inputHeight.value) {
-      inputHeight.value = dimensions.height.toString()
-    }
-
-    if (props.uploadHandler) {
-      const result = await props.uploadHandler(file)
-      inputVideoUrl.value = result.src
-    } else {
-      // No upload handler, use local preview
-      inputVideoUrl.value = await readAsDataUrl(file)
-    }
-  } catch (error) {
-    console.warn('[EditorVideoDialog] video upload failed:', error)
-  } finally {
-    isUploadingVideo.value = false
-    target.value = ''
-  }
-}
-
-function getVideoDimensions(file: File): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const video = document.createElement('video')
-    video.preload = 'metadata'
-    video.muted = true
-    video.onloadedmetadata = () => {
-      resolve({
-        width: video.videoWidth,
-        height: video.videoHeight,
-      })
-      URL.revokeObjectURL(video.src)
-      video.remove()
-    }
-    video.onerror = () => {
-      reject(new Error('Failed to load video'))
-      URL.revokeObjectURL(video.src)
-      video.remove()
-    }
-    video.src = URL.createObjectURL(file)
-  })
-}
-
-function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(reader.error)
-    reader.readAsDataURL(file)
-  })
-}
-
-async function handlePosterFileChange(event: Event) {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file || !props.uploadHandler) {
-    return
-  }
-
-  isUploadingPoster.value = true
-  try {
-    const result = await props.uploadHandler(file)
-    inputPosterUrl.value = result.src
-  } catch (error) {
-    console.warn('[EditorVideoDialog] poster upload failed:', error)
-  } finally {
-    isUploadingPoster.value = false
-    target.value = ''
-  }
-}
-
-watch(() => props.visible, (val) => {
-  if (val) {
-    openDialog()
-  } else {
-    closeDialog()
-  }
-})
-
-watch(() => props.initialData, (value) => {
-  if (props.visible && value) {
-    inputVideoUrl.value = value.src ?? ''
-    inputPosterUrl.value = value.poster ?? ''
-    inputWidth.value = value.width?.toString() ?? ''
-    inputHeight.value = value.height?.toString() ?? ''
-    inputAlign.value = value.align ?? 'left'
-  }
-}, { deep: true })
-
-onBeforeUnmount(() => {
-  clearTimers()
-})
-</script>
-
 <style scoped>
 .editor-video-dialog {
   z-index: 18;
@@ -462,7 +487,9 @@ onBeforeUnmount(() => {
   box-shadow: 0 20px 48px rgba(15, 23, 42, 0.18);
   opacity: 0;
   transform: translateY(8px) scale(0.98);
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
 }
 
 .editor-video-dialog--pc.is-open .editor-video-dialog__panel {
@@ -478,7 +505,9 @@ onBeforeUnmount(() => {
   box-shadow: none;
   transform: translateY(100%);
   opacity: 0;
-  transition: transform 300ms cubic-bezier(0.25, 0.8, 0.25, 1), opacity 300ms cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition:
+    transform 300ms cubic-bezier(0.25, 0.8, 0.25, 1),
+    opacity 300ms cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .editor-video-dialog--mobile.is-open .editor-video-dialog__panel {
@@ -513,7 +542,9 @@ onBeforeUnmount(() => {
   background: transparent;
   color: #a1a1aa;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s;
 }
 
 .editor-video-dialog__close:hover {

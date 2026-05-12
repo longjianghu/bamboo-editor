@@ -20,9 +20,15 @@
   line-height: 1.3;
 }
 
-.bamboo-content h1 { font-size: 2rem; }
-.bamboo-content h2 { font-size: 1.5rem; }
-.bamboo-content h3 { font-size: 1.25rem; }
+.bamboo-content h1 {
+  font-size: 2rem;
+}
+.bamboo-content h2 {
+  font-size: 1.5rem;
+}
+.bamboo-content h3 {
+  font-size: 1.25rem;
+}
 
 .bamboo-content p,
 .bamboo-content ul,

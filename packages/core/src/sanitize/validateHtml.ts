@@ -1,5 +1,5 @@
-import { isValidColorToken, normalizeColorTokens } from '../colors'
 import type { SanitizeOptions, ValidationError, ValidationResult } from './types'
+import { isValidColorToken, normalizeColorTokens } from '../colors'
 
 const ALLOWED_TAGS = new Set([
   'h1',
@@ -17,6 +17,7 @@ const ALLOWED_TAGS = new Set([
   'li',
   'img',
   'video',
+  'audio',
   'pre',
   'blockquote',
   'span',
@@ -32,13 +33,14 @@ const ALLOWED_ATTRIBUTES: Record<string, Set<string>> = {
   blockquote: new Set(['data-align']),
   img: new Set(['src', 'alt', 'data-width', 'data-align']),
   video: new Set(['src', 'poster', 'data-width', 'data-height', 'data-align', 'controls']),
+  audio: new Set(['src', 'data-align', 'controls']),
   span: new Set(['data-color']),
 }
 
 const FORBIDDEN_TAGS = new Set(['script', 'iframe', 'style'])
 
 function isDangerousUrl(value: string) {
-  return /^\s*(javascript:|data:(?!image\/|video\/))/i.test(value)
+  return /^\s*(?:javascript:|data:(?!image\/|video\/|audio\/))/i.test(value)
 }
 
 function isValidAlign(value: string) {
