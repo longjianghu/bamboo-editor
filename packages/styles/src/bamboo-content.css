@@ -90,13 +90,19 @@
 }
 
 .bamboo-content img,
-.bamboo-content video,
-.bamboo-content audio {
+.bamboo-content video {
   display: block;
   max-width: 100%;
   height: auto;
   margin: 1.25em 0;
   border-radius: 12px;
+}
+
+.bamboo-content audio {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  margin: 1.25em 0;
 }
 
 .bamboo-content img[data-align='center'],

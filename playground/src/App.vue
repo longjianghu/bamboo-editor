@@ -187,7 +187,7 @@ const html = ref(`
 <video src="https://www.w3schools.com/html/mov_bbb.mp4" controls="controls" data-align="center"></video>
 
 <p>测试音频</p>
-<audio src="https://www.w3schools.com/html/horse.mp3" controls="controls" data-align="center"></audio>
+<audio src="https://www.w3schools.com/html/horse.mp3" controls data-align="center"></audio>
 `)
 
 const colorPalette = [

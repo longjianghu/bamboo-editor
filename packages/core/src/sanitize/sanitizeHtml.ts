@@ -123,9 +123,10 @@ export function sanitizeHtml(html: string, options?: SanitizeOptions): string {
 
   walk(container)
 
+  const VOID_OR_MEDIA_TAGS = new Set(['br', 'img', 'hr', 'video', 'audio'])
   for (const element of Array.from(container.querySelectorAll('*'))) {
     const tag = element.tagName.toLowerCase()
-    if (tag !== 'br' && tag !== 'img' && tag !== 'hr' && tag !== 'video' && tag !== 'audio' && element.childNodes.length === 0 && !element.textContent?.trim()) {
+    if (!VOID_OR_MEDIA_TAGS.has(tag) && element.childNodes.length === 0 && !element.textContent?.trim()) {
       element.remove()
     }
   }
