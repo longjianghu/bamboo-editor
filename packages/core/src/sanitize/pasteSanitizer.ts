@@ -26,7 +26,7 @@ function normalizePastedHtml(html: string) {
   }
 
   for (const div of Array.from(container.querySelectorAll('div'))) {
-    const hasBlockChildren = Array.from(div.children).some(child => isBlockLikeTag(child.tagName.toLowerCase()))
+    const hasBlockChildren = Array.from(div.children).some((child) => isBlockLikeTag(child.tagName.toLowerCase()))
     if (hasBlockChildren) {
       unwrapElement(div)
       continue
@@ -38,8 +38,7 @@ function normalizePastedHtml(html: string) {
         paragraph.appendChild(div.firstChild)
       }
       div.replaceWith(paragraph)
-    }
-    else {
+    } else {
       div.remove()
     }
   }

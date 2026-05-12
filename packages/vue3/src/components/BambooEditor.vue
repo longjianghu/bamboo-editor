@@ -37,26 +37,29 @@ const WORD_COUNT_SCROLLBAR_GAP = 20
 const DRAFT_DEBOUNCE_MS = 1000
 const DRAFT_DEFAULT_TTL = 3 * 24 * 60 * 60 * 1000
 
-const props = withDefaults(defineProps<{
-  modelValue: string
-  device?: BambooDevice
-  placeholder?: string
-  disabled?: boolean
-  uploadHandler?: UploadHandler
-  height?: string
-  colorPalette?: BambooColorOption[]
-  maxLength?: number
-  editorId?: string
-  draftTtl?: number
-  videoOptions?: CleanVideoOptions
-  audioOptions?: CleanAudioOptions
-}>(), {
-  device: 'auto',
-  placeholder: '请输入内容',
-  disabled: false,
-  height: 'auto',
-  draftTtl: DRAFT_DEFAULT_TTL,
-})
+const props = withDefaults(
+  defineProps<{
+    modelValue: string
+    device?: BambooDevice
+    placeholder?: string
+    disabled?: boolean
+    uploadHandler?: UploadHandler
+    height?: string
+    colorPalette?: BambooColorOption[]
+    maxLength?: number
+    editorId?: string
+    draftTtl?: number
+    videoOptions?: CleanVideoOptions
+    audioOptions?: CleanAudioOptions
+  }>(),
+  {
+    device: 'auto',
+    placeholder: '请输入内容',
+    disabled: false,
+    height: 'auto',
+    draftTtl: DRAFT_DEFAULT_TTL,
+  },
+)
 
 interface WordCountState {
   totalCharacters: number
@@ -150,7 +153,7 @@ const audioDialogState = ref<{
   mode: 'create',
 })
 
-const resolvedColorPalette = computed(() => props.colorPalette?.length ? props.colorPalette : DEFAULT_COLOR_PALETTE)
+const resolvedColorPalette = computed(() => (props.colorPalette?.length ? props.colorPalette : DEFAULT_COLOR_PALETTE))
 const editorColorCss = computed(() => buildEditorColorCss(editorScopeId, resolvedColorPalette.value))
 const isCompactWordCount = computed(() => surfaceWidth.value > 0 && surfaceWidth.value < WORD_COUNT_COMPACT_WIDTH)
 const wordCountAriaLabel = computed(() => {
@@ -202,7 +205,29 @@ const surfaceStyle = computed(() => {
   }
 })
 
-const { editor, resolvedDevice, currentLength, maxLength, remainingLength: _remainingLength, usageRatio, isNearLimit, isAtLimit, maxLengthFeedback, insertImage: _insertImage, setLink, unsetLink, insertRemoteImage: _insertRemoteImage, insertVideo, insertRemoteVideo, insertAudio: _insertAudio, insertRemoteAudio: _insertRemoteAudio, undo, redo, insertHorizontalRule, clearFormatting } = useBambooEditor({
+const {
+  editor,
+  resolvedDevice,
+  currentLength,
+  maxLength,
+  remainingLength: _remainingLength,
+  usageRatio,
+  isNearLimit,
+  isAtLimit,
+  maxLengthFeedback,
+  insertImage: _insertImage,
+  setLink,
+  unsetLink,
+  insertRemoteImage: _insertRemoteImage,
+  insertVideo,
+  insertRemoteVideo,
+  insertAudio: _insertAudio,
+  insertRemoteAudio: _insertRemoteAudio,
+  undo,
+  redo,
+  insertHorizontalRule,
+  clearFormatting,
+} = useBambooEditor({
   modelValue: toRef(props, 'modelValue'),
   device: toRef(props, 'device'),
   placeholder: toRef(props, 'placeholder'),
@@ -223,15 +248,19 @@ const { editor, resolvedDevice, currentLength, maxLength, remainingLength: _rema
   },
 })
 
-watch(editor, (instance) => {
-  if (instance) {
-    instance.on('open-image-dialog' as any, handleOpenImageDialog)
-    instance.on('open-video-dialog' as any, handleOpenVideoDialog)
-    instance.on('open-audio-dialog' as any, handleOpenAudioDialog)
-  }
-}, { immediate: true })
+watch(
+  editor,
+  (instance) => {
+    if (instance) {
+      instance.on('open-image-dialog' as any, handleOpenImageDialog)
+      instance.on('open-video-dialog' as any, handleOpenVideoDialog)
+      instance.on('open-audio-dialog' as any, handleOpenAudioDialog)
+    }
+  },
+  { immediate: true },
+)
 
-function handleOpenAudioDialog(payload?: { pos?: number, node?: any, initialData?: any, mode?: 'create' | 'edit' }) {
+function handleOpenAudioDialog(payload?: { pos?: number; node?: any; initialData?: any; mode?: 'create' | 'edit' }) {
   if (props.disabled) {
     return
   }
@@ -241,7 +270,11 @@ function handleOpenAudioDialog(payload?: { pos?: number, node?: any, initialData
   }
 
   const finalSrc = payload?.initialData?.src || payload?.node?.attrs?.src || ''
-  const finalAlign = payload?.initialData?.align || payload?.initialData?.['data-align'] || payload?.node?.attrs?.['data-align'] || 'left'
+  const finalAlign =
+    payload?.initialData?.align ||
+    payload?.initialData?.['data-align'] ||
+    payload?.node?.attrs?.['data-align'] ||
+    'left'
   console.log('[BambooEditor] handleOpenAudioDialog - node attrs:', payload?.node?.attrs, 'finalAlign:', finalAlign)
 
   audioDialogState.value = {
@@ -259,10 +292,9 @@ function closeAudioDialog() {
   window.setTimeout(() => editor.value?.commands.focus(), 0)
 }
 
-function handleAudioDialogConfirm(data: { src: string, align?: 'left' | 'center' | 'right' }) {
+function handleAudioDialogConfirm(data: { src: string; align?: 'left' | 'center' | 'right' }) {
   const instance = editor.value
-  if (!instance)
-    return
+  if (!instance) return
 
   closeAudioDialog()
 
@@ -275,7 +307,7 @@ function handleAudioDialogConfirm(data: { src: string, align?: 'left' | 'center'
           const pos = from
           tr.setNodeMarkup(pos, undefined, {
             ...node.attrs,
-            'src': data.src,
+            src: data.src,
             'data-align': data.align,
           })
           found = true
@@ -285,12 +317,11 @@ function handleAudioDialogConfirm(data: { src: string, align?: 'left' | 'center'
       })
       return true
     })
-  }
-  else {
+  } else {
     instance.commands.insertContent({
       type: 'audio',
       attrs: {
-        'src': data.src,
+        src: data.src,
         'data-align': data.align,
       },
     })
@@ -299,8 +330,7 @@ function handleAudioDialogConfirm(data: { src: string, align?: 'left' | 'center'
 
 function handleAudioDialogRemove() {
   const instance = editor.value
-  if (!instance)
-    return
+  if (!instance) return
 
   instance.commands.deleteSelection()
   closeAudioDialog()
@@ -329,8 +359,7 @@ function saveDraft(html: string) {
 
   try {
     localStorage.setItem(key, JSON.stringify({ html, savedAt: Date.now() }))
-  }
-  catch {
+  } catch {
     // localStorage 不可用时静默失败
   }
 }
@@ -347,15 +376,14 @@ function loadDraft() {
       return null
     }
 
-    const { html, savedAt } = JSON.parse(raw) as { html: string, savedAt: number }
+    const { html, savedAt } = JSON.parse(raw) as { html: string; savedAt: number }
     if (Date.now() - savedAt > props.draftTtl) {
       localStorage.removeItem(key)
       return null
     }
 
     return html
-  }
-  catch {
+  } catch {
     return null
   }
 }
@@ -368,8 +396,7 @@ function clearDraft() {
 
   try {
     localStorage.removeItem(key)
-  }
-  catch {
+  } catch {
     // 静默失败
   }
 }
@@ -389,20 +416,21 @@ function scheduleDraftSave(html: string) {
   }, DRAFT_DEBOUNCE_MS)
 }
 
-function handleOpenImageDialog(payload?: { pos?: number, node?: any, initialData?: any, mode?: 'create' | 'edit' }) {
+function handleOpenImageDialog(payload?: { pos?: number; node?: any; initialData?: any; mode?: 'create' | 'edit' }) {
   if (props.disabled) {
     return
   }
 
   imageDialogState.value = {
     mode: payload?.mode ?? 'create',
-    initialData: payload?.initialData ?? payload?.node?.attrs ?? {
-      src: '',
-      alt: '',
-      width: undefined,
-      height: undefined,
-      align: 'left',
-    },
+    initialData: payload?.initialData ??
+      payload?.node?.attrs ?? {
+        src: '',
+        alt: '',
+        width: undefined,
+        height: undefined,
+        align: 'left',
+      },
   }
   imageDialogVisible.value = true
 }
@@ -412,30 +440,34 @@ function closeImageDialog() {
   window.setTimeout(() => editor.value?.commands.focus(), 0)
 }
 
-function handleImageDialogConfirm(data: { src: string, alt?: string, width?: number, height?: number, align?: 'left' | 'center' | 'right' }) {
+function handleImageDialogConfirm(data: {
+  src: string
+  alt?: string
+  width?: number
+  height?: number
+  align?: 'left' | 'center' | 'right'
+}) {
   const instance = editor.value
-  if (!instance)
-    return
+  if (!instance) return
 
   closeImageDialog()
 
   if (imageDialogState.value.mode === 'edit') {
     instance.commands.updateAttributes('image', {
-      'src': data.src,
-      'alt': data.alt,
-      'width': data.width ? String(data.width) : null,
-      'height': data.height ? String(data.height) : null,
+      src: data.src,
+      alt: data.alt,
+      width: data.width ? String(data.width) : null,
+      height: data.height ? String(data.height) : null,
       'data-align': data.align,
     })
-  }
-  else {
+  } else {
     instance.commands.insertContent({
       type: 'image',
       attrs: {
-        'src': data.src,
-        'alt': data.alt,
-        'width': data.width ? String(data.width) : null,
-        'height': data.height ? String(data.height) : null,
+        src: data.src,
+        alt: data.alt,
+        width: data.width ? String(data.width) : null,
+        height: data.height ? String(data.height) : null,
         'data-align': data.align,
       },
     })
@@ -444,8 +476,7 @@ function handleImageDialogConfirm(data: { src: string, alt?: string, width?: num
 
 function handleImageDialogRemove() {
   const instance = editor.value
-  if (!instance)
-    return
+  if (!instance) return
 
   instance.commands.deleteSelection()
   closeImageDialog()
@@ -459,7 +490,7 @@ function handleLinkSelect(url: string | null) {
   return setLink(url)
 }
 
-function handleOpenLinkDialog(payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }) {
+function handleOpenLinkDialog(payload?: { initialValue?: string; mode?: 'create' | 'edit'; allowRemove?: boolean }) {
   if (props.disabled) {
     return
   }
@@ -487,8 +518,7 @@ function closeUrlDialog() {
 function handleUrlDialogConfirm(url: string) {
   if (urlDialogState.value.type === 'remote-video') {
     handleRemoteVideoSelect(url)
-  }
-  else {
+  } else {
     handleLinkSelect(url)
   }
 
@@ -512,7 +542,13 @@ function closeVideoDialog() {
   window.setTimeout(() => editor.value?.commands.focus(), 0)
 }
 
-function handleVideoDialogConfirm(data: { src: string, poster?: string, width?: number, height?: number, align?: 'left' | 'center' | 'right' }) {
+function handleVideoDialogConfirm(data: {
+  src: string
+  poster?: string
+  width?: number
+  height?: number
+  align?: 'left' | 'center' | 'right'
+}) {
   console.log('[BambooEditor] handleVideoDialogConfirm', data)
   const instance = editor.value
   if (!instance) {
@@ -534,10 +570,10 @@ function handleVideoDialogConfirm(data: { src: string, poster?: string, width?: 
           const pos = from
           tr.setNodeMarkup(pos, undefined, {
             ...node.attrs,
-            'src': data.src,
-            'poster': data.poster ?? node.attrs.poster,
-            'width': data.width ? String(data.width) : null,
-            'height': data.height ? String(data.height) : null,
+            src: data.src,
+            poster: data.poster ?? node.attrs.poster,
+            width: data.width ? String(data.width) : null,
+            height: data.height ? String(data.height) : null,
             'data-align': data.align,
           })
           found = true
@@ -547,16 +583,15 @@ function handleVideoDialogConfirm(data: { src: string, poster?: string, width?: 
       })
       return true
     })
-  }
-  else {
+  } else {
     // Insert new video
     instance.commands.command(({ tr }: { tr: any }) => {
       const { from: _from } = instance.state.selection
       const videoNode = instance.schema.nodes.video.create({
-        'src': data.src,
-        'poster': data.poster,
-        'width': data.width ? String(data.width) : null,
-        'height': data.height ? String(data.height) : null,
+        src: data.src,
+        poster: data.poster,
+        width: data.width ? String(data.width) : null,
+        height: data.height ? String(data.height) : null,
         'data-align': data.align,
       })
       tr.replaceSelectionWith(videoNode)
@@ -757,8 +792,7 @@ function getSelectionText(instance: Editor) {
 function countChineseCharacters(value: string) {
   try {
     return value.match(/\p{Unified_Ideograph}/gu)?.length ?? 0
-  }
-  catch {
+  } catch {
     return value.match(/[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/g)?.length ?? 0
   }
 }
@@ -780,10 +814,7 @@ function countLogicalLines(value: string) {
     return 0
   }
 
-  return value
-    .split(/\r?\n/)
-    .filter(line => line.trim().length > 0)
-    .length
+  return value.split(/\r?\n/).filter((line) => line.trim().length > 0).length
 }
 
 function formatFullWordCount(value: number) {
@@ -824,9 +855,13 @@ function updateFloatingToolbar() {
     return
   }
 
-  const selection = instance.state.selection as typeof instance.state.selection & { node?: { type?: { name?: string } } }
+  const selection = instance.state.selection as typeof instance.state.selection & {
+    node?: { type?: { name?: string } }
+  }
   const isImageSelection = selection.node?.type?.name === 'image'
-  const editorElement = document.querySelector(`[data-editor-scope='${editorScopeId}'] .bamboo-editor__content .ProseMirror`) as HTMLElement | null
+  const editorElement = document.querySelector(
+    `[data-editor-scope='${editorScopeId}'] .bamboo-editor__content .ProseMirror`,
+  ) as HTMLElement | null
   if (!editorElement) {
     hideFloatingToolbar()
     return
@@ -837,8 +872,7 @@ function updateFloatingToolbar() {
   if (isImageSelection) {
     hideFloatingToolbar()
     return
-  }
-  else {
+  } else {
     const { from, to, empty } = selection
     if (empty || from === to) {
       hideFloatingToolbar()
@@ -880,9 +914,10 @@ function updateFloatingToolbar() {
   const centeredLeft = rect.left + rect.width / 2
   const left = clamp(centeredLeft, minLeft, maxLeft)
   const placeAboveTop = rect.top - gap
-  const top = placeAboveTop - toolbarHeight >= editorRect.top
-    ? placeAboveTop
-    : Math.min(editorRect.bottom - gap, rect.bottom + toolbarHeight + gap)
+  const top =
+    placeAboveTop - toolbarHeight >= editorRect.top
+      ? placeAboveTop
+      : Math.min(editorRect.bottom - gap, rect.bottom + toolbarHeight + gap)
 
   floatingToolbarPosition.value = {
     top,
@@ -962,40 +997,48 @@ watch(resolvedDevice, (value) => {
   scheduleWordCountRefresh(true)
 })
 
-watch(surfaceRef, (element, _, onCleanup) => {
-  updateSurfaceWidth()
+watch(
+  surfaceRef,
+  (element, _, onCleanup) => {
+    updateSurfaceWidth()
 
-  if (typeof window === 'undefined' || !element) {
-    return
-  }
+    if (typeof window === 'undefined' || !element) {
+      return
+    }
 
-  if (typeof ResizeObserver !== 'undefined') {
-    surfaceResizeObserver = new ResizeObserver(() => updateSurfaceWidth())
-    surfaceResizeObserver.observe(element)
+    if (typeof ResizeObserver !== 'undefined') {
+      surfaceResizeObserver = new ResizeObserver(() => updateSurfaceWidth())
+      surfaceResizeObserver.observe(element)
 
-    onCleanup(() => {
-      surfaceResizeObserver?.disconnect()
-      surfaceResizeObserver = null
-    })
+      onCleanup(() => {
+        surfaceResizeObserver?.disconnect()
+        surfaceResizeObserver = null
+      })
 
-    return
-  }
+      return
+    }
 
-  window.addEventListener('resize', updateSurfaceWidth)
-  onCleanup(() => window.removeEventListener('resize', updateSurfaceWidth))
-}, { immediate: true })
+    window.addEventListener('resize', updateSurfaceWidth)
+    onCleanup(() => window.removeEventListener('resize', updateSurfaceWidth))
+  },
+  { immediate: true },
+)
 
-watch(editor, (instance) => {
-  if (!instance || !props.editorId) {
-    return
-  }
+watch(
+  editor,
+  (instance) => {
+    if (!instance || !props.editorId) {
+      return
+    }
 
-  const draft = loadDraft()
-  if (draft && draft !== props.modelValue) {
-    instance.commands.setContent(draft, false)
-    emit('update:modelValue', draft)
-  }
-}, { once: true })
+    const draft = loadDraft()
+    if (draft && draft !== props.modelValue) {
+      instance.commands.setContent(draft, false)
+      emit('update:modelValue', draft)
+    }
+  },
+  { once: true },
+)
 
 function _handleVideoSelect(file: File, poster?: string) {
   return insertVideo(file, poster)
@@ -1031,79 +1074,83 @@ function handleRemoteVideoSelect(url: string, poster?: string) {
   return insertRemoteVideo(url, poster)
 }
 
-watch([editor, resolvedDevice, () => props.disabled], (_, __, onCleanup) => {
-  const instance = editor.value
-  if (!instance) {
-    hideFloatingToolbar()
-    resetWordCountState()
-    return
-  }
+watch(
+  [editor, resolvedDevice, () => props.disabled],
+  (_, __, onCleanup) => {
+    const instance = editor.value
+    if (!instance) {
+      hideFloatingToolbar()
+      resetWordCountState()
+      return
+    }
 
-  const handleSelectionChange = () => {
+    const handleSelectionChange = () => {
+      updateFloatingToolbar()
+    }
+    const handleWordCountChange = () => scheduleWordCountRefresh()
+    const handleBlur = ({ event }: { event?: FocusEvent }) => {
+      const relatedTarget = event?.relatedTarget
+      if (relatedTarget instanceof Element && relatedTarget.closest('.floating-toolbar-pc')) {
+        return
+      }
+
+      window.setTimeout(() => updateFloatingToolbar(), 0)
+    }
+
+    const handleFocus = () => updateFloatingToolbar()
+
+    const handleOpenVideoDialogEvent = ({ pos, node, data }: { pos: number; node: any; data?: any }) => {
+      if (props.disabled) {
+        return
+      }
+
+      const finalSrc = data?.src || node.attrs.src || ''
+      const finalPoster = data?.poster || node.attrs.poster || ''
+      const finalWidth = data?.width || node.attrs.width
+      const finalHeight = data?.height || node.attrs.height
+      const finalAlign = data?.align || node.attrs['data-align'] || 'left'
+
+      videoDialogState.value = {
+        mode: 'edit',
+        initialData: {
+          src: finalSrc,
+          poster: finalPoster,
+          width: finalWidth ? Number(finalWidth) : undefined,
+          height: finalHeight ? Number(finalHeight) : undefined,
+          align: finalAlign as any,
+        },
+      }
+      videoDialogVisible.value = true
+      instance.commands.setNodeSelection(pos)
+    }
+
+    instance.on('selectionUpdate', handleSelectionChange)
+    instance.on('transaction', handleSelectionChange)
+    instance.on('selectionUpdate', handleWordCountChange)
+    instance.on('transaction', handleWordCountChange)
+    instance.on('focus', handleFocus)
+    instance.on('blur', handleBlur)
+    instance.on('open-video-dialog' as any, handleOpenVideoDialogEvent)
+    window.addEventListener('resize', handleSelectionChange)
+    window.addEventListener('scroll', handleSelectionChange, true)
     updateFloatingToolbar()
-  }
-  const handleWordCountChange = () => scheduleWordCountRefresh()
-  const handleBlur = ({ event }: { event?: FocusEvent }) => {
-    const relatedTarget = event?.relatedTarget
-    if (relatedTarget instanceof Element && relatedTarget.closest('.floating-toolbar-pc')) {
-      return
-    }
+    scheduleWordCountRefresh(true)
 
-    window.setTimeout(() => updateFloatingToolbar(), 0)
-  }
-
-  const handleFocus = () => updateFloatingToolbar()
-
-  const handleOpenVideoDialogEvent = ({ pos, node, data }: { pos: number, node: any, data?: any }) => {
-    if (props.disabled) {
-      return
-    }
-
-    const finalSrc = data?.src || node.attrs.src || ''
-    const finalPoster = data?.poster || node.attrs.poster || ''
-    const finalWidth = data?.width || node.attrs.width
-    const finalHeight = data?.height || node.attrs.height
-    const finalAlign = data?.align || node.attrs['data-align'] || 'left'
-
-    videoDialogState.value = {
-      mode: 'edit',
-      initialData: {
-        src: finalSrc,
-        poster: finalPoster,
-        width: finalWidth ? Number(finalWidth) : undefined,
-        height: finalHeight ? Number(finalHeight) : undefined,
-        align: finalAlign as any,
-      },
-    }
-    videoDialogVisible.value = true
-    instance.commands.setNodeSelection(pos)
-  }
-
-  instance.on('selectionUpdate', handleSelectionChange)
-  instance.on('transaction', handleSelectionChange)
-  instance.on('selectionUpdate', handleWordCountChange)
-  instance.on('transaction', handleWordCountChange)
-  instance.on('focus', handleFocus)
-  instance.on('blur', handleBlur)
-  instance.on('open-video-dialog' as any, handleOpenVideoDialogEvent)
-  window.addEventListener('resize', handleSelectionChange)
-  window.addEventListener('scroll', handleSelectionChange, true)
-  updateFloatingToolbar()
-  scheduleWordCountRefresh(true)
-
-  onCleanup(() => {
-    clearWordCountTimer()
-    instance.off('selectionUpdate', handleSelectionChange)
-    instance.off('transaction', handleSelectionChange)
-    instance.off('selectionUpdate', handleWordCountChange)
-    instance.off('transaction', handleWordCountChange)
-    instance.off('focus', handleFocus)
-    instance.off('blur', handleBlur)
-    instance.off('open-video-dialog' as any, handleOpenVideoDialogEvent)
-    window.removeEventListener('resize', handleSelectionChange)
-    window.removeEventListener('scroll', handleSelectionChange, true)
-  })
-}, { immediate: true })
+    onCleanup(() => {
+      clearWordCountTimer()
+      instance.off('selectionUpdate', handleSelectionChange)
+      instance.off('transaction', handleSelectionChange)
+      instance.off('selectionUpdate', handleWordCountChange)
+      instance.off('transaction', handleWordCountChange)
+      instance.off('focus', handleFocus)
+      instance.off('blur', handleBlur)
+      instance.off('open-video-dialog' as any, handleOpenVideoDialogEvent)
+      window.removeEventListener('resize', handleSelectionChange)
+      window.removeEventListener('scroll', handleSelectionChange, true)
+    })
+  },
+  { immediate: true },
+)
 
 onBeforeUnmount(() => {
   hideFloatingToolbar()
@@ -1123,13 +1170,20 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
 })
 
-watch(editorColorCss, (value) => {
-  applyEditorColorStyle(editorScopeId, value)
-}, { immediate: true })
+watch(
+  editorColorCss,
+  (value) => {
+    applyEditorColorStyle(editorScopeId, value)
+  },
+  { immediate: true },
+)
 
 function buildEditorColorCss(scopeId: string, colorPalette: readonly BambooColorOption[]) {
   return colorPalette
-    .map(item => `[data-editor-scope='${escapeCssValue(scopeId)}'] .bamboo-editor__content .ProseMirror span[data-color='${escapeCssValue(item.token)}']{color:${item.value};}`)
+    .map(
+      (item) =>
+        `[data-editor-scope='${escapeCssValue(scopeId)}'] .bamboo-editor__content .ProseMirror span[data-color='${escapeCssValue(item.token)}']{color:${item.value};}`,
+    )
     .join('\n')
 }
 
@@ -1185,7 +1239,12 @@ defineExpose({ clearDraft })
         @show-info="infoDialogVisible = true"
       />
 
-      <div ref="surfaceRef" class="bamboo-editor__surface" :class="{ 'is-mobile': resolvedDevice === 'mobile' }" :style="surfaceStyle">
+      <div
+        ref="surfaceRef"
+        class="bamboo-editor__surface"
+        :class="{ 'is-mobile': resolvedDevice === 'mobile' }"
+        :style="surfaceStyle"
+      >
         <template v-if="editor">
           <EditorContent :editor="editor" class="bamboo-editor__content" />
           <div
@@ -1204,7 +1263,9 @@ defineExpose({ clearDraft })
               <template v-if="maxLength != null">
                 <template v-if="currentLength > maxLength">
                   <span>已超出 </span>
-                  <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(currentLength - maxLength) }}</span>
+                  <span class="bamboo-editor__word-count-value">{{
+                    formatVisibleWordCount(currentLength - maxLength)
+                  }}</span>
                   <span> 字符</span>
                 </template>
                 <template v-else>
@@ -1215,15 +1276,21 @@ defineExpose({ clearDraft })
               </template>
               <template v-else-if="wordCountState.hasSelectedText">
                 <span v-if="!isCompactWordCount">已选 </span>
-                <span class="bamboo-editor__word-count-value is-selected">{{ formatVisibleWordCount(wordCountState.selectedChineseCharacters) }}</span>
+                <span class="bamboo-editor__word-count-value is-selected">{{
+                  formatVisibleWordCount(wordCountState.selectedChineseCharacters)
+                }}</span>
                 <span class="bamboo-editor__word-count-separator">/</span>
                 <span v-if="!isCompactWordCount">共 </span>
-                <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(wordCountState.totalCharacters) }}</span>
+                <span class="bamboo-editor__word-count-value">{{
+                  formatVisibleWordCount(wordCountState.totalCharacters)
+                }}</span>
                 <span v-if="!isCompactWordCount"> 字符</span>
               </template>
               <template v-else>
                 <span v-if="!isCompactWordCount">共 </span>
-                <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(wordCountState.totalCharacters) }}</span>
+                <span class="bamboo-editor__word-count-value">{{
+                  formatVisibleWordCount(wordCountState.totalCharacters)
+                }}</span>
                 <span v-if="!isCompactWordCount"> 字符</span>
               </template>
             </div>
@@ -1231,15 +1298,21 @@ defineExpose({ clearDraft })
             <div v-if="isWordCountTooltipVisible" class="bamboo-editor__word-count-tooltip" role="tooltip">
               <div class="bamboo-editor__word-count-tooltip-row">
                 <span>字符数（含空格）</span>
-                <span class="bamboo-editor__word-count-value">{{ formatFullWordCount(wordCountState.totalCharacters) }}</span>
+                <span class="bamboo-editor__word-count-value">{{
+                  formatFullWordCount(wordCountState.totalCharacters)
+                }}</span>
               </div>
               <div class="bamboo-editor__word-count-tooltip-row">
                 <span>中文字数</span>
-                <span class="bamboo-editor__word-count-value">{{ formatFullWordCount(wordCountState.chineseCharacters) }}</span>
+                <span class="bamboo-editor__word-count-value">{{
+                  formatFullWordCount(wordCountState.chineseCharacters)
+                }}</span>
               </div>
               <div class="bamboo-editor__word-count-tooltip-row">
                 <span>段落数</span>
-                <span class="bamboo-editor__word-count-value">{{ formatFullWordCount(wordCountState.paragraphCount) }}</span>
+                <span class="bamboo-editor__word-count-value">{{
+                  formatFullWordCount(wordCountState.paragraphCount)
+                }}</span>
               </div>
               <div class="bamboo-editor__word-count-tooltip-row">
                 <span>行数</span>
@@ -1248,9 +1321,7 @@ defineExpose({ clearDraft })
             </div>
           </div>
         </template>
-        <div v-else class="bamboo-editor__placeholder">
-          Loading editor...
-        </div>
+        <div v-else class="bamboo-editor__placeholder">Loading editor...</div>
       </div>
 
       <FloatingToolbarPC
@@ -1289,7 +1360,12 @@ defineExpose({ clearDraft })
       />
 
       <transition name="bamboo-editor-toast">
-        <div v-if="resolvedDevice === 'mobile' && mobileToastVisible" class="bamboo-editor__toast" role="status" aria-live="polite">
+        <div
+          v-if="resolvedDevice === 'mobile' && mobileToastVisible"
+          class="bamboo-editor__toast"
+          role="status"
+          aria-live="polite"
+        >
           {{ mobileToastMessage }}
         </div>
       </transition>
@@ -1633,7 +1709,9 @@ defineExpose({ clearDraft })
   height: auto;
   margin: 1em 0;
   border-radius: 12px;
-  transition: outline 0.2s, box-shadow 0.2s;
+  transition:
+    outline 0.2s,
+    box-shadow 0.2s;
 }
 
 .bamboo-editor__content :deep(.ProseMirror .clean-image-wrapper.ProseMirror-selectednode img) {
@@ -1689,7 +1767,9 @@ defineExpose({ clearDraft })
   color: #52525b;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s, background 0.2s;
+  transition:
+    opacity 0.2s,
+    background 0.2s;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
@@ -1710,7 +1790,9 @@ defineExpose({ clearDraft })
   height: auto;
   margin: 1em 0;
   border-radius: 12px;
-  transition: outline 0.2s, box-shadow 0.2s;
+  transition:
+    outline 0.2s,
+    box-shadow 0.2s;
 }
 
 .bamboo-editor__content :deep(.ProseMirror .clean-video-wrapper.ProseMirror-selectednode video) {
@@ -1749,8 +1831,13 @@ defineExpose({ clearDraft })
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 .bamboo-editor__content :deep(.clean-video-edit-button) {
@@ -1770,7 +1857,9 @@ defineExpose({ clearDraft })
   color: #52525b;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s, background 0.2s;
+  transition:
+    opacity 0.2s,
+    background 0.2s;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
@@ -1786,7 +1875,9 @@ defineExpose({ clearDraft })
 
 /* Audio styles */
 .bamboo-editor__content :deep(.ProseMirror audio) {
-  transition: outline 0.2s, box-shadow 0.2s;
+  transition:
+    outline 0.2s,
+    box-shadow 0.2s;
 }
 
 .bamboo-editor__content :deep(.ProseMirror .clean-audio-wrapper.ProseMirror-selectednode .clean-audio-inner audio) {
@@ -1824,7 +1915,9 @@ defineExpose({ clearDraft })
   color: #52525b;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s, background 0.2s;
+  transition:
+    opacity 0.2s,
+    background 0.2s;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
@@ -1885,7 +1978,10 @@ defineExpose({ clearDraft })
   line-height: 1;
   backdrop-filter: blur(4px);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-  transition: opacity 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .bamboo-editor__word-count:hover .bamboo-editor__word-count-summary {
@@ -1965,7 +2061,9 @@ defineExpose({ clearDraft })
 
 .bamboo-editor-toast-enter-active,
 .bamboo-editor-toast-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
 }
 
 .bamboo-editor-toast-enter-from,

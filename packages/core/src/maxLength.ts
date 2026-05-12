@@ -69,7 +69,7 @@ export function plainTextToHtml(value: string) {
 
   return normalized
     .split('\n')
-    .map(line => `<p>${escapeHtml(line) || '<br>'}</p>`)
+    .map((line) => `<p>${escapeHtml(line) || '<br>'}</p>`)
     .join('')
 }
 
@@ -88,7 +88,7 @@ export function truncateHtmlToCharacterLimit(html: string, maxLength: number, op
 
 export function trimDocumentToCharacterLimit(view: EditorView, maxLength: number) {
   let remaining = maxLength
-  const ranges: Array<{ from: number, to: number }> = []
+  const ranges: Array<{ from: number; to: number }> = []
 
   view.state.doc.descendants((node, pos) => {
     if (node.isText) {
@@ -213,10 +213,10 @@ function trimNode(node: Node, state: { remaining: number }) {
   trimChildren(element, state)
 
   if (
-    BLOCK_TAGS.has(tag)
-    && hasRenderableContent(element)
-    && state.remaining > 0
-    && hasFollowingRenderableSibling(element)
+    BLOCK_TAGS.has(tag) &&
+    hasRenderableContent(element) &&
+    state.remaining > 0 &&
+    hasFollowingRenderableSibling(element)
   ) {
     state.remaining -= 1
   }
@@ -235,7 +235,7 @@ function hasRenderableContent(element: HTMLElement): boolean {
     return true
   }
 
-  return Array.from(element.children).some(child => hasRenderableContent(child as HTMLElement))
+  return Array.from(element.children).some((child) => hasRenderableContent(child as HTMLElement))
 }
 
 function hasFollowingRenderableSibling(element: HTMLElement): boolean {
@@ -274,8 +274,8 @@ function extractTextFromNode(node: Node): string {
   children.forEach((child, index) => {
     result += extractTextFromNode(child)
     if (
-      BLOCK_TAGS.has((child as HTMLElement | undefined)?.tagName?.toLowerCase?.() ?? '')
-      && index < children.length - 1
+      BLOCK_TAGS.has((child as HTMLElement | undefined)?.tagName?.toLowerCase?.() ?? '') &&
+      index < children.length - 1
     ) {
       result += '\n'
     }

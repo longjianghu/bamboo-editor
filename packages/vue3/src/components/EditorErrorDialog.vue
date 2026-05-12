@@ -87,9 +87,7 @@ onBeforeUnmount(() => {
         aria-labelledby="editor-error-dialog-title"
       >
         <div class="editor-error-dialog__header">
-          <h3 id="editor-error-dialog-title" class="editor-error-dialog__title">
-            提示
-          </h3>
+          <h3 id="editor-error-dialog-title" class="editor-error-dialog__title">提示</h3>
           <button type="button" class="editor-error-dialog__close" aria-label="关闭" @click="emit('close')">
             <svg
               viewBox="0 0 24 24"

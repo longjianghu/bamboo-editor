@@ -7,7 +7,7 @@ const props = defineProps<{
   device: Device
   mode: DialogMode
   initialData?: VideoDialogData
-  uploadHandler?: (file: File) => Promise<{ src: string, width?: number, height?: number }>
+  uploadHandler?: (file: File) => Promise<{ src: string; width?: number; height?: number }>
 }>()
 
 const emit = defineEmits<{
@@ -145,22 +145,19 @@ async function handleVideoFileChange(event: Event) {
     if (props.uploadHandler) {
       const result = await props.uploadHandler(file)
       inputVideoUrl.value = result.src
-    }
-    else {
+    } else {
       // No upload handler, use local preview
       inputVideoUrl.value = await readAsDataUrl(file)
     }
-  }
-  catch (error) {
+  } catch (error) {
     console.warn('[EditorVideoDialog] video upload failed:', error)
-  }
-  finally {
+  } finally {
     isUploadingVideo.value = false
     target.value = ''
   }
 }
 
-function getVideoDimensions(file: File): Promise<{ width: number, height: number }> {
+function getVideoDimensions(file: File): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video')
     video.preload = 'metadata'
@@ -202,11 +199,9 @@ async function handlePosterFileChange(event: Event) {
   try {
     const result = await props.uploadHandler(file)
     inputPosterUrl.value = result.src
-  }
-  catch (error) {
+  } catch (error) {
     console.warn('[EditorVideoDialog] poster upload failed:', error)
-  }
-  finally {
+  } finally {
     isUploadingPoster.value = false
     target.value = ''
   }
@@ -217,8 +212,7 @@ watch(
   (val) => {
     if (val) {
       openDialog()
-    }
-    else {
+    } else {
       closeDialog()
     }
   },
@@ -295,12 +289,8 @@ onBeforeUnmount(() => {
                   :disabled="isUploadingVideo"
                   @click="triggerVideoUpload"
                 >
-                  <template v-if="isUploadingVideo">
-                    上传中...
-                  </template>
-                  <template v-else>
-                    选择文件
-                  </template>
+                  <template v-if="isUploadingVideo"> 上传中... </template>
+                  <template v-else> 选择文件 </template>
                 </button>
               </div>
             </div>
@@ -331,12 +321,8 @@ onBeforeUnmount(() => {
                   :disabled="isUploadingPoster"
                   @click="triggerPosterUpload"
                 >
-                  <template v-if="isUploadingPoster">
-                    上传中...
-                  </template>
-                  <template v-else>
-                    选择文件
-                  </template>
+                  <template v-if="isUploadingPoster"> 上传中... </template>
+                  <template v-else> 选择文件 </template>
                 </button>
               </div>
             </div>
@@ -356,9 +342,7 @@ onBeforeUnmount(() => {
                     min="0"
                   />
                 </div>
-                <div class="editor-video-dialog__size-divider">
-                  ×
-                </div>
+                <div class="editor-video-dialog__size-divider">×</div>
                 <div class="editor-video-dialog__size-item">
                   <span class="editor-video-dialog__size-label">高</span>
                   <input

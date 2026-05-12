@@ -82,9 +82,7 @@ onBeforeUnmount(() => {
     <div class="editor-info-dialog__wrap">
       <div class="editor-info-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="editor-info-dialog-title">
         <div class="editor-info-dialog__header">
-          <h3 id="editor-info-dialog-title" class="editor-info-dialog__title">
-            关于
-          </h3>
+          <h3 id="editor-info-dialog-title" class="editor-info-dialog__title">关于</h3>
           <button type="button" class="editor-info-dialog__close" aria-label="关闭" @click="emit('close')">
             <svg
               viewBox="0 0 24 24"
@@ -101,12 +99,8 @@ onBeforeUnmount(() => {
 
         <div class="editor-info-dialog__body">
           <div class="editor-info-dialog__logo">
-            <div class="editor-info-dialog__logo-icon">
-              🎋
-            </div>
-            <div class="editor-info-dialog__name">
-              Bamboo Editor
-            </div>
+            <div class="editor-info-dialog__logo-icon">🎋</div>
+            <div class="editor-info-dialog__name">Bamboo Editor</div>
           </div>
 
           <div class="editor-info-dialog__meta">
@@ -115,9 +109,7 @@ onBeforeUnmount(() => {
             <a href="mailto:215241062@qq.com" class="editor-info-dialog__author">龙江湖</a>
           </div>
 
-          <div class="editor-info-dialog__desc">
-            一款轻量级、响应式、基于 Vue 3 和 Tiptap 开发的富文本编辑器。
-          </div>
+          <div class="editor-info-dialog__desc">一款轻量级、响应式、基于 Vue 3 和 Tiptap 开发的富文本编辑器。</div>
 
           <div class="editor-info-dialog__links">
             <a

@@ -246,8 +246,7 @@ async function onSave() {
   try {
     await saveToServer(content.value)
     editorRef.value.clearDraft()
-  }
-  catch (err) {
+  } catch (err) {
     // 保存失败，草稿保留
   }
 }

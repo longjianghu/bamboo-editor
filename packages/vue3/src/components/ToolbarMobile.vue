@@ -24,7 +24,7 @@ const emit = defineEmits<{
   openImageDialog: []
   openVideoDialog: []
   openAudioDialog: []
-  openLinkDialog: [payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }]
+  openLinkDialog: [payload?: { initialValue?: string; mode?: 'create' | 'edit'; allowRemove?: boolean }]
   textColorSelect: [token: string | null]
   clearFormatting: []
   insertHorizontalRule: []
@@ -129,8 +129,7 @@ function focusEditor() {
 
 function run(command: string, attrs?: Record<string, unknown>) {
   const chain = props.editor?.chain().focus()
-  if (!chain)
-    return
+  if (!chain) return
   const target = attrs ? (chain as any)[command](attrs) : (chain as any)[command]()
   target?.run?.()
 }
@@ -141,11 +140,9 @@ function runAndClosePanel(command: string, attrs?: Record<string, unknown>) {
 }
 
 function isDisabled(command: string, attrs?: Record<string, unknown>) {
-  if (props.disabled)
-    return true
+  if (props.disabled) return true
   const chain = props.editor?.can().chain().focus()
-  if (!chain)
-    return true
+  if (!chain) return true
   const target = attrs ? (chain as any)[command](attrs) : (chain as any)[command]()
   return !target?.run?.()
 }
@@ -163,23 +160,19 @@ function selectList(option: ListOption) {
 function selectMedia(option: MediaOption) {
   if (option.action === 'open-image-dialog') {
     emit('openImageDialog')
-  }
-  else if (option.action === 'open-video-dialog') {
+  } else if (option.action === 'open-video-dialog') {
     emit('openVideoDialog')
-  }
-  else if (option.action === 'open-audio-dialog') {
+  } else if (option.action === 'open-audio-dialog') {
     emit('openAudioDialog')
   }
   closeMenus()
 }
 
 function _emitActionAndClosePanel(action: 'clearFormatting' | 'insertHorizontalRule') {
-  if (props.disabled)
-    return
+  if (props.disabled) return
   if (action === 'clearFormatting') {
     emit('clearFormatting')
-  }
-  else {
+  } else {
     emit('insertHorizontalRule')
   }
   closePlusPanel()
@@ -187,13 +180,11 @@ function _emitActionAndClosePanel(action: 'clearFormatting' | 'insertHorizontalR
 
 function updatePanelPosition() {
   const shell = shellRef.value
-  if (!shell || typeof window === 'undefined')
-    return
+  if (!shell || typeof window === 'undefined') return
 
   const toolbar = shell.querySelector('.toolbar-mobile') as HTMLElement | null
   const toolbarRect = toolbar?.getBoundingClientRect()
-  if (!toolbarRect)
-    return
+  if (!toolbarRect) return
 
   panelWrapStyle.value = {
     left: `${toolbarRect.left + toolbarRect.width / 2}px`,
@@ -235,8 +226,7 @@ function closeMenus() {
 }
 
 function openPlusPanel() {
-  if (props.disabled)
-    return
+  if (props.disabled) return
   closeMenus()
   clearPanelTimers()
   blurEditor()
@@ -268,21 +258,18 @@ function togglePlusPanel() {
 }
 
 function toggleMenu(kind: MenuKind) {
-  if (props.disabled)
-    return
+  if (props.disabled) return
   const state = getMenuState(kind)
   const nextState = !state.value
   closePlusPanelIfNeeded(false)
   closeMenus()
   state.value = nextState
-  if (!nextState)
-    return
+  if (!nextState) return
   nextTick(() => updateDropdownPosition(kind))
 }
 
 function closePlusPanelIfNeeded(refocus = true) {
-  if (!isPlusPanelVisible.value && !isPlusPanelOpen.value)
-    return
+  if (!isPlusPanelVisible.value && !isPlusPanelOpen.value) return
   clearPanelTimers()
   isPlusPanelOpen.value = false
   closeTimer = window.setTimeout(() => {
@@ -298,8 +285,7 @@ function updateDropdownPosition(kind: MenuKind) {
   const { menuRef, triggerRef, placementRef, styleRef, width: menuWidth } = getMenuElements(kind)
   const trigger = triggerRef.value
   const container = menuRef.value
-  if (!trigger || !container || typeof window === 'undefined')
-    return
+  if (!trigger || !container || typeof window === 'undefined') return
 
   const viewportPadding = 12
   const triggerRect = trigger.getBoundingClientRect()
@@ -327,20 +313,15 @@ function menuPlacementClass(placement: DropdownPlacement) {
 
 function onClickOutside(event: MouseEvent) {
   const targets = [listMenuRef.value, mediaMenuRef.value].filter(Boolean)
-  if (!targets.length)
-    return
+  if (!targets.length) return
   const eventTarget = event.target
-  if (eventTarget instanceof Node && !targets.some(target => target?.contains(eventTarget)))
-    closeMenus()
+  if (eventTarget instanceof Node && !targets.some((target) => target?.contains(eventTarget))) closeMenus()
 }
 
 function onViewportChange() {
-  if (isListMenuOpen.value)
-    updateDropdownPosition('list')
-  if (isMediaMenuOpen.value)
-    updateDropdownPosition('media')
-  if (isPlusPanelVisible.value || isPlusPanelOpen.value)
-    updatePanelPosition()
+  if (isListMenuOpen.value) updateDropdownPosition('list')
+  if (isMediaMenuOpen.value) updateDropdownPosition('media')
+  if (isPlusPanelVisible.value || isPlusPanelOpen.value) updatePanelPosition()
 }
 
 onMounted(() => {

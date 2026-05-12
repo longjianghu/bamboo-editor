@@ -7,7 +7,7 @@ export interface CleanAudioOptions {
 }
 
 export interface AudioAttrs {
-  'src': string | null
+  src: string | null
   'data-align'?: 'left' | 'center' | 'right' | null
   'data-local-id'?: string | null
   'data-uploading'?: string | null
@@ -41,22 +41,21 @@ export const CleanAudio = Node.create<CleanAudioOptions>({
 
   addAttributes() {
     return {
-      'src': {
+      src: {
         default: null,
       },
       'data-align': {
         default: 'left',
-        parseHTML: element => parseAlign(element.getAttribute('data-align') || element.getAttribute('align')),
+        parseHTML: (element) => parseAlign(element.getAttribute('data-align') || element.getAttribute('align')),
         renderHTML: (attributes) => {
           const value = parseAlign(attributes['data-align'])
-          if (value === 'left' || !value)
-            return {}
+          if (value === 'left' || !value) return {}
           return { 'data-align': value }
         },
       },
-      'controls': {
+      controls: {
         default: 'controls',
-        parseHTML: element => (element.hasAttribute('controls') ? 'controls' : null),
+        parseHTML: (element) => (element.hasAttribute('controls') ? 'controls' : null),
         renderHTML: () => ({ controls: 'controls' }),
       },
     }
@@ -89,12 +88,12 @@ export const CleanAudio = Node.create<CleanAudioOptions>({
     return {
       setCleanAudio:
         (attrs: Partial<AudioAttrs>) =>
-          ({ commands }) => {
-            return commands.insertContent({
-              type: this.name,
-              attrs,
-            })
-          },
+        ({ commands }) => {
+          return commands.insertContent({
+            type: this.name,
+            attrs,
+          })
+        },
     }
   },
 
@@ -109,11 +108,9 @@ export const CleanAudio = Node.create<CleanAudioOptions>({
       // 对齐逻辑
       if (align === 'center') {
         container.style.textAlign = 'center'
-      }
-      else if (align === 'right') {
+      } else if (align === 'right') {
         container.style.textAlign = 'right'
-      }
-      else {
+      } else {
         container.style.textAlign = 'left'
       }
 
@@ -165,8 +162,7 @@ export const CleanAudio = Node.create<CleanAudioOptions>({
       return {
         dom: container,
         update: (updatedNode) => {
-          if (updatedNode.type !== currentNode.type)
-            return false
+          if (updatedNode.type !== currentNode.type) return false
 
           currentNode = updatedNode
           const newSrc = updatedNode.attrs.src
@@ -179,11 +175,9 @@ export const CleanAudio = Node.create<CleanAudioOptions>({
 
           if (newAlign === 'center') {
             container.style.textAlign = 'center'
-          }
-          else if (newAlign === 'right') {
+          } else if (newAlign === 'right') {
             container.style.textAlign = 'right'
-          }
-          else {
+          } else {
             container.style.textAlign = 'left'
           }
 

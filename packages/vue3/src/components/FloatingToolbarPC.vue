@@ -13,7 +13,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  openLinkDialog: [payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }]
+  openLinkDialog: [payload?: { initialValue?: string; mode?: 'create' | 'edit'; allowRemove?: boolean }]
   textColorSelect: [token: string | null]
   clearFormatting: []
 }>()
@@ -89,7 +89,7 @@ const headingMenuStyle = ref<Record<string, string>>({})
 const alignMenuStyle = ref<Record<string, string>>({})
 const colorMenuStyle = ref<Record<string, string>>({})
 const colorPalette = computed(() => props.colorPalette ?? [])
-const activeColor = computed(() => colorPalette.value.find(item => isTextColorActive(item.token)) ?? null)
+const activeColor = computed(() => colorPalette.value.find((item) => isTextColorActive(item.token)) ?? null)
 const currentColorValue = computed(() => activeColor.value?.value ?? '#18181b')
 const currentColorLabel = computed(() => (activeColor.value ? `文字颜色：${activeColor.value.label}` : '文字颜色'))
 const currentHeadingOption = computed(() => {
@@ -244,7 +244,7 @@ function isColorCleared() {
     return false
   }
 
-  return !colorPalette.value.some(item => isTextColorActive(item.token))
+  return !colorPalette.value.some((item) => isTextColorActive(item.token))
 }
 
 function selectTextColor(token: string | null) {
@@ -409,7 +409,7 @@ function onClickOutside(event: MouseEvent) {
   }
 
   const eventTarget = event.target
-  if (eventTarget instanceof Node && !targets.some(target => target?.contains(eventTarget))) {
+  if (eventTarget instanceof Node && !targets.some((target) => target?.contains(eventTarget))) {
     closeMenus()
   }
 }

@@ -69,19 +69,19 @@ export const CleanColor = Mark.create<CleanColorOptions>({
   addCommands() {
     return {
       setTextColor:
-        token =>
-          ({ commands }) => {
-            if (!isValidColorToken(token, this.options.colorTokens)) {
-              return false
-            }
+        (token) =>
+        ({ commands }) => {
+          if (!isValidColorToken(token, this.options.colorTokens)) {
+            return false
+          }
 
-            return commands.setMark(this.name, { 'data-color': token })
-          },
+          return commands.setMark(this.name, { 'data-color': token })
+        },
       unsetTextColor:
         () =>
-          ({ commands }) => {
-            return commands.unsetMark(this.name)
-          },
+        ({ commands }) => {
+          return commands.unsetMark(this.name)
+        },
     }
   },
 

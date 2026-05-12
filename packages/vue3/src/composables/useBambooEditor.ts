@@ -39,7 +39,7 @@ export interface UseBambooEditorOptions {
   audio?: MaybeRefOrGetter<CleanAudioOptions | undefined>
   containerWidth?: MaybeRefOrGetter<number | undefined>
   onUpdate?: (html: string) => void
-  onUploadError?: (error: { type: 'size' | 'type', message: string, file: File }) => void
+  onUploadError?: (error: { type: 'size' | 'type'; message: string; file: File }) => void
 }
 
 export function useBambooEditor(options: UseBambooEditorOptions) {
@@ -185,8 +185,8 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
       .chain()
       .focus()
       .setCleanImage({
-        'src': previewUrl,
-        'alt': file.name,
+        src: previewUrl,
+        alt: file.name,
         'data-local-id': localId,
         'data-uploading': 'true',
       })
@@ -198,16 +198,15 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
         instance,
         localId,
         {
-          'src': uploaded.src,
-          'alt': uploaded.alt ?? file.name,
+          src: uploaded.src,
+          alt: uploaded.alt ?? file.name,
           'data-width': uploaded.width ? String(uploaded.width) : null,
           'data-uploading': null,
           'data-local-id': null,
         },
         'image',
       )
-    }
-    catch (error) {
+    } catch (error) {
       updateNodeByLocalId(
         instance,
         localId,
@@ -311,7 +310,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
       .chain()
       .focus()
       .setCleanVideo({
-        'src': previewUrl,
+        src: previewUrl,
         poster,
         'data-local-id': localId,
         'data-uploading': 'true',
@@ -325,16 +324,15 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
         instance,
         localId,
         {
-          'src': uploaded.src,
-          'poster': poster ?? uploaded.poster ?? null,
+          src: uploaded.src,
+          poster: poster ?? uploaded.poster ?? null,
           'data-width': dimensions.width > 0 ? String(dimensions.width) : null,
           'data-uploading': null,
           'data-local-id': null,
         },
         'video',
       )
-    }
-    catch (error) {
+    } catch (error) {
       updateNodeByLocalId(
         instance,
         localId,
@@ -410,8 +408,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
         type: 'audio',
         attrs: { src: result.src },
       })
-    }
-    catch {
+    } catch {
       options.onUploadError?.({ type: 'type', message: '音频上传失败', file })
     }
   }
@@ -419,7 +416,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
   const insertRemoteAudio = (url: string, align?: 'left' | 'center' | 'right') => {
     editor.value?.commands.insertContent({
       type: 'audio',
-      attrs: { 'src': url, 'data-align': align || 'left' },
+      attrs: { src: url, 'data-align': align || 'left' },
     })
   }
 
@@ -449,7 +446,7 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
 }
 
 function resolveColorTokens(colorPalette?: readonly BambooColorOption[]) {
-  return colorPalette?.map(item => item.token).filter(Boolean)
+  return colorPalette?.map((item) => item.token).filter(Boolean)
 }
 
 function readAsDataUrl(file: File) {
@@ -461,7 +458,7 @@ function readAsDataUrl(file: File) {
   })
 }
 
-function getVideoDimensions(file: File): Promise<{ width: number, height: number }> {
+function getVideoDimensions(file: File): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video')
     video.preload = 'metadata'
@@ -520,11 +517,11 @@ function normalizeUrl(rawUrl: string) {
   }
 
   if (
-    /^https?:\/\//i.test(value)
-    || /^mailto:/i.test(value)
-    || /^tel:/i.test(value)
-    || /^data:(?:image|video)\//i.test(value)
-    || /^blob:/i.test(value)
+    /^https?:\/\//i.test(value) ||
+    /^mailto:/i.test(value) ||
+    /^tel:/i.test(value) ||
+    /^data:(?:image|video)\//i.test(value) ||
+    /^blob:/i.test(value)
   ) {
     return value
   }

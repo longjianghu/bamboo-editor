@@ -7,7 +7,7 @@ const props = defineProps<{
   device: Device
   mode: DialogMode
   initialData?: ImageDialogData
-  uploadHandler?: (file: File) => Promise<{ src: string, width?: number, height?: number }>
+  uploadHandler?: (file: File) => Promise<{ src: string; width?: number; height?: number }>
 }>()
 
 const emit = defineEmits<{
@@ -145,22 +145,19 @@ async function handleImageFileChange(event: Event) {
       if (result.height != null) {
         inputHeight.value = result.height.toString()
       }
-    }
-    else {
+    } else {
       // No upload handler, use local preview
       inputImageUrl.value = await readAsDataUrl(file)
     }
-  }
-  catch (error) {
+  } catch (error) {
     console.warn('[EditorImageDialog] image upload failed:', error)
-  }
-  finally {
+  } finally {
     isUploading.value = false
     target.value = ''
   }
 }
 
-function getImageDimensionsFromFile(file: File): Promise<{ width: number, height: number }> {
+function getImageDimensionsFromFile(file: File): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => {
@@ -192,8 +189,7 @@ watch(
   (val) => {
     if (val) {
       openDialog()
-    }
-    else {
+    } else {
       closeDialog()
     }
   },
@@ -270,12 +266,8 @@ onBeforeUnmount(() => {
                   :disabled="isUploading"
                   @click="triggerImageUpload"
                 >
-                  <template v-if="isUploading">
-                    上传中...
-                  </template>
-                  <template v-else>
-                    选择文件
-                  </template>
+                  <template v-if="isUploading"> 上传中... </template>
+                  <template v-else> 选择文件 </template>
                 </button>
               </div>
             </div>
@@ -309,9 +301,7 @@ onBeforeUnmount(() => {
                     min="0"
                   />
                 </div>
-                <div class="editor-image-dialog__size-divider">
-                  ×
-                </div>
+                <div class="editor-image-dialog__size-divider">×</div>
                 <div class="editor-image-dialog__size-item">
                   <span class="editor-image-dialog__size-label">高</span>
                   <input

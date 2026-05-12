@@ -161,9 +161,7 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="editor-url-dialog__footer">
-          <button type="button" class="editor-url-dialog__button" @click="emit('cancel')">
-            取消
-          </button>
+          <button type="button" class="editor-url-dialog__button" @click="emit('cancel')">取消</button>
           <button
             v-if="allowRemove"
             type="button"

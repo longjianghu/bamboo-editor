@@ -15,8 +15,7 @@ function toggleFullscreen() {
   if (!isFullscreen.value) {
     outputPanel.value?.requestFullscreen()
     isFullscreen.value = true
-  }
-  else {
+  } else {
     document.exitFullscreen()
     isFullscreen.value = false
   }
@@ -71,7 +70,7 @@ const colorPalette = [
 ]
 
 const previewColorStyle = computed(() => {
-  return Object.fromEntries(colorPalette.map(item => [`--preview-color-${item.token}`, item.value]))
+  return Object.fromEntries(colorPalette.map((item) => [`--preview-color-${item.token}`, item.value]))
 })
 
 async function uploadHandler(file: File) {
@@ -87,9 +86,7 @@ async function uploadHandler(file: File) {
   <main class="playground">
     <header class="playground__header">
       <div class="playground__brand">
-        <div class="playground__logo">
-          🎋
-        </div>
+        <div class="playground__logo">🎋</div>
         <div class="playground__title">
           <h1>Bamboo Editor Playground</h1>
           <p>小巧、简单的编辑器</p>

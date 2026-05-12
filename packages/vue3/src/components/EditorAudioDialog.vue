@@ -7,8 +7,8 @@ const props = defineProps<{
   device: 'pc' | 'mobile'
   mode: 'create' | 'edit'
   initialData?: {
-    'src': string
-    'align'?: 'left' | 'center' | 'right'
+    src: string
+    align?: 'left' | 'center' | 'right'
     'data-align'?: 'left' | 'center' | 'right'
   }
   uploadHandler?: (file: File) => Promise<{ src: string }>
@@ -16,7 +16,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   cancel: []
-  confirm: [data: { src: string, align?: 'left' | 'center' | 'right' }]
+  confirm: [data: { src: string; align?: 'left' | 'center' | 'right' }]
   remove: []
 }>()
 
@@ -63,8 +63,7 @@ function openDialog() {
   if (props.mode === 'edit' && props.initialData) {
     inputAudioUrl.value = props.initialData.src || ''
     inputAlign.value = props.initialData['data-align'] || props.initialData.align || 'left'
-  }
-  else {
+  } else {
     inputAudioUrl.value = ''
     inputAlign.value = 'left'
   }
@@ -90,8 +89,7 @@ function closeDialog() {
 }
 
 function handleConfirm() {
-  if (!isValid.value)
-    return
+  if (!isValid.value) return
   emit('confirm', {
     src: inputAudioUrl.value.trim(),
     align: inputAlign.value,
@@ -105,24 +103,20 @@ function triggerAudioUpload() {
 async function handleAudioFileChange(event: Event) {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
-  if (!file)
-    return
+  if (!file) return
 
   isUploading.value = true
   try {
     if (props.uploadHandler) {
       const result = await props.uploadHandler(file)
       inputAudioUrl.value = result.src
-    }
-    else {
+    } else {
       // No upload handler, use local preview
       inputAudioUrl.value = URL.createObjectURL(file)
     }
-  }
-  catch (error) {
+  } catch (error) {
     console.warn('[EditorAudioDialog] audio upload failed:', error)
-  }
-  finally {
+  } finally {
     isUploading.value = false
     target.value = ''
   }
@@ -133,8 +127,7 @@ watch(
   (val) => {
     if (val) {
       openDialog()
-    }
-    else {
+    } else {
       closeDialog()
     }
   },
@@ -193,12 +186,8 @@ watch(
                   :disabled="isUploading"
                   @click="triggerAudioUpload"
                 >
-                  <template v-if="isUploading">
-                    上传中...
-                  </template>
-                  <template v-else>
-                    选择文件
-                  </template>
+                  <template v-if="isUploading"> 上传中... </template>
+                  <template v-else> 选择文件 </template>
                 </button>
               </div>
             </div>

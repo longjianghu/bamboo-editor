@@ -60,7 +60,7 @@ export function getDefaultExtensions(options: BambooEditorOptions = {}): AnyExte
     }),
     CharacterCount.configure({
       limit: options.maxLength,
-      textCounter: text => countTextCharacters(text),
+      textCounter: (text) => countTextCharacters(text),
     }),
     CleanHeading,
     CleanImage.configure(options.image ?? {}),

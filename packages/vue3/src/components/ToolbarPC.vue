@@ -15,7 +15,7 @@ const emit = defineEmits<{
   openImageDialog: []
   openVideoDialog: []
   openAudioDialog: []
-  openLinkDialog: [payload?: { initialValue?: string, mode?: 'create' | 'edit', allowRemove?: boolean }]
+  openLinkDialog: [payload?: { initialValue?: string; mode?: 'create' | 'edit'; allowRemove?: boolean }]
   textColorSelect: [token: string | null]
   undo: []
   redo: []
@@ -150,7 +150,7 @@ const colorDropdownMenuStyle = ref<Record<string, string>>({})
 const listDropdownMenuStyle = ref<Record<string, string>>({})
 const mediaDropdownMenuStyle = ref<Record<string, string>>({})
 
-const activeColor = computed(() => colorPalette.find(item => isTextColorActive(item.token)) ?? null)
+const activeColor = computed(() => colorPalette.find((item) => isTextColorActive(item.token)) ?? null)
 const currentColorValue = computed(() => activeColor.value?.value ?? '#000000')
 const currentColorLabel = computed(() => (activeColor.value ? `文字颜色：${activeColor.value.label}` : '文字颜色'))
 
@@ -337,11 +337,9 @@ function selectList(option: ListOption) {
 function selectMedia(option: MediaOption) {
   if (option.action === 'open-image-dialog') {
     emit('openImageDialog')
-  }
-  else if (option.action === 'open-video-dialog') {
+  } else if (option.action === 'open-video-dialog') {
     emit('openVideoDialog')
-  }
-  else if (option.action === 'open-audio-dialog') {
+  } else if (option.action === 'open-audio-dialog') {
     emit('openAudioDialog')
   }
   closeMenus()
@@ -377,7 +375,7 @@ function _isColorCleared() {
     return false
   }
 
-  return !colorPalette.some(item => isTextColorActive(item.token))
+  return !colorPalette.some((item) => isTextColorActive(item.token))
 }
 
 function getMenuState(kind: MenuKind) {
@@ -532,7 +530,7 @@ function onClickOutside(event: MouseEvent) {
   }
 
   const eventTarget = event.target
-  if (eventTarget instanceof Node && !targets.some(target => target?.contains(eventTarget))) {
+  if (eventTarget instanceof Node && !targets.some((target) => target?.contains(eventTarget))) {
     closeMenus()
   }
 }
