@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import type { CleanAudioOptions, CleanVideoOptions } from '@bamboo-editor/core'
-import type { Editor } from '@tiptap/vue-3'
 import type { BambooColorOption, BambooDevice, UploadHandler } from '../composables/useBambooEditor'
 import { EditorContent } from '@tiptap/vue-3'
 import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue'
 import { useBambooEditor } from '../composables/useBambooEditor'
+import { useEditorDialogs } from '../composables/useEditorDialogs'
+import { useEditorDraft } from '../composables/useEditorDraft'
+import { useEditorEvents } from '../composables/useEditorEvents'
+import { useEditorFloatingToolbar } from '../composables/useEditorFloatingToolbar'
+import { useEditorFullscreen } from '../composables/useEditorFullscreen'
+import { useEditorWordCount } from '../composables/useEditorWordCount'
 import EditorAudioDialog from './EditorAudioDialog.vue'
 import EditorErrorDialog from './EditorErrorDialog.vue'
 import EditorImageDialog from './EditorImageDialog.vue'
@@ -21,20 +26,7 @@ const emit = defineEmits<{
 
 declare const window: Window & typeof globalThis
 
-interface FloatingPosition {
-  top: number
-  left: number
-  editorTop?: number
-  editorBottom?: number
-  editorLeft?: number
-  editorRight?: number
-}
-
-const WORD_COUNT_DEBOUNCE_MS = 300
-const WORD_COUNT_TOOLTIP_DELAY_MS = 200
-const WORD_COUNT_COMPACT_WIDTH = 400
 const WORD_COUNT_SCROLLBAR_GAP = 20
-const DRAFT_DEBOUNCE_MS = 1000
 const DRAFT_DEFAULT_TTL = 3 * 24 * 60 * 60 * 1000
 
 const props = withDefaults(
@@ -61,24 +53,6 @@ const props = withDefaults(
   },
 )
 
-interface WordCountState {
-  totalCharacters: number
-  chineseCharacters: number
-  selectedChineseCharacters: number
-  paragraphCount: number
-  lineCount: number
-  hasSelectedText: boolean
-}
-
-const DEFAULT_WORD_COUNT_STATE: WordCountState = {
-  totalCharacters: 0,
-  chineseCharacters: 0,
-  selectedChineseCharacters: 0,
-  paragraphCount: 0,
-  lineCount: 0,
-  hasSelectedText: false,
-}
-
 const DEFAULT_COLOR_PALETTE: BambooColorOption[] = [
   { token: 'cyan', label: '青色', value: '#0891b2' },
   { token: 'success', label: '绿色', value: '#16a34a' },
@@ -90,139 +64,27 @@ const DEFAULT_COLOR_PALETTE: BambooColorOption[] = [
   { token: 'yellow', label: '黄色', value: '#ca8a04' },
 ]
 
-const isFullscreen = ref(false)
 const editorScopeId = `bamboo-editor-${Math.random().toString(36).slice(2)}`
 const surfaceRef = ref<HTMLElement | null>(null)
-const floatingToolbarVisible = ref(false)
-const floatingToolbarPosition = ref<FloatingPosition>({ top: 0, left: 0 })
-const wordCountState = ref<WordCountState>({ ...DEFAULT_WORD_COUNT_STATE })
 const surfaceWidth = ref(0)
-const isWordCountTooltipVisible = ref(false)
-const urlDialogVisible = ref(false)
-const infoDialogVisible = ref(false)
-const errorDialogVisible = ref(false)
-const errorDialogMessage = ref('')
-const mobileToastVisible = ref(false)
-const mobileToastMessage = ref('')
-const urlDialogState = ref<{
-  type: 'link' | 'remote-video'
-  mode: 'create' | 'edit'
-  initialValue: string
-  allowRemove: boolean
-}>({
-  type: 'link',
-  mode: 'create',
-  initialValue: '',
-  allowRemove: false,
-})
-const videoDialogVisible = ref(false)
-const imageDialogVisible = ref(false)
-const audioDialogVisible = ref(false)
-const shouldIgnoreVideoSelection = ref(false)
-const videoDialogState = ref<{
-  mode: 'create' | 'edit'
-  initialData?: {
-    src: string
-    poster?: string
-    width?: number
-    height?: number
-    align?: 'left' | 'center' | 'right'
-  }
-}>({
-  mode: 'create',
-})
-const imageDialogState = ref<{
-  mode: 'create' | 'edit'
-  initialData?: {
-    src: string
-    alt?: string
-    width?: number
-    height?: number
-    align?: 'left' | 'center' | 'right'
-  }
-}>({
-  mode: 'create',
-})
-const audioDialogState = ref<{
-  mode: 'create' | 'edit'
-  initialData?: {
-    src: string
-    align?: 'left' | 'center' | 'right'
-  }
-}>({
-  mode: 'create',
-})
+let surfaceResizeObserver: ResizeObserver | null = null
 
 const resolvedColorPalette = computed(() => (props.colorPalette?.length ? props.colorPalette : DEFAULT_COLOR_PALETTE))
 const editorColorCss = computed(() => buildEditorColorCss(editorScopeId, resolvedColorPalette.value))
-const isCompactWordCount = computed(() => surfaceWidth.value > 0 && surfaceWidth.value < WORD_COUNT_COMPACT_WIDTH)
-const wordCountAriaLabel = computed(() => {
-  if (maxLength.value != null) {
-    if (currentLength.value > maxLength.value) {
-      return `已超出 ${formatFullWordCount(currentLength.value - maxLength.value)} 字符`
-    }
-
-    return `${formatFullWordCount(currentLength.value)}/${formatFullWordCount(maxLength.value)} 字符`
-  }
-
-  if (wordCountState.value.hasSelectedText) {
-    return `已选 ${formatFullWordCount(wordCountState.value.selectedChineseCharacters)} 字，共 ${formatFullWordCount(wordCountState.value.totalCharacters)} 字符`
-  }
-
-  return `共 ${formatFullWordCount(wordCountState.value.totalCharacters)} 字符`
-})
-
-const maxLengthStatus = computed(() => {
-  if (maxLength.value == null) {
-    return 'default'
-  }
-
-  if (currentLength.value >= maxLength.value) {
-    return 'danger'
-  }
-
-  if (usageRatio.value >= 0.9) {
-    return 'warning'
-  }
-
-  return 'default'
-})
-
-const surfaceStyle = computed(() => {
-  if (isFullscreen.value) {
-    return undefined
-  }
-
-  if (props.height === 'auto' || props.height === '100%') {
-    return {
-      flex: 1,
-      height: 'auto',
-    }
-  }
-
-  return {
-    height: props.height,
-  }
-})
 
 const {
   editor,
   resolvedDevice,
   currentLength,
   maxLength,
-  remainingLength: _remainingLength,
   usageRatio,
   isNearLimit,
   isAtLimit,
   maxLengthFeedback,
-  insertImage: _insertImage,
   setLink,
   unsetLink,
-  insertRemoteImage: _insertRemoteImage,
   insertVideo,
   insertRemoteVideo,
-  insertAudio: _insertAudio,
-  insertRemoteAudio: _insertRemoteAudio,
   undo,
   redo,
   insertHorizontalRule,
@@ -240,750 +102,97 @@ const {
   containerWidth: surfaceWidth,
   onUpdate: (html) => {
     emit('update:modelValue', html)
-    scheduleDraftSave(html)
+    draftComposable.scheduleDraftSave(html)
   },
   onUploadError: ({ message }) => {
-    errorDialogMessage.value = message
-    errorDialogVisible.value = true
+    dialogs.errorDialogMessage.value = message
+    dialogs.errorDialogVisible.value = true
   },
 })
 
+// Composables
+const { isFullscreen, surfaceStyle, toggleFullscreen, exitFullscreen } = useEditorFullscreen(resolvedDevice)
+
+const {
+  floatingToolbarVisible,
+  floatingToolbarPosition,
+  hideFloatingToolbar,
+  updateFloatingToolbar,
+  clamp,
+} = useEditorFloatingToolbar({
+  editor,
+  resolvedDevice,
+  disabled: props.disabled,
+  editorScopeId,
+})
+
+const {
+  wordCountState,
+  isWordCountTooltipVisible,
+  isCompactWordCount,
+  wordCountAriaLabel,
+  maxLengthStatus,
+  updateSurfaceWidth,
+  handleWordCountMouseEnter,
+  handleWordCountMouseLeave,
+  resetWordCountState,
+  scheduleWordCountRefresh,
+  clearWordCountTimer,
+  formatFullWordCount,
+  formatVisibleWordCount,
+  cleanup: cleanupWordCount,
+} = useEditorWordCount({
+  editor,
+  resolvedDevice,
+  maxLength,
+  currentLength,
+  usageRatio,
+  surfaceRef,
+})
+
+const draftComposable = useEditorDraft({
+  editorId: props.editorId,
+  draftTtl: props.draftTtl,
+  modelValue: props.modelValue,
+  editor,
+  emit,
+})
+
+useEditorEvents({
+  editor,
+  resolvedDevice,
+  disabled: props.disabled,
+  editorScopeId,
+  updateFloatingToolbar,
+  scheduleWordCountRefresh,
+  resetWordCountState,
+  hideFloatingToolbar,
+  updateSurfaceWidth,
+})
+
+const dialogs = useEditorDialogs({
+  editor,
+  disabled: props.disabled,
+  setLink,
+  unsetLink,
+  insertVideo,
+  insertRemoteVideo,
+})
+
+// Watchers
 watch(
   editor,
   (instance) => {
     if (instance) {
-      instance.on('open-image-dialog' as any, handleOpenImageDialog)
-      instance.on('open-video-dialog' as any, handleOpenVideoDialog)
-      instance.on('open-audio-dialog' as any, handleOpenAudioDialog)
+      instance.on('open-image-dialog' as any, dialogs.handleOpenImageDialog)
+      instance.on('open-video-dialog' as any, dialogs.handleOpenVideoDialog)
+      instance.on('open-audio-dialog' as any, dialogs.handleOpenAudioDialog)
     }
   },
   { immediate: true },
 )
 
-function handleOpenAudioDialog(payload?: { pos?: number; node?: any; initialData?: any; mode?: 'create' | 'edit' }) {
-  if (props.disabled) {
-    return
-  }
-
-  if (payload?.pos !== undefined && editor.value) {
-    editor.value.commands.setNodeSelection(payload.pos)
-  }
-
-  const finalSrc = payload?.initialData?.src || payload?.node?.attrs?.src || ''
-  const finalAlign =
-    payload?.initialData?.align ||
-    payload?.initialData?.['data-align'] ||
-    payload?.node?.attrs?.['data-align'] ||
-    'left'
-  console.log('[BambooEditor] handleOpenAudioDialog - node attrs:', payload?.node?.attrs, 'finalAlign:', finalAlign)
-
-  audioDialogState.value = {
-    mode: payload?.mode ?? 'create',
-    initialData: {
-      src: finalSrc,
-      align: finalAlign,
-    },
-  }
-  audioDialogVisible.value = true
-}
-
-function closeAudioDialog() {
-  audioDialogVisible.value = false
-  window.setTimeout(() => editor.value?.commands.focus(), 0)
-}
-
-function handleAudioDialogConfirm(data: { src: string; align?: 'left' | 'center' | 'right' }) {
-  const instance = editor.value
-  if (!instance) return
-
-  closeAudioDialog()
-
-  if (audioDialogState.value.mode === 'edit') {
-    instance.commands.command(({ tr }: { tr: any }) => {
-      const { from, to } = instance.state.selection
-      let found = false
-      instance.state.doc.nodesBetween(from, to, (node: any) => {
-        if (node.type.name === 'audio' && !found) {
-          const pos = from
-          tr.setNodeMarkup(pos, undefined, {
-            ...node.attrs,
-            src: data.src,
-            'data-align': data.align,
-          })
-          found = true
-          return false
-        }
-        return true
-      })
-      return true
-    })
-  } else {
-    instance.commands.insertContent({
-      type: 'audio',
-      attrs: {
-        src: data.src,
-        'data-align': data.align,
-      },
-    })
-  }
-}
-
-function handleAudioDialogRemove() {
-  const instance = editor.value
-  if (!instance) return
-
-  instance.commands.deleteSelection()
-  closeAudioDialog()
-}
-
-let wordCountTimer: number | null = null
-let wordCountTooltipTimer: number | null = null
-let mobileToastTimer: number | null = null
-let surfaceResizeObserver: ResizeObserver | null = null
-let draftTimer: number | null = null
-
-function getDraftKey() {
-  if (typeof window === 'undefined' || !props.editorId) {
-    return null
-  }
-
-  const { pathname, search, hash } = window.location
-  return `bamboo_draft_${pathname}${search}${hash}_${props.editorId}`
-}
-
-function saveDraft(html: string) {
-  const key = getDraftKey()
-  if (!key) {
-    return
-  }
-
-  try {
-    localStorage.setItem(key, JSON.stringify({ html, savedAt: Date.now() }))
-  } catch {
-    // localStorage 不可用时静默失败
-  }
-}
-
-function loadDraft() {
-  const key = getDraftKey()
-  if (!key) {
-    return null
-  }
-
-  try {
-    const raw = localStorage.getItem(key)
-    if (!raw) {
-      return null
-    }
-
-    const { html, savedAt } = JSON.parse(raw) as { html: string; savedAt: number }
-    if (Date.now() - savedAt > props.draftTtl) {
-      localStorage.removeItem(key)
-      return null
-    }
-
-    return html
-  } catch {
-    return null
-  }
-}
-
-function clearDraft() {
-  const key = getDraftKey()
-  if (!key) {
-    return
-  }
-
-  try {
-    localStorage.removeItem(key)
-  } catch {
-    // 静默失败
-  }
-}
-
-function scheduleDraftSave(html: string) {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  if (draftTimer !== null) {
-    window.clearTimeout(draftTimer)
-  }
-
-  draftTimer = window.setTimeout(() => {
-    saveDraft(html)
-    draftTimer = null
-  }, DRAFT_DEBOUNCE_MS)
-}
-
-function handleOpenImageDialog(payload?: { pos?: number; node?: any; initialData?: any; mode?: 'create' | 'edit' }) {
-  if (props.disabled) {
-    return
-  }
-
-  imageDialogState.value = {
-    mode: payload?.mode ?? 'create',
-    initialData: payload?.initialData ??
-      payload?.node?.attrs ?? {
-        src: '',
-        alt: '',
-        width: undefined,
-        height: undefined,
-        align: 'left',
-      },
-  }
-  imageDialogVisible.value = true
-}
-
-function closeImageDialog() {
-  imageDialogVisible.value = false
-  window.setTimeout(() => editor.value?.commands.focus(), 0)
-}
-
-function handleImageDialogConfirm(data: {
-  src: string
-  alt?: string
-  width?: number
-  height?: number
-  align?: 'left' | 'center' | 'right'
-}) {
-  const instance = editor.value
-  if (!instance) return
-
-  closeImageDialog()
-
-  if (imageDialogState.value.mode === 'edit') {
-    instance.commands.updateAttributes('image', {
-      src: data.src,
-      alt: data.alt,
-      width: data.width ? String(data.width) : null,
-      height: data.height ? String(data.height) : null,
-      'data-align': data.align,
-    })
-  } else {
-    instance.commands.insertContent({
-      type: 'image',
-      attrs: {
-        src: data.src,
-        alt: data.alt,
-        width: data.width ? String(data.width) : null,
-        height: data.height ? String(data.height) : null,
-        'data-align': data.align,
-      },
-    })
-  }
-}
-
-function handleImageDialogRemove() {
-  const instance = editor.value
-  if (!instance) return
-
-  instance.commands.deleteSelection()
-  closeImageDialog()
-}
-
-function handleLinkSelect(url: string | null) {
-  if (url === null) {
-    return unsetLink()
-  }
-
-  return setLink(url)
-}
-
-function handleOpenLinkDialog(payload?: { initialValue?: string; mode?: 'create' | 'edit'; allowRemove?: boolean }) {
-  if (props.disabled) {
-    return
-  }
-
-  urlDialogState.value = {
-    type: 'link',
-    mode: payload?.mode ?? 'create',
-    initialValue: payload?.initialValue ?? '',
-    allowRemove: payload?.allowRemove ?? false,
-  }
-  urlDialogVisible.value = true
-}
-
-function closeUrlDialog() {
-  urlDialogVisible.value = false
-  if (urlDialogState.value.type === 'remote-video') {
-    shouldIgnoreVideoSelection.value = true
-    window.setTimeout(() => {
-      shouldIgnoreVideoSelection.value = false
-    }, 300)
-  }
-  window.setTimeout(() => editor.value?.commands.focus(), 0)
-}
-
-function handleUrlDialogConfirm(url: string) {
-  if (urlDialogState.value.type === 'remote-video') {
-    handleRemoteVideoSelect(url)
-  } else {
-    handleLinkSelect(url)
-  }
-
-  closeUrlDialog()
-}
-
-function handleUrlDialogRemove() {
-  if (urlDialogState.value.type === 'link') {
-    handleLinkSelect(null)
-  }
-
-  closeUrlDialog()
-}
-
-function closeVideoDialog() {
-  videoDialogVisible.value = false
-  shouldIgnoreVideoSelection.value = true
-  window.setTimeout(() => {
-    shouldIgnoreVideoSelection.value = false
-  }, 300)
-  window.setTimeout(() => editor.value?.commands.focus(), 0)
-}
-
-function handleVideoDialogConfirm(data: {
-  src: string
-  poster?: string
-  width?: number
-  height?: number
-  align?: 'left' | 'center' | 'right'
-}) {
-  console.log('[BambooEditor] handleVideoDialogConfirm', data)
-  const instance = editor.value
-  if (!instance) {
-    console.log('[BambooEditor] no editor instance')
-    return
-  }
-
-  console.log('[BambooEditor] mode:', videoDialogState.value.mode)
-  // Always close dialog first
-  closeVideoDialog()
-
-  if (videoDialogState.value.mode === 'edit') {
-    // Edit existing video - update attributes
-    instance.commands.command(({ tr }: { tr: any }) => {
-      const { from, to } = instance.state.selection
-      let found = false
-      instance.state.doc.nodesBetween(from, to, (node) => {
-        if (node.type.name === 'video' && !found) {
-          const pos = from
-          tr.setNodeMarkup(pos, undefined, {
-            ...node.attrs,
-            src: data.src,
-            poster: data.poster ?? node.attrs.poster,
-            width: data.width ? String(data.width) : null,
-            height: data.height ? String(data.height) : null,
-            'data-align': data.align,
-          })
-          found = true
-          return false
-        }
-        return true
-      })
-      return true
-    })
-  } else {
-    // Insert new video
-    instance.commands.command(({ tr }: { tr: any }) => {
-      const { from: _from } = instance.state.selection
-      const videoNode = instance.schema.nodes.video.create({
-        src: data.src,
-        poster: data.poster,
-        width: data.width ? String(data.width) : null,
-        height: data.height ? String(data.height) : null,
-        'data-align': data.align,
-      })
-      tr.replaceSelectionWith(videoNode)
-      return true
-    })
-  }
-}
-
-function handleVideoDialogRemove() {
-  const instance = editor.value
-  if (!instance) {
-    return
-  }
-
-  const selection = instance.state.selection as any
-  const node = selection.node
-  if (node && node.type.name === 'video') {
-    instance.commands.deleteSelection()
-  }
-
-  closeVideoDialog()
-}
-
-function handleTextColorSelect(token: string | null) {
-  if (!editor.value) {
-    return false
-  }
-
-  const chain = editor.value.chain().focus()
-  return (token ? chain.setTextColor(token) : chain.unsetTextColor()).run()
-}
-
-function handleUndo() {
-  return undo()
-}
-
-function handleRedo() {
-  return redo()
-}
-
-function handleClearFormatting() {
-  return clearFormatting()
-}
-
-function handleInsertHorizontalRule() {
-  return insertHorizontalRule()
-}
-
-function showMobileToast(message: string) {
-  if (typeof window === 'undefined' || !message) {
-    return
-  }
-
-  mobileToastMessage.value = message
-  mobileToastVisible.value = true
-
-  if (mobileToastTimer !== null) {
-    window.clearTimeout(mobileToastTimer)
-  }
-
-  mobileToastTimer = window.setTimeout(() => {
-    mobileToastVisible.value = false
-    mobileToastTimer = null
-  }, 1800)
-}
-
-function clearWordCountTimers() {
-  clearWordCountTimer()
-
-  if (wordCountTooltipTimer !== null) {
-    window.clearTimeout(wordCountTooltipTimer)
-    wordCountTooltipTimer = null
-  }
-
-  if (mobileToastTimer !== null) {
-    window.clearTimeout(mobileToastTimer)
-    mobileToastTimer = null
-  }
-}
-
-function handleWordCountMouseEnter() {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  if (wordCountTooltipTimer !== null) {
-    window.clearTimeout(wordCountTooltipTimer)
-  }
-
-  wordCountTooltipTimer = window.setTimeout(() => {
-    isWordCountTooltipVisible.value = true
-    wordCountTooltipTimer = null
-  }, WORD_COUNT_TOOLTIP_DELAY_MS)
-}
-
-function handleWordCountMouseLeave() {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  if (wordCountTooltipTimer !== null) {
-    window.clearTimeout(wordCountTooltipTimer)
-    wordCountTooltipTimer = null
-  }
-
-  isWordCountTooltipVisible.value = false
-}
-
-function updateSurfaceWidth() {
-  const surfaceElement = surfaceRef.value
-  if (!surfaceElement) {
-    surfaceWidth.value = 0
-    return
-  }
-
-  const scrollbarGap = resolvedDevice.value === 'pc' ? WORD_COUNT_SCROLLBAR_GAP : 0
-  surfaceWidth.value = Math.max(surfaceElement.clientWidth - scrollbarGap, 0)
-}
-
-function resetWordCountState() {
-  clearWordCountTimer()
-  wordCountState.value = { ...DEFAULT_WORD_COUNT_STATE }
-  handleWordCountMouseLeave()
-}
-
-function scheduleWordCountRefresh(immediate = false) {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  clearWordCountTimer()
-
-  if (immediate) {
-    refreshWordCountNow()
-    return
-  }
-
-  wordCountTimer = window.setTimeout(() => {
-    refreshWordCountNow()
-    wordCountTimer = null
-  }, WORD_COUNT_DEBOUNCE_MS)
-}
-
-function clearWordCountTimer() {
-  if (typeof window === 'undefined') {
-    wordCountTimer = null
-    return
-  }
-
-  if (wordCountTimer !== null) {
-    window.clearTimeout(wordCountTimer)
-    wordCountTimer = null
-  }
-}
-
-function refreshWordCountNow() {
-  const instance = editor.value
-  if (!instance) {
-    resetWordCountState()
-    return
-  }
-
-  if (resolvedDevice.value === 'pc') {
-    updateSurfaceWidth()
-  }
-  const plainText = getEditorPlainText(instance)
-  const selectionText = getSelectionText(instance)
-  const chineseCharacters = countChineseCharacters(plainText)
-  const selectedChineseCharacters = countChineseCharacters(selectionText)
-
-  wordCountState.value = {
-    totalCharacters: getTotalCharacterCount(instance),
-    chineseCharacters,
-    selectedChineseCharacters,
-    paragraphCount: countParagraphs(instance),
-    lineCount: countLogicalLines(plainText),
-    hasSelectedText: selectedChineseCharacters > 0,
-  }
-}
-
-function getTotalCharacterCount(instance: Editor) {
-  return instance.storage.characterCount?.characters?.() ?? instance.getText().length
-}
-
-function getEditorPlainText(instance: Editor) {
-  return instance.state.doc.textBetween(0, instance.state.doc.content.size, '\n', '\n')
-}
-
-function getSelectionText(instance: Editor) {
-  const { from, to, empty } = instance.state.selection
-  if (empty || from === to) {
-    return ''
-  }
-
-  return instance.state.doc.textBetween(from, to, '\n', '\n')
-}
-
-function countChineseCharacters(value: string) {
-  try {
-    return value.match(/\p{Unified_Ideograph}/gu)?.length ?? 0
-  } catch {
-    return value.match(/[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/g)?.length ?? 0
-  }
-}
-
-function countParagraphs(instance: Editor) {
-  let count = 0
-
-  instance.state.doc.descendants((node) => {
-    if (node.isTextblock && node.textContent.trim()) {
-      count += 1
-    }
-  })
-
-  return count
-}
-
-function countLogicalLines(value: string) {
-  if (!value.trim()) {
-    return 0
-  }
-
-  return value.split(/\r?\n/).filter((line) => line.trim().length > 0).length
-}
-
-function formatFullWordCount(value: number) {
-  return value.toLocaleString('zh-CN')
-}
-
-function formatVisibleWordCount(value: number) {
-  if (!isCompactWordCount.value) {
-    return formatFullWordCount(value)
-  }
-
-  if (maxLength.value != null) {
-    return `${value}`
-  }
-
-  if (value >= 1000) {
-    const compactValue = value / 1000
-    const displayValue = Number.isInteger(compactValue) ? compactValue.toFixed(0) : compactValue.toFixed(1)
-    return `${displayValue.replace(/\.0$/, '')}k`
-  }
-
-  return `${value}`
-}
-
-function hideFloatingToolbar() {
-  floatingToolbarVisible.value = false
-}
-
-function updateFloatingToolbar() {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
-    hideFloatingToolbar()
-    return
-  }
-
-  const instance = editor.value
-  if (!instance || resolvedDevice.value !== 'mobile' || props.disabled) {
-    hideFloatingToolbar()
-    return
-  }
-
-  const selection = instance.state.selection as typeof instance.state.selection & {
-    node?: { type?: { name?: string } }
-  }
-  const isImageSelection = selection.node?.type?.name === 'image'
-  const editorElement = document.querySelector(
-    `[data-editor-scope='${editorScopeId}'] .bamboo-editor__content .ProseMirror`,
-  ) as HTMLElement | null
-  if (!editorElement) {
-    hideFloatingToolbar()
-    return
-  }
-
-  let rect: DOMRect | null = null
-
-  if (isImageSelection) {
-    hideFloatingToolbar()
-    return
-  } else {
-    const { from, to, empty } = selection
-    if (empty || from === to) {
-      hideFloatingToolbar()
-      return
-    }
-
-    if (!selection.$from.parent.isTextblock) {
-      hideFloatingToolbar()
-      return
-    }
-
-    const domSelection = window.getSelection()
-    if (!domSelection || domSelection.rangeCount === 0 || domSelection.isCollapsed) {
-      hideFloatingToolbar()
-      return
-    }
-
-    const range = domSelection.getRangeAt(0)
-    if (!editorElement.contains(range.commonAncestorContainer)) {
-      hideFloatingToolbar()
-      return
-    }
-
-    const rangeRect = range.getBoundingClientRect()
-    if (!rangeRect.width && !rangeRect.height) {
-      hideFloatingToolbar()
-      return
-    }
-
-    rect = rangeRect
-  }
-
-  const editorRect = editorElement.getBoundingClientRect()
-  const toolbarWidth = 420
-  const toolbarHeight = 52
-  const gap = 10
-  const minLeft = editorRect.left + toolbarWidth / 2
-  const maxLeft = editorRect.right - toolbarWidth / 2
-  const centeredLeft = rect.left + rect.width / 2
-  const left = clamp(centeredLeft, minLeft, maxLeft)
-  const placeAboveTop = rect.top - gap
-  const top =
-    placeAboveTop - toolbarHeight >= editorRect.top
-      ? placeAboveTop
-      : Math.min(editorRect.bottom - gap, rect.bottom + toolbarHeight + gap)
-
-  floatingToolbarPosition.value = {
-    top,
-    left,
-    editorTop: editorRect.top,
-    editorBottom: editorRect.bottom,
-    editorLeft: editorRect.left,
-    editorRight: editorRect.right,
-  }
-  floatingToolbarVisible.value = true
-}
-
-function toggleFullscreen() {
-  if (resolvedDevice.value !== 'pc') {
-    return
-  }
-
-  isFullscreen.value = !isFullscreen.value
-}
-
-function exitFullscreen() {
-  isFullscreen.value = false
-}
-
-function onKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape' && isFullscreen.value) {
-    exitFullscreen()
-  }
-}
-
-function clamp(value: number, min: number, max: number) {
-  if (min > max) {
-    return value
-  }
-
-  return Math.min(Math.max(value, min), max)
-}
-
-watch(isFullscreen, (value) => {
-  if (typeof document === 'undefined') {
-    return
-  }
-
-  document.body.style.overflow = value ? 'hidden' : ''
-
-  if (value) {
-    window.addEventListener('keydown', onKeydown)
-    return
-  }
-
-  window.removeEventListener('keydown', onKeydown)
-})
-
-watch([maxLengthFeedback, resolvedDevice], ([feedback, device]) => {
-  if (!feedback || device !== 'mobile') {
-    return
-  }
-
-  showMobileToast(feedback.message)
-})
-
 watch(resolvedDevice, (value) => {
-  if (value !== 'pc' && isFullscreen.value) {
-    exitFullscreen()
-  }
-
   if (value !== 'mobile') {
     hideFloatingToolbar()
   }
@@ -1027,157 +236,46 @@ watch(
 watch(
   editor,
   (instance) => {
-    if (!instance || !props.editorId) {
-      return
-    }
-
-    const draft = loadDraft()
-    if (draft && draft !== props.modelValue) {
-      instance.commands.setContent(draft, false)
-      emit('update:modelValue', draft)
-    }
-  },
-  { once: true },
-)
-
-function _handleVideoSelect(file: File, poster?: string) {
-  return insertVideo(file, poster)
-}
-
-function handleOpenVideoDialog() {
-  if (props.disabled) {
-    return
-  }
-
-  videoDialogState.value = {
-    mode: 'create',
-    initialData: undefined,
-  }
-  videoDialogVisible.value = true
-}
-
-function _handleOpenRemoteVideoDialog(payload?: { initialValue?: string }) {
-  if (props.disabled) {
-    return
-  }
-
-  urlDialogState.value = {
-    type: 'remote-video',
-    mode: 'create',
-    initialValue: payload?.initialValue ?? '',
-    allowRemove: false,
-  }
-  urlDialogVisible.value = true
-}
-
-function handleRemoteVideoSelect(url: string, poster?: string) {
-  return insertRemoteVideo(url, poster)
-}
-
-watch(
-  [editor, resolvedDevice, () => props.disabled],
-  (_, __, onCleanup) => {
-    const instance = editor.value
     if (!instance) {
-      hideFloatingToolbar()
-      resetWordCountState()
       return
     }
-
-    const handleSelectionChange = () => {
-      updateFloatingToolbar()
-    }
-    const handleWordCountChange = () => scheduleWordCountRefresh()
-    const handleBlur = ({ event }: { event?: FocusEvent }) => {
-      const relatedTarget = event?.relatedTarget
-      if (relatedTarget instanceof Element && relatedTarget.closest('.floating-toolbar-pc')) {
-        return
-      }
-
-      window.setTimeout(() => updateFloatingToolbar(), 0)
-    }
-
-    const handleFocus = () => updateFloatingToolbar()
 
     const handleOpenVideoDialogEvent = ({ pos, node, data }: { pos: number; node: any; data?: any }) => {
       if (props.disabled) {
         return
       }
 
-      const finalSrc = data?.src || node.attrs.src || ''
-      const finalPoster = data?.poster || node.attrs.poster || ''
-      const finalWidth = data?.width || node.attrs.width
-      const finalHeight = data?.height || node.attrs.height
-      const finalAlign = data?.align || node.attrs['data-align'] || 'left'
-
-      videoDialogState.value = {
-        mode: 'edit',
-        initialData: {
-          src: finalSrc,
-          poster: finalPoster,
-          width: finalWidth ? Number(finalWidth) : undefined,
-          height: finalHeight ? Number(finalHeight) : undefined,
-          align: finalAlign as any,
-        },
-      }
-      videoDialogVisible.value = true
-      instance.commands.setNodeSelection(pos)
+      dialogs.handleOpenVideoDialogEvent({ pos, node, data })
     }
 
-    instance.on('selectionUpdate', handleSelectionChange)
-    instance.on('transaction', handleSelectionChange)
-    instance.on('selectionUpdate', handleWordCountChange)
-    instance.on('transaction', handleWordCountChange)
-    instance.on('focus', handleFocus)
-    instance.on('blur', handleBlur)
     instance.on('open-video-dialog' as any, handleOpenVideoDialogEvent)
-    window.addEventListener('resize', handleSelectionChange)
-    window.addEventListener('scroll', handleSelectionChange, true)
-    updateFloatingToolbar()
-    scheduleWordCountRefresh(true)
-
-    onCleanup(() => {
-      clearWordCountTimer()
-      instance.off('selectionUpdate', handleSelectionChange)
-      instance.off('transaction', handleSelectionChange)
-      instance.off('selectionUpdate', handleWordCountChange)
-      instance.off('transaction', handleWordCountChange)
-      instance.off('focus', handleFocus)
-      instance.off('blur', handleBlur)
-      instance.off('open-video-dialog' as any, handleOpenVideoDialogEvent)
-      window.removeEventListener('resize', handleSelectionChange)
-      window.removeEventListener('scroll', handleSelectionChange, true)
-    })
   },
   { immediate: true },
 )
 
-onBeforeUnmount(() => {
-  hideFloatingToolbar()
-  clearWordCountTimers()
-  surfaceResizeObserver?.disconnect()
-
-  if (draftTimer !== null) {
-    window.clearTimeout(draftTimer)
-    draftTimer = null
+watch([maxLengthFeedback, resolvedDevice], ([feedback, device]) => {
+  if (!feedback || device !== 'mobile') {
+    return
   }
 
-  if (typeof document !== 'undefined') {
-    document.body.style.overflow = ''
-    removeEditorColorStyle(editorScopeId)
-  }
-
-  window.removeEventListener('keydown', onKeydown)
+  dialogs.showMobileToast(feedback.message)
 })
 
-watch(
-  editorColorCss,
-  (value) => {
-    applyEditorColorStyle(editorScopeId, value)
-  },
-  { immediate: true },
-)
+watch(editorColorCss, (value) => {
+  applyEditorColorStyle(editorScopeId, value)
+}, { immediate: true })
 
+// Event handlers
+function handleTextColorSelect(token: string | null) {
+  if (!editor.value) {
+    return false
+  }
+
+  const chain = editor.value.chain().focus()
+  return (token ? chain.setTextColor(token) : chain.unsetTextColor()).run()
+}
+
+// Helper functions
 function buildEditorColorCss(scopeId: string, colorPalette: readonly BambooColorOption[]) {
   return colorPalette
     .map(
@@ -1214,7 +312,22 @@ function escapeCssValue(value: string) {
   return value.replace(/['\\]/g, '\\$&')
 }
 
-defineExpose({ clearDraft })
+// Cleanup
+onBeforeUnmount(() => {
+  hideFloatingToolbar()
+  cleanupWordCount()
+  draftComposable.cleanup()
+  dialogs.cleanup()
+  surfaceResizeObserver?.disconnect()
+
+  if (typeof document !== 'undefined') {
+    document.body.style.overflow = ''
+    removeEditorColorStyle(editorScopeId)
+  }
+})
+
+// Expose
+defineExpose({ clearDraft: draftComposable.clearDraft })
 </script>
 
 <template>
@@ -1226,17 +339,17 @@ defineExpose({ clearDraft })
         :disabled="disabled"
         :fullscreen="isFullscreen"
         :color-palette="resolvedColorPalette"
-        @open-image-dialog="handleOpenImageDialog"
-        @open-video-dialog="handleOpenVideoDialog"
-        @open-audio-dialog="handleOpenAudioDialog"
-        @open-link-dialog="handleOpenLinkDialog"
+        @open-image-dialog="dialogs.handleOpenImageDialog"
+        @open-video-dialog="dialogs.handleOpenVideoDialog"
+        @open-audio-dialog="dialogs.handleOpenAudioDialog"
+        @open-link-dialog="dialogs.handleOpenLinkDialog"
         @text-color-select="handleTextColorSelect"
-        @undo="handleUndo"
-        @redo="handleRedo"
-        @clear-formatting="handleClearFormatting"
-        @insert-horizontal-rule="handleInsertHorizontalRule"
+        @undo="undo"
+        @redo="redo"
+        @clear-formatting="clearFormatting"
+        @insert-horizontal-rule="insertHorizontalRule"
         @toggle-fullscreen="toggleFullscreen"
-        @show-info="infoDialogVisible = true"
+        @show-info="dialogs.infoDialogVisible.value = true"
       />
 
       <div
@@ -1331,9 +444,9 @@ defineExpose({ clearDraft })
         :visible="floatingToolbarVisible"
         :position="floatingToolbarPosition"
         :color-palette="resolvedColorPalette"
-        @open-link-dialog="handleOpenLinkDialog"
+        @open-link-dialog="dialogs.handleOpenLinkDialog"
         @text-color-select="handleTextColorSelect"
-        @clear-formatting="handleClearFormatting"
+        @clear-formatting="clearFormatting"
       />
 
       <ToolbarMobile
@@ -1351,81 +464,81 @@ defineExpose({ clearDraft })
           isNearLimit,
           isAtLimit,
         }"
-        @open-image-dialog="handleOpenImageDialog"
-        @open-video-dialog="handleOpenVideoDialog"
-        @open-audio-dialog="handleOpenAudioDialog"
+        @open-image-dialog="dialogs.handleOpenImageDialog"
+        @open-video-dialog="dialogs.handleOpenVideoDialog"
+        @open-audio-dialog="dialogs.handleOpenAudioDialog"
         @text-color-select="handleTextColorSelect"
-        @clear-formatting="handleClearFormatting"
-        @insert-horizontal-rule="handleInsertHorizontalRule"
+        @clear-formatting="clearFormatting"
+        @insert-horizontal-rule="insertHorizontalRule"
       />
 
       <transition name="bamboo-editor-toast">
         <div
-          v-if="resolvedDevice === 'mobile' && mobileToastVisible"
+          v-if="resolvedDevice === 'mobile' && dialogs.mobileToastVisible.value"
           class="bamboo-editor__toast"
           role="status"
           aria-live="polite"
         >
-          {{ mobileToastMessage }}
+          {{ dialogs.mobileToastMessage.value }}
         </div>
       </transition>
 
       <EditorUrlDialog
-        :visible="urlDialogVisible"
+        :visible="dialogs.urlDialogVisible.value"
         :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
-        :type="urlDialogState.type"
-        :mode="urlDialogState.mode"
-        :initial-value="urlDialogState.initialValue"
-        :allow-remove="urlDialogState.allowRemove"
-        @confirm="handleUrlDialogConfirm"
-        @remove="handleUrlDialogRemove"
-        @cancel="closeUrlDialog"
+        :type="dialogs.urlDialogState.value.type"
+        :mode="dialogs.urlDialogState.value.mode"
+        :initial-value="dialogs.urlDialogState.value.initialValue"
+        :allow-remove="dialogs.urlDialogState.value.allowRemove"
+        @confirm="dialogs.handleUrlDialogConfirm"
+        @remove="dialogs.handleUrlDialogRemove"
+        @cancel="dialogs.closeUrlDialog"
       />
 
       <EditorVideoDialog
-        :visible="videoDialogVisible"
+        :visible="dialogs.videoDialogVisible.value"
         :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
-        :mode="videoDialogState.mode"
-        :initial-data="videoDialogState.initialData"
+        :mode="dialogs.videoDialogState.value.mode"
+        :initial-data="dialogs.videoDialogState.value.initialData"
         :upload-handler="props.uploadHandler"
-        @confirm="handleVideoDialogConfirm"
-        @remove="handleVideoDialogRemove"
-        @cancel="closeVideoDialog"
+        @confirm="dialogs.handleVideoDialogConfirm"
+        @remove="dialogs.handleVideoDialogRemove"
+        @cancel="dialogs.closeVideoDialog"
       />
 
       <EditorImageDialog
-        :visible="imageDialogVisible"
+        :visible="dialogs.imageDialogVisible.value"
         :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
-        :mode="imageDialogState.mode"
-        :initial-data="imageDialogState.initialData"
+        :mode="dialogs.imageDialogState.value.mode"
+        :initial-data="dialogs.imageDialogState.value.initialData"
         :upload-handler="props.uploadHandler"
-        @confirm="handleImageDialogConfirm"
-        @remove="handleImageDialogRemove"
-        @cancel="closeImageDialog"
+        @confirm="dialogs.handleImageDialogConfirm"
+        @remove="dialogs.handleImageDialogRemove"
+        @cancel="dialogs.closeImageDialog"
       />
 
       <EditorAudioDialog
-        :visible="audioDialogVisible"
+        :visible="dialogs.audioDialogVisible.value"
         :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
-        :mode="audioDialogState.mode"
-        :initial-data="audioDialogState.initialData"
+        :mode="dialogs.audioDialogState.value.mode"
+        :initial-data="dialogs.audioDialogState.value.initialData"
         :upload-handler="props.uploadHandler"
-        @confirm="handleAudioDialogConfirm"
-        @remove="handleAudioDialogRemove"
-        @cancel="closeAudioDialog"
+        @confirm="dialogs.handleAudioDialogConfirm"
+        @remove="dialogs.handleAudioDialogRemove"
+        @cancel="dialogs.closeAudioDialog"
       />
 
       <EditorInfoDialog
-        :visible="infoDialogVisible"
+        :visible="dialogs.infoDialogVisible.value"
         :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
-        @close="infoDialogVisible = false"
+        @close="dialogs.infoDialogVisible.value = false"
       />
 
       <EditorErrorDialog
-        :visible="errorDialogVisible"
+        :visible="dialogs.errorDialogVisible.value"
         :device="resolvedDevice === 'mobile' ? 'mobile' : 'pc'"
-        :message="errorDialogMessage"
-        @close="errorDialogVisible = false"
+        :message="dialogs.errorDialogMessage.value"
+        @close="dialogs.errorDialogVisible.value = false"
       />
     </div>
   </div>
