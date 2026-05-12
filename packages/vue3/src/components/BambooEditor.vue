@@ -401,6 +401,7 @@ const { editor, resolvedDevice, currentLength, maxLength, remainingLength, usage
   maxLength: toRef(props, 'maxLength'),
   video: toRef(props, 'videoOptions'),
   audio: toRef(props, 'audioOptions'),
+  containerWidth: surfaceWidth,
   onUpdate: (html) => {
     emit('update:modelValue', html)
     scheduleDraftSave(html)
@@ -1396,7 +1397,7 @@ defineExpose({ clearDraft })
   display: flex;
   flex-direction: column;
   height: 50vh;
-  min-height: 320px;
+  min-height: 150px;
   border: 0;
   border-radius: 0;
   background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%);

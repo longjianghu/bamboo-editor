@@ -17,6 +17,18 @@
             <button
               type="button"
               class="playground__switch"
+              :class="{ 'is-active': device === 'auto' }"
+              @click="device = 'auto'"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 8v4l3 3"/>
+              </svg>
+              自动
+            </button>
+            <button
+              type="button"
+              class="playground__switch"
               :class="{ 'is-active': device === 'pc' }"
               @click="device = 'pc'"
             >
@@ -124,7 +136,7 @@ import { computed, ref } from 'vue'
 import { BambooEditor } from '@bamboo-editor/vue3'
 import '@bamboo-editor/styles/bamboo-content.css'
 
-const device = ref<'pc' | 'mobile'>('pc')
+const device = ref<'pc' | 'mobile' | 'auto'>('auto')
 const maxLength = ref<number | undefined>(500)
 const videoOptions = { maxSize: 30 }
 const activeTab = ref<'html' | 'preview'>('html')

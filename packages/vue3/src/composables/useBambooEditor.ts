@@ -42,6 +42,7 @@ export interface UseBambooEditorOptions {
   maxLength?: MaybeRefOrGetter<number | undefined>
   video?: MaybeRefOrGetter<CleanVideoOptions | undefined>
   audio?: MaybeRefOrGetter<CleanAudioOptions | undefined>
+  containerWidth?: MaybeRefOrGetter<number | undefined>
   onUpdate?: (html: string) => void
   onUploadError?: (error: { type: 'size' | 'type'; message: string; file: File }) => void
 }
@@ -57,6 +58,15 @@ export function useBambooEditor(options: UseBambooEditorOptions) {
       return device
     }
 
+    // If container width is provided and valid, use it as the primary indicator
+    const cWidth = toValue(options.containerWidth)
+    if (cWidth !== undefined && cWidth > 0) {
+      // If the container is very narrow (e.g., <= 480px), switch to mobile mode
+      // User specifically mentioned 320px, but 480px is generally the "mobile" threshold for containers
+      return cWidth <= 480 ? 'mobile' : 'pc'
+    }
+
+    // Fallback to window width
     return windowWidth.value <= 768 ? 'mobile' : 'pc'
   })
 
