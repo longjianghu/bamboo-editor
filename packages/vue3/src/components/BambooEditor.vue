@@ -189,6 +189,7 @@ const {
 } = useEditorMode({
   editor,
   modelValue: toRef(props, 'modelValue'),
+  resolvedDevice,
   emitUpdate: (html) => emit('update:modelValue', html),
   updateWordCountFromHtml: (html) => {
     // 从 HTML 提取纯文本

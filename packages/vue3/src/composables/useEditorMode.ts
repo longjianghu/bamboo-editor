@@ -1,11 +1,13 @@
 import { computed, ref, watch, type Ref } from 'vue'
 import type { Editor } from '@tiptap/vue-3'
+import type { BambooDevice } from './useBambooEditor'
 
 export type EditorMode = 'edit' | 'preview' | 'source'
 
 export interface UseEditorModeOptions {
   editor: Ref<Editor | null>
   modelValue: Ref<string>
+  resolvedDevice: Ref<BambooDevice>
   emitUpdate: (html: string) => void
   updateWordCountFromHtml?: (html: string) => void
 }
@@ -32,6 +34,19 @@ export function useEditorMode(options: UseEditorModeOptions) {
       options.updateWordCountFromHtml(html)
     }
   })
+
+  // 监听设备切换：从 PC 切换到 mobile 且当前在源码模式时，自动切换回编辑模式
+  watch(
+    () => options.resolvedDevice.value,
+    (newDevice, oldDevice) => {
+      if (newDevice === 'mobile' && oldDevice === 'pc' && mode.value === 'source') {
+        // 在切换到 mobile 之前先保存源码修改
+        applySourceChanges()
+        // 切换到编辑模式
+        mode.value = 'edit'
+      }
+    },
+  )
 
   // 切换模式
   function switchMode(newMode: EditorMode) {

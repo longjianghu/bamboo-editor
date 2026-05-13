@@ -335,8 +335,15 @@ body {
 
 /* ===== Content ===== */
 .playground__content {
+  flex: 1;
   min-height: 0;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.playground__content > * {
+  flex: 1;
+  min-height: 0;
 }
 
 /* ===== Grid ===== */
