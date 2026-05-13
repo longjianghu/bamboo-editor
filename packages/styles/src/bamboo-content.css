@@ -14,10 +14,10 @@
 .bamboo-content h1,
 .bamboo-content h2,
 .bamboo-content h3 {
-  margin: 1.25em 0 0.5em;
+  margin: 1.2em 0 0.45em;
   color: var(--bamboo-heading-color);
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.25;
 }
 
 .bamboo-content h1 {
@@ -36,7 +36,7 @@
 .bamboo-content blockquote,
 .bamboo-content pre,
 .bamboo-content hr {
-  margin: 0.875em 0;
+  margin: 0.85em 0;
 }
 
 .bamboo-content ul,
@@ -45,9 +45,13 @@
 }
 
 .bamboo-content blockquote {
-  padding-left: 1em;
-  border-left: 4px solid var(--bamboo-quote-border);
-  color: var(--bamboo-muted-color);
+  position: relative;
+  padding: 0.75em 1em 0.75em 1.5em;
+  margin: 1.25em 0;
+  border-left: 3px solid #d1d5db;
+  color: #4b5563;
+  background: #fff;
+  border-radius: 0 8px 8px 0;
 }
 
 .bamboo-content h1[data-align='center'],

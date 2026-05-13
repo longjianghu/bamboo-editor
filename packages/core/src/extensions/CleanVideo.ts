@@ -135,15 +135,23 @@ export const CleanVideo = Node.create<CleanVideoOptions>({
 
       const container = document.createElement('div')
       container.className = 'clean-video-wrapper'
+      container.style.display = 'flex'
 
       // 对齐逻辑
       if (align === 'center') {
-        container.style.textAlign = 'center'
+        container.style.justifyContent = 'center'
       } else if (align === 'right') {
-        container.style.textAlign = 'right'
+        container.style.justifyContent = 'flex-end'
       } else {
-        container.style.textAlign = 'left'
+        container.style.justifyContent = 'flex-start'
       }
+
+      // 内部相对定位容器，包裹视频和编辑按钮
+      const innerWrapper = document.createElement('div')
+      innerWrapper.style.position = 'relative'
+      innerWrapper.style.display = 'block'
+      innerWrapper.style.width = width ? `${width}px` : '100%'
+      innerWrapper.style.maxWidth = '100%'
 
       const video = document.createElement('video')
       video.className = 'clean-video'
@@ -153,7 +161,6 @@ export const CleanVideo = Node.create<CleanVideoOptions>({
         video.style.width = `${width}px`
         video.style.maxWidth = '100%'
       } else {
-        video.style.width = '100%'
         video.style.maxWidth = '100%'
       }
 
@@ -210,9 +217,10 @@ export const CleanVideo = Node.create<CleanVideoOptions>({
         }
       })
 
-      container.appendChild(video)
-      container.appendChild(editButton)
-      container.appendChild(loadingOverlay)
+      innerWrapper.appendChild(video)
+      innerWrapper.appendChild(editButton)
+      innerWrapper.appendChild(loadingOverlay)
+      container.appendChild(innerWrapper)
 
       return {
         dom: container,
@@ -243,18 +251,20 @@ export const CleanVideo = Node.create<CleanVideoOptions>({
           }
 
           if (newAlign === 'center') {
-            container.style.textAlign = 'center'
+            container.style.justifyContent = 'center'
           } else if (newAlign === 'right') {
-            container.style.textAlign = 'right'
+            container.style.justifyContent = 'flex-end'
           } else {
-            container.style.textAlign = 'left'
+            container.style.justifyContent = 'flex-start'
           }
 
           if (newWidth) {
             video.style.width = `${newWidth}px`
             video.style.maxWidth = '100%'
+            innerWrapper.style.width = `${newWidth}px`
           } else {
             video.style.width = '100%'
+            innerWrapper.style.width = '100%'
           }
 
           if (newHeight) {

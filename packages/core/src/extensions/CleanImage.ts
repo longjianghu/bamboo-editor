@@ -104,15 +104,23 @@ export const CleanImage = Image.extend<CleanImageOptions>({
 
       const container = document.createElement('div')
       container.className = 'clean-image-wrapper'
+      container.style.display = 'flex'
 
       // 对齐逻辑
       if (align === 'center') {
-        container.style.textAlign = 'center'
+        container.style.justifyContent = 'center'
       } else if (align === 'right') {
-        container.style.textAlign = 'right'
+        container.style.justifyContent = 'flex-end'
       } else {
-        container.style.textAlign = 'left'
+        container.style.justifyContent = 'flex-start'
       }
+
+      // 内部相对定位容器，包裹图片和编辑按钮
+      const innerWrapper = document.createElement('div')
+      innerWrapper.style.position = 'relative'
+      innerWrapper.style.display = 'block'
+      innerWrapper.style.width = width ? `${width}px` : 'fit-content'
+      innerWrapper.style.maxWidth = '100%'
 
       const img = document.createElement('img')
       img.className = 'clean-image'
@@ -179,9 +187,10 @@ export const CleanImage = Image.extend<CleanImageOptions>({
         }
       })
 
-      container.appendChild(img)
-      container.appendChild(editButton)
-      container.appendChild(loadingOverlay)
+      innerWrapper.appendChild(img)
+      innerWrapper.appendChild(editButton)
+      innerWrapper.appendChild(loadingOverlay)
+      container.appendChild(innerWrapper)
 
       return {
         dom: container,
@@ -212,11 +221,11 @@ export const CleanImage = Image.extend<CleanImageOptions>({
           }
 
           if (newAlign === 'center') {
-            container.style.textAlign = 'center'
+            container.style.justifyContent = 'center'
           } else if (newAlign === 'right') {
-            container.style.textAlign = 'right'
+            container.style.justifyContent = 'flex-end'
           } else {
-            container.style.textAlign = 'left'
+            container.style.justifyContent = 'flex-start'
           }
 
           if (newWidth) {

@@ -1016,6 +1016,7 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
 
 .bamboo-editor__content :deep(.clean-image-wrapper) {
   position: relative;
+  display: inline-block;
   margin: 1em 0;
   line-height: 0;
 }
@@ -1516,7 +1517,7 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
 
 /* 预览模式 */
 .bamboo-editor__preview {
-  padding: 16px;
+  padding: 10px 12px 56px;
   overflow-y: auto;
 }
 
