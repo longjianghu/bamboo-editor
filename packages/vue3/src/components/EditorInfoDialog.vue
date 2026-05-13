@@ -104,7 +104,7 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="editor-info-dialog__meta">
-            <span class="editor-info-dialog__version">v{{ pkg ? pkg.version : '0.1.5' }}</span>
+            <span class="editor-info-dialog__version">v{{ pkg ? pkg.version : '0.1.6' }}</span>
             <span class="editor-info-dialog__meta-sep">·</span>
             <a href="mailto:215241062@qq.com" class="editor-info-dialog__author">龙江湖</a>
           </div>
