@@ -51,7 +51,7 @@ const html = ref(`
 <img src="https://picsum.photos/seed/bamboo/800/400" width="800" height="400" alt="测试图片" data-align="center">
 
 <p>测试视频</p>
-<video src="https://www.w3schools.com/html/mov_bbb.mp4" controls="controls" data-align="center"></video>
+<video src="https://www.w3schools.com/html/mov_bbb.mp4" width="800" height="400" controls="controls" data-align="center"></video>
 
 <p>测试音频</p>
 <audio src="https://www.w3schools.com/html/horse.mp3" controls data-align="center"></audio>
@@ -89,7 +89,7 @@ async function uploadHandler(file: File) {
         <div class="playground__logo">🎋</div>
         <div class="playground__title">
           <h1>Bamboo Editor Playground</h1>
-          <p>小巧、简单的编辑器</p>
+          <p>精致、小巧、优雅的编辑器</p>
         </div>
       </div>
       <div class="playground__controls">

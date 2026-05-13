@@ -137,7 +137,6 @@ const {
   handleWordCountMouseLeave,
   resetWordCountState,
   scheduleWordCountRefresh,
-  clearWordCountTimer,
   formatFullWordCount,
   formatVisibleWordCount,
   cleanup: cleanupWordCount,
