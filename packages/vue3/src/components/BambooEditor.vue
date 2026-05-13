@@ -1521,6 +1521,10 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
   overflow-y: auto;
 }
 
+.bamboo-editor__preview .bamboo-content > :first-child {
+  margin-top: 0;
+}
+
 .bamboo-editor__preview .bamboo-content {
   max-width: 100%;
 }
