@@ -769,16 +769,56 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
 }
 
 .bamboo-editor__content :deep(.ProseMirror pre) {
-  padding: 1em;
-  border: 1px solid #e4e4e7;
-  border-radius: 12px;
-  background: #fafafa;
+  position: relative;
+  padding: 1.25em 3.5em 1.25em 1.25em;
+  margin: 1.5em 0;
+  border-radius: 10px;
+  background: #f8f9fa;
+  border: 1px solid #e5e7eb;
   overflow-x: auto;
 }
 
 .bamboo-editor__content :deep(.ProseMirror pre code) {
   padding: 0;
   background: transparent;
+  color: #374151;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, 'Cascadia Code', Roboto Mono, Consolas, 'Courier New', monospace;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  letter-spacing: -0.01em;
+}
+
+/* 代码块复制按钮 - 浅色风格 */
+.bamboo-editor__content :deep(.code-copy-button) {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.bamboo-editor__content :deep(.code-copy-button:hover) {
+  background: #ffffff;
+  border-color: #d1d5db;
+  color: #6b7280;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.bamboo-editor__content :deep(.code-copy-button:active) {
+  transform: translateY(0) scale(0.96);
+  transition: all 0.1s ease;
 }
 
 .bamboo-editor__content :deep(.ProseMirror img) {
