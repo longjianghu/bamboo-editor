@@ -15,9 +15,8 @@ export function useEditorFullscreen(resolvedDevice: DeviceRef) {
       return undefined
     }
 
-    return {
-      height: 'auto',
-    }
+    // 不设置高度，让 CSS 的 height: 50vh 生效，填充编辑器容器
+    return undefined
   })
 
   function toggleFullscreen() {

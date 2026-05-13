@@ -593,9 +593,8 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
 .bamboo-editor__surface {
   position: relative;
   display: flex;
-  flex-direction: column;
-  height: 50vh;
-  min-height: 150px;
+  flex: 1;
+  min-height: 0;
   border: 0;
   border-radius: 0;
   background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%);
