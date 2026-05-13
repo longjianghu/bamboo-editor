@@ -755,9 +755,27 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
 }
 
 .bamboo-editor__content :deep(.ProseMirror blockquote) {
-  padding-left: 1em;
-  border-left: 4px solid #14b8a6;
+  position: relative;
+  padding: 0.75em 1em 0.75em 1.5em;
+  margin: 1.25em 0;
+  color: #4b5563;
+  border-left: 3px solid #d1d5db;
+  background: #f9fafb;
+  border-radius: 0 8px 8px 0;
+}
+
+/* 引用内容的颜色渐变 */
+.bamboo-editor__content :deep(.ProseMirror blockquote p) {
   color: #52525b;
+  margin: 0.5em 0;
+}
+
+.bamboo-editor__content :deep(.ProseMirror blockquote p:first-child) {
+  margin-top: 0;
+}
+
+.bamboo-editor__content :deep(.ProseMirror blockquote p:last-child) {
+  margin-bottom: 0;
 }
 
 .bamboo-editor__content :deep(.ProseMirror code) {
