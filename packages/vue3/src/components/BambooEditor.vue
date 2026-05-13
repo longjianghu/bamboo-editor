@@ -760,7 +760,7 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
   margin: 1.25em 0;
   color: #4b5563;
   border-left: 3px solid #d1d5db;
-  background: #f9fafb;
+  background: #fff;
   border-radius: 0 8px 8px 0;
 }
 
@@ -791,7 +791,7 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
   padding: 1.25em 3.5em 1.25em 1.25em;
   margin: 1.5em 0;
   border-radius: 10px;
-  background: #f8f9fa;
+  background: #fff;
   border: 1px solid #e5e7eb;
   overflow-x: auto;
 }
@@ -801,7 +801,7 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
   background: transparent;
   color: #374151;
   font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, 'Cascadia Code', Roboto Mono, Consolas, 'Courier New', monospace;
-  font-size: 0.875rem;
+  font-size: 1em;
   line-height: 1.7;
   letter-spacing: -0.01em;
 }
