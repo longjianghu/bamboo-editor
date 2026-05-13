@@ -2,7 +2,7 @@
 import type { CleanAudioOptions, CleanVideoOptions } from '@bamboo-editor/core'
 import type { BambooColorOption, BambooDevice, UploadHandler } from '../composables/useBambooEditor'
 import { EditorContent } from '@tiptap/vue-3'
-import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue'
 import { useBambooEditor } from '../composables/useBambooEditor'
 import { useEditorDialogs } from '../composables/useEditorDialogs'
 import { useEditorDraft } from '../composables/useEditorDraft'
@@ -10,6 +10,7 @@ import { useEditorEvents } from '../composables/useEditorEvents'
 import { useEditorFloatingToolbar } from '../composables/useEditorFloatingToolbar'
 import { useEditorFullscreen } from '../composables/useEditorFullscreen'
 import { useEditorWordCount } from '../composables/useEditorWordCount'
+import { useEditorMode } from '../composables/useEditorMode'
 import EditorAudioDialog from './EditorAudioDialog.vue'
 import EditorErrorDialog from './EditorErrorDialog.vue'
 import EditorImageDialog from './EditorImageDialog.vue'
@@ -111,7 +112,94 @@ const {
 })
 
 // Composables
-const { isFullscreen, surfaceStyle, toggleFullscreen, exitFullscreen } = useEditorFullscreen(resolvedDevice)
+const {
+  isFullscreen,
+  surfaceStyle,
+  toggleFullscreen,
+  exitFullscreen,
+} = useEditorFullscreen(resolvedDevice)
+
+// 字数统计需要先定义，供 useEditorMode 使用
+const {
+  wordCountState,
+  isWordCountTooltipVisible,
+  isCompactWordCount,
+  wordCountAriaLabel,
+  maxLengthStatus,
+  updateSurfaceWidth,
+  handleWordCountMouseEnter,
+  handleWordCountMouseLeave,
+  resetWordCountState,
+  scheduleWordCountRefresh,
+  clearWordCountTimer,
+  refreshWordCountNow,
+  formatFullWordCount,
+  formatVisibleWordCount,
+  countFromPlainText,
+  cleanup: cleanupWordCount,
+} = useEditorWordCount({
+  editor,
+  resolvedDevice,
+  maxLength,
+  currentLength,
+  usageRatio,
+  surfaceRef,
+})
+
+// tooltip 位置计算 - 使用 Teleport 渲染到 body 上避免 overflow: hidden 裁剪
+// 显示在PC状态栏（统计信息区域）上方，与浮动工具栏右对齐
+const statsTooltipPosition = ref({ bottom: '0px', right: '0px' })
+
+function updateStatsTooltipPosition() {
+  nextTick(() => {
+    // 优先使用浮动工具栏作为参考位置（更靠上）
+    const floatingToolbar = document.querySelector('.floating-toolbar-pc')
+    if (floatingToolbar) {
+      const toolbarRect = floatingToolbar.getBoundingClientRect()
+      statsTooltipPosition.value = {
+        bottom: `${window.innerHeight - toolbarRect.top + 12}px`, // 在浮动工具栏上方 12px
+        right: `${window.innerWidth - toolbarRect.right}px`, // 与浮动工具栏右对齐
+      }
+      return
+    }
+    // 回退到统计区域位置
+    const statsArea = document.querySelector('.bamboo-editor__stats-area')
+    if (!statsArea) return
+    const rect = statsArea.getBoundingClientRect()
+    statsTooltipPosition.value = {
+      bottom: `${window.innerHeight - rect.top + 12}px`,
+      right: `${window.innerWidth - rect.right}px`,
+    }
+  })
+}
+
+// 包装处理器，在触发时更新位置
+function _handleWordCountMouseEnter() {
+  updateStatsTooltipPosition()
+  handleWordCountMouseEnter()
+}
+
+const {
+  mode,
+  sourceContent,
+  currentHtml,
+  switchMode,
+  onSourceChange,
+  applySourceChanges,
+} = useEditorMode({
+  editor,
+  modelValue: toRef(props, 'modelValue'),
+  emitUpdate: (html) => emit('update:modelValue', html),
+  updateWordCountFromHtml: (html) => {
+    // 从 HTML 提取纯文本
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(html, 'text/html')
+    const text = doc.body.textContent || ''
+    const state = countFromPlainText(text, html)
+    // 更新 wordCountState
+    wordCountState.value = state
+  },
+})
 
 const {
   floatingToolbarVisible,
@@ -124,29 +212,6 @@ const {
   resolvedDevice,
   disabled: props.disabled,
   editorScopeId,
-})
-
-const {
-  wordCountState,
-  isWordCountTooltipVisible,
-  isCompactWordCount,
-  wordCountAriaLabel,
-  maxLengthStatus,
-  updateSurfaceWidth,
-  handleWordCountMouseEnter,
-  handleWordCountMouseLeave,
-  resetWordCountState,
-  scheduleWordCountRefresh,
-  formatFullWordCount,
-  formatVisibleWordCount,
-  cleanup: cleanupWordCount,
-} = useEditorWordCount({
-  editor,
-  resolvedDevice,
-  maxLength,
-  currentLength,
-  usageRatio,
-  surfaceRef,
 })
 
 const draftComposable = useEditorDraft({
@@ -335,6 +400,7 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
       <ToolbarPC
         v-if="resolvedDevice === 'pc'"
         :editor="editor"
+        :mode="mode"
         :disabled="disabled"
         :fullscreen="isFullscreen"
         :color-palette="resolvedColorPalette"
@@ -349,6 +415,7 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
         @insert-horizontal-rule="insertHorizontalRule"
         @toggle-fullscreen="toggleFullscreen"
         @show-info="dialogs.infoDialogVisible.value = true"
+        @switch-mode="switchMode"
       />
 
       <div
@@ -357,84 +424,137 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
         :class="{ 'is-mobile': resolvedDevice === 'mobile' }"
         :style="surfaceStyle"
       >
-        <template v-if="editor">
-          <EditorContent :editor="editor" class="bamboo-editor__content" />
+        <!-- 编辑模式 -->
+        <div v-show="mode === 'edit'" class="bamboo-editor__mode-content">
+          <template v-if="editor">
+            <EditorContent :editor="editor" class="bamboo-editor__content" />
+          </template>
+          <div v-else class="bamboo-editor__placeholder">Loading editor...</div>
+        </div>
+
+        <!-- 预览模式 -->
+        <div v-show="mode === 'preview'" class="bamboo-editor__mode-content bamboo-editor__preview">
+          <div class="bamboo-content" v-html="currentHtml" />
+        </div>
+
+        <!-- 源码模式 -->
+        <div v-show="mode === 'source'" class="bamboo-editor__mode-content bamboo-editor__source">
+          <textarea
+            :value="sourceContent"
+            @input="onSourceChange(($event.target as HTMLTextAreaElement).value)"
+            class="bamboo-editor__source-textarea"
+          />
+        </div>
+
+        <!-- 状态栏（所有模式共用） -->
+        <div
+          v-if="resolvedDevice === 'pc'"
+          class="bamboo-editor__status-bar"
+          :class="[
+            { 'is-compact': isCompactWordCount },
+            maxLengthStatus === 'warning' ? 'is-warning' : '',
+            maxLengthStatus === 'danger' ? 'is-danger' : '',
+          ]"
+          :aria-label="wordCountAriaLabel"
+        >
+          <!-- 模式切换图标（始终可见，不触发展开） -->
+          <div class="bamboo-editor__mode-switch">
+            <button
+              class="bamboo-editor__mode-btn"
+              :class="{ 'is-active': mode === 'edit' }"
+              title="编辑"
+              @click="switchMode('edit')"
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+              </svg>
+            </button>
+            <button
+              class="bamboo-editor__mode-btn"
+              :class="{ 'is-active': mode === 'preview' }"
+              title="预览"
+              @click="switchMode('preview')"
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+            <button
+              class="bamboo-editor__mode-btn"
+              :class="{ 'is-active': mode === 'source' }"
+              title="源码"
+              @click="switchMode('source')"
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 18 22 12 16 6"/>
+                <polyline points="8 6 2 12 8 18"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- 统计信息（hover 展开 tooltip） -->
           <div
-            v-if="resolvedDevice === 'pc'"
-            class="bamboo-editor__word-count"
-            :class="[
-              { 'is-compact': isCompactWordCount },
-              maxLengthStatus === 'warning' ? 'is-warning' : '',
-              maxLengthStatus === 'danger' ? 'is-danger' : '',
-            ]"
-            :aria-label="wordCountAriaLabel"
-            @mouseenter="handleWordCountMouseEnter"
+            class="bamboo-editor__stats-area"
+            @mouseenter="_handleWordCountMouseEnter"
             @mouseleave="handleWordCountMouseLeave"
           >
-            <div class="bamboo-editor__word-count-summary">
+            <div class="bamboo-editor__stats-text">
               <template v-if="maxLength != null">
                 <template v-if="currentLength > maxLength">
-                  <span>已超出 </span>
-                  <span class="bamboo-editor__word-count-value">{{
-                    formatVisibleWordCount(currentLength - maxLength)
-                  }}</span>
-                  <span> 字符</span>
+                  <span class="bamboo-editor__stats-value is-danger">+{{ formatVisibleWordCount(currentLength - maxLength) }}</span>
+                  <span class="bamboo-editor__stats-label"> 超出</span>
                 </template>
                 <template v-else>
-                  <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(currentLength) }}</span>
-                  <span class="bamboo-editor__word-count-separator">/</span>
-                  <span class="bamboo-editor__word-count-value">{{ formatVisibleWordCount(maxLength) }}</span>
+                  <span class="bamboo-editor__stats-value">{{ formatVisibleWordCount(currentLength) }}</span>
+                  <span class="bamboo-editor__stats-sep">/</span>
+                  <span class="bamboo-editor__stats-value">{{ formatVisibleWordCount(maxLength) }}</span>
                 </template>
               </template>
               <template v-else-if="wordCountState.hasSelectedText">
-                <span v-if="!isCompactWordCount">已选 </span>
-                <span class="bamboo-editor__word-count-value is-selected">{{
-                  formatVisibleWordCount(wordCountState.selectedChineseCharacters)
-                }}</span>
-                <span class="bamboo-editor__word-count-separator">/</span>
-                <span v-if="!isCompactWordCount">共 </span>
-                <span class="bamboo-editor__word-count-value">{{
-                  formatVisibleWordCount(wordCountState.totalCharacters)
-                }}</span>
-                <span v-if="!isCompactWordCount"> 字符</span>
+                <span class="bamboo-editor__stats-value is-selected">{{ formatVisibleWordCount(wordCountState.selectedChineseCharacters) }}</span>
+                <span class="bamboo-editor__stats-sep">/</span>
+                <span class="bamboo-editor__stats-value">{{ formatVisibleWordCount(wordCountState.totalCharacters) }}</span>
+                <span class="bamboo-editor__stats-label"> 字符</span>
               </template>
               <template v-else>
-                <span v-if="!isCompactWordCount">共 </span>
-                <span class="bamboo-editor__word-count-value">{{
-                  formatVisibleWordCount(wordCountState.totalCharacters)
-                }}</span>
-                <span v-if="!isCompactWordCount"> 字符</span>
+                <span class="bamboo-editor__stats-value">{{ formatVisibleWordCount(wordCountState.totalCharacters) }}</span>
+                <span class="bamboo-editor__stats-label"> 字符</span>
               </template>
             </div>
 
-            <div v-if="isWordCountTooltipVisible" class="bamboo-editor__word-count-tooltip" role="tooltip">
-              <div class="bamboo-editor__word-count-tooltip-row">
-                <span>字符数（含空格）</span>
-                <span class="bamboo-editor__word-count-value">{{
-                  formatFullWordCount(wordCountState.totalCharacters)
-                }}</span>
-              </div>
-              <div class="bamboo-editor__word-count-tooltip-row">
-                <span>中文字数</span>
-                <span class="bamboo-editor__word-count-value">{{
-                  formatFullWordCount(wordCountState.chineseCharacters)
-                }}</span>
-              </div>
-              <div class="bamboo-editor__word-count-tooltip-row">
-                <span>段落数</span>
-                <span class="bamboo-editor__word-count-value">{{
-                  formatFullWordCount(wordCountState.paragraphCount)
-                }}</span>
-              </div>
-              <div class="bamboo-editor__word-count-tooltip-row">
-                <span>行数</span>
-                <span class="bamboo-editor__word-count-value">{{ formatFullWordCount(wordCountState.lineCount) }}</span>
-              </div>
-            </div>
           </div>
-        </template>
-        <div v-else class="bamboo-editor__placeholder">Loading editor...</div>
+        </div>
+
       </div>
+
+      <!-- 详细统计 tooltip - 用 Teleport 渲染到 body 上避免 overflow: hidden 裁剪 -->
+      <Teleport to="body">
+        <div
+          v-if="resolvedDevice === 'pc'"
+          v-show="isWordCountTooltipVisible"
+          :style="statsTooltipPosition"
+          class="bamboo-editor__stats-tooltip"
+          role="tooltip"
+        >
+          <div class="bamboo-editor__word-count-tooltip-row">
+            <span>字符数（含空格）</span>
+            <span class="bamboo-editor__word-count-value">{{ wordCountState.totalCharacters }}</span>
+          </div>
+          <div class="bamboo-editor__word-count-tooltip-row">
+            <span>中文字数</span>
+            <span class="bamboo-editor__word-count-value">{{ wordCountState.chineseCharacters }}</span>
+          </div>
+          <div class="bamboo-editor__word-count-tooltip-row">
+            <span>段落数</span>
+            <span class="bamboo-editor__word-count-value">{{ wordCountState.paragraphCount }}</span>
+          </div>
+          <div class="bamboo-editor__word-count-tooltip-row">
+            <span>行数</span>
+            <span class="bamboo-editor__word-count-value">{{ wordCountState.lineCount }}</span>
+          </div>
+        </div>
+      </Teleport>
 
       <FloatingToolbarPC
         v-if="resolvedDevice === 'mobile'"
@@ -1108,108 +1228,211 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
   height: 0;
 }
 
-.bamboo-editor__word-count {
+/* 状态栏（编辑/预览/源码模式共用）- 底部右侧固定位置 */
+.bamboo-editor__status-bar {
   position: absolute;
-  right: 16px;
-  bottom: 16px;
+  bottom: 12px;
+  right: 12px;
   z-index: 12;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-  pointer-events: auto;
-}
-
-.bamboo-editor.is-fullscreen .bamboo-editor__word-count {
-  right: 16px;
-}
-
-.bamboo-editor.is-fullscreen .bamboo-editor__word-count.is-compact {
-  right: 12px;
-}
-
-.bamboo-editor__word-count.is-compact {
-  right: 12px;
-  bottom: 12px;
-}
-
-.bamboo-editor__word-count-summary {
-  display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 8px;
   padding: 6px 10px;
-  border: 1px solid rgba(228, 231, 236, 0.92);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.9);
-  color: #71717a;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 4px 12px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
   font-size: 12px;
-  font-weight: 400;
+  color: #64748b;
+  pointer-events: auto;
+  transition: all 0.2s ease;
+}
+
+.bamboo-editor__status-bar:hover {
+  border-color: #cbd5e1;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 6px 16px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.bamboo-editor__status-bar.is-warning {
+  border-color: rgba(251, 191, 36, 0.5);
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+}
+
+.bamboo-editor__status-bar.is-danger {
+  border-color: rgba(248, 113, 113, 0.5);
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+}
+
+/* 模式切换按钮 - 左侧左对齐 */
+.bamboo-editor__mode-switch {
+  display: flex;
+  gap: 2px;
+}
+
+.bamboo-editor__mode-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.bamboo-editor__mode-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 5px;
+  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: -1;
+}
+
+.bamboo-editor__mode-btn:hover {
+  color: #475569;
+}
+
+.bamboo-editor__mode-btn:hover::before {
+  opacity: 1;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.bamboo-editor__mode-btn.is-active {
+  color: #0f172a;
+}
+
+.bamboo-editor__mode-btn.is-active::before {
+  opacity: 1;
+  background: #ffffff;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* 统计信息区域 - hover 展开 tooltip */
+.bamboo-editor__stats-area {
+  position: relative;
+  cursor: help;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.bamboo-editor__stats-area:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.bamboo-editor__stats-text {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 500;
   line-height: 1;
-  backdrop-filter: blur(4px);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-  transition:
-    opacity 0.2s ease,
-    color 0.2s ease,
-    box-shadow 0.2s ease;
 }
 
-.bamboo-editor__word-count:hover .bamboo-editor__word-count-summary {
-  color: #52525b;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
-}
-
-.bamboo-editor__word-count.is-warning .bamboo-editor__word-count-summary {
-  color: #ea580c;
-  border-color: rgba(234, 88, 12, 0.18);
-  background: rgba(255, 247, 237, 0.96);
-}
-
-.bamboo-editor__word-count.is-danger .bamboo-editor__word-count-summary {
-  color: #ff4d4f;
-  border-color: rgba(255, 77, 79, 0.22);
-  background: rgba(255, 241, 240, 0.96);
-}
-
-.bamboo-editor__word-count.is-compact .bamboo-editor__word-count-summary {
-  padding: 5px 8px;
-}
-
-.bamboo-editor__word-count-value {
+.bamboo-editor__stats-value {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-variant-numeric: tabular-nums;
+  color: #475569;
 }
 
-.bamboo-editor__word-count-value.is-selected {
-  color: #1890ff;
+.bamboo-editor__stats-value.is-danger {
+  color: #dc2626;
 }
 
-.bamboo-editor__word-count-separator {
-  color: #a1a1aa;
+.bamboo-editor__stats-value.is-selected {
+  color: #0891b2;
 }
 
-.bamboo-editor__word-count-tooltip {
+.bamboo-editor__stats-sep {
+  color: #cbd5e1;
+}
+
+.bamboo-editor__stats-label {
+  color: #94a3b8;
+  font-size: 11px;
+  margin-left: 2px;
+}
+
+/* 详细统计 tooltip - 使用 Teleport 固定定位 */
+.bamboo-editor__stats-tooltip {
+  position: fixed;
+  z-index: 1000;
   min-width: 188px;
   max-width: min(260px, calc(100vw - 32px));
-  padding: 10px 12px;
-  border: 1px solid rgba(228, 231, 236, 0.96);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.96);
-  color: #52525b;
+  padding: 12px 14px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.98);
+  color: #475569;
   font-size: 12px;
   line-height: 1.5;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.02),
+    0 10px 20px rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+}
+
+/* 小箭头 - 指向下方，右对齐 */
+.bamboo-editor__stats-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 16px;
+  border: 5px solid transparent;
+  border-top-color: rgba(255, 255, 255, 0.98);
 }
 
 .bamboo-editor__word-count-tooltip-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 20px;
 }
 
 .bamboo-editor__word-count-tooltip-row + .bamboo-editor__word-count-tooltip-row {
   margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.bamboo-editor__word-count-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  color: #334155;
+  font-weight: 500;
+}
+
+/* 字数统计工具提示的标题 */
+.bamboo-editor__word-count-tooltip-row:first-child {
+  font-weight: 500;
+  color: #0f172a;
+}
+
+/* 全屏时状态栏调整 */
+.bamboo-editor.is-fullscreen .bamboo-editor__status-bar {
+  left: 16px;
+  bottom: 16px;
+}
+
+.bamboo-editor.is-fullscreen .bamboo-editor__status-bar.is-compact {
+  left: 12px;
+  bottom: 12px;
 }
 
 .bamboo-editor__toast {
@@ -1247,5 +1470,77 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
   display: grid;
   place-items: center;
   color: #71717a;
+}
+
+/* 模式切换按钮（字数统计栏内） */
+.bamboo-editor__mode-switch {
+  display: flex;
+  gap: 2px;
+}
+
+.bamboo-editor__mode-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bamboo-editor__mode-btn:hover {
+  color: #6b7280;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.bamboo-editor__mode-btn.is-active {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* 模式内容容器 */
+.bamboo-editor__mode-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 预览模式 */
+.bamboo-editor__preview {
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.bamboo-editor__preview .bamboo-content {
+  max-width: 100%;
+}
+
+/* 源码模式 */
+.bamboo-editor__source {
+  display: flex;
+  flex-direction: column;
+}
+
+.bamboo-editor__source-textarea {
+  flex: 1;
+  width: 100%;
+  padding: 16px;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #374151;
+  background: #fafafa;
+  tab-size: 2;
 }
 </style>

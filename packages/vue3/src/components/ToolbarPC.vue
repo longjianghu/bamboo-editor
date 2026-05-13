@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/vue-3'
 import type { BambooColorOption } from '../composables/useBambooEditor'
+import type { EditorMode } from '../composables/useEditorMode'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import ToolbarIcon from './ToolbarIcon.vue'
 
@@ -9,6 +10,7 @@ const props = defineProps<{
   disabled?: boolean
   fullscreen?: boolean
   colorPalette?: readonly BambooColorOption[]
+  mode?: EditorMode
 }>()
 
 const emit = defineEmits<{
@@ -23,6 +25,7 @@ const emit = defineEmits<{
   insertHorizontalRule: []
   toggleFullscreen: []
   showInfo: []
+  switchMode: [mode: EditorMode]
 }>()
 
 declare const window: Window & typeof globalThis

@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { Editor } from '@tiptap/vue-3'
 
 const WORD_COUNT_DEBOUNCE_MS = 300
@@ -224,6 +224,29 @@ export function useEditorWordCount(options: UseEditorWordCountOptions) {
     return value.split(/\r?\n/).filter((line) => line.trim().length > 0).length
   }
 
+  function countFromPlainText(text: string, html?: string): WordCountState {
+    const chineseCharacters = countChineseCharacters(text)
+    return {
+      totalCharacters: text.length,
+      chineseCharacters,
+      selectedChineseCharacters: 0,
+      paragraphCount: countParagraphsFromHtml(html ?? text),
+      lineCount: countLogicalLines(text),
+      hasSelectedText: false,
+    }
+  }
+
+  function countParagraphsFromHtml(html: string): number {
+    // 使用简单正则匹配 block 元素标签
+    const blockTags = 'p|div|h[1-6]|blockquote|pre|li|td|th'
+    const regex = new RegExp(`</?(?:${blockTags})[^>]*>`, 'gi')
+    const matches = html.match(regex)
+    if (!matches) return 0
+    // 计算开标签数量
+    const openTags = matches.filter(tag => !tag.startsWith('</'))
+    return openTags.filter(tag => !tag.includes('br') && !tag.includes('hr')).length
+  }
+
   function formatFullWordCount(value: number) {
     return value.toLocaleString('zh-CN')
   }
@@ -269,6 +292,7 @@ export function useEditorWordCount(options: UseEditorWordCountOptions) {
     scheduleWordCountRefresh,
     clearWordCountTimer,
     refreshWordCountNow,
+    countFromPlainText,
     formatFullWordCount,
     formatVisibleWordCount,
     cleanup,

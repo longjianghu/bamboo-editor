@@ -1,30 +1,11 @@
 <script setup lang="ts">
 import { BambooEditor } from '@bamboo-editor/vue3'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import '@bamboo-editor/styles/bamboo-content.css'
 
 const device = ref<'pc' | 'mobile' | 'auto'>('auto')
 const maxLength = ref<number | undefined>(500)
 const videoOptions = { maxSize: 30 }
-const activeTab = ref<'html' | 'preview'>('html')
-
-const isFullscreen = ref(false)
-const outputPanel = ref<HTMLElement | null>(null)
-
-function toggleFullscreen() {
-  if (!isFullscreen.value) {
-    outputPanel.value?.requestFullscreen()
-    isFullscreen.value = true
-  } else {
-    document.exitFullscreen()
-    isFullscreen.value = false
-  }
-}
-
-function onFullscreenChange() {
-  isFullscreen.value = document.fullscreenElement === outputPanel.value
-}
-document.addEventListener('fullscreenchange', onFullscreenChange)
 
 const html = ref(`
 <h1>Bamboo Editor</h1>
@@ -68,10 +49,6 @@ const colorPalette = [
   { token: 'yellow', label: '黄色', value: '#ca8a04' },
   { token: 'blue', label: '蓝色', value: '#2563eb' },
 ]
-
-const previewColorStyle = computed(() => {
-  return Object.fromEntries(colorPalette.map((item) => [`--preview-color-${item.token}`, item.value]))
-})
 
 async function uploadHandler(file: File) {
   return {
@@ -158,103 +135,15 @@ async function uploadHandler(file: File) {
       </div>
     </header>
 
-    <section class="playground__grid">
-      <!-- Editor -->
-      <div class="editor-wrapper">
-        <BambooEditor
-          v-model="html"
-          height="auto"
-          :device="device"
-          :upload-handler="uploadHandler"
-          :color-palette="colorPalette"
-          :max-length="maxLength"
-          :video-options="videoOptions"
-        />
-      </div>
-
-      <!-- Output Panel (HTML + Preview Tabs) -->
-      <article class="panel panel--output">
-        <div class="panel__header">
-          <div class="output-tabs">
-            <button
-              type="button"
-              class="output-tab"
-              :class="{ 'is-active': activeTab === 'html' }"
-              @click="activeTab = 'html'"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="16 18 22 12 16 6" />
-                <polyline points="8 6 2 12 8 18" />
-              </svg>
-              HTML 代码
-            </button>
-            <button
-              type="button"
-              class="output-tab"
-              :class="{ 'is-active': activeTab === 'preview' }"
-              @click="activeTab = 'preview'"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-              渲染预览
-            </button>
-          </div>
-          <button
-            v-if="activeTab === 'preview'"
-            type="button"
-            class="fullscreen-btn"
-            :title="isFullscreen ? '退出全屏' : '全屏预览'"
-            @click="toggleFullscreen"
-          >
-            <svg
-              v-if="!isFullscreen"
-              xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M8 3H5a2 2 0 0 0-2 2v3" />
-              <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
-              <path d="M3 16v3a2 2 0 0 0 2 2h3" />
-              <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
-            </svg>
-            <svg
-              v-else
-              xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M8 3v3a2 2 0 0 1-2 2H3" />
-              <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
-              <path d="M3 16h3a2 2 0 0 1 2 2v3" />
-              <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
-            </svg>
-          </button>
-        </div>
-        <div ref="outputPanel" class="panel__content panel__content--output">
-          <!-- HTML Tab -->
-          <div v-show="activeTab === 'html'" class="code-view">
-            <pre class="code-block"><code>{{ html }}</code></pre>
-          </div>
-          <!-- Preview Tab -->
-          <div v-show="activeTab === 'preview'" class="preview-view" :style="previewColorStyle">
-            <div class="bamboo-content" v-html="html"></div>
-          </div>
-        </div>
-      </article>
+    <section class="playground__content">
+      <BambooEditor
+        v-model="html"
+        :device="device"
+        :upload-handler="uploadHandler"
+        :color-palette="colorPalette"
+        :max-length="maxLength"
+        :video-options="videoOptions"
+      />
     </section>
   </main>
 </template>
@@ -442,6 +331,12 @@ body {
 
 .playground__switch svg {
   opacity: 0.8;
+}
+
+/* ===== Content ===== */
+.playground__content {
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* ===== Grid ===== */

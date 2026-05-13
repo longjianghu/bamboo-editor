@@ -92,6 +92,30 @@ const colorPalette = computed(() => props.colorPalette ?? [])
 const activeColor = computed(() => colorPalette.value.find((item) => isTextColorActive(item.token)) ?? null)
 const currentColorValue = computed(() => activeColor.value?.value ?? '#18181b')
 const currentColorLabel = computed(() => (activeColor.value ? `文字颜色：${activeColor.value.label}` : '文字颜色'))
+
+// 本地 tooltip 显示状态
+const localTooltipVisible = ref(false)
+let tooltipTimer: number | null = null
+
+function handleStatsMouseEnter() {
+  if (typeof window === 'undefined') return
+  if (tooltipTimer !== null) {
+    window.clearTimeout(tooltipTimer)
+  }
+  tooltipTimer = window.setTimeout(() => {
+    localTooltipVisible.value = true
+    tooltipTimer = null
+  }, 200)
+}
+
+function handleStatsMouseLeave() {
+  if (typeof window === 'undefined') return
+  if (tooltipTimer !== null) {
+    window.clearTimeout(tooltipTimer)
+    tooltipTimer = null
+  }
+  localTooltipVisible.value = false
+}
 const currentHeadingOption = computed(() => {
   if (props.editor?.isActive('heading', { level: 1 })) {
     return headingOptions[1]
@@ -792,6 +816,97 @@ onBeforeUnmount(() => {
   height: 16px;
   border-radius: 999px;
   border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+/* 统计信息触发区域 */
+.floating-toolbar-pc__stats-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 4px;
+  border: 1px solid #e4e7ec;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #64748b;
+  cursor: help;
+  transition: all 0.18s ease;
+  flex: none;
+}
+
+.floating-toolbar-pc__stats-trigger:hover {
+  border-color: #14b8a6;
+  background: #f0fdfa;
+  color: #0f766e;
+}
+
+.floating-toolbar-pc__stats-icon {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  font-style: italic;
+  line-height: 1;
+}
+
+/* 详细统计 tooltip - 定位在浮动工具栏上方 */
+.floating-toolbar-pc__stats-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  min-width: 188px;
+  max-width: min(260px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.98);
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.5;
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.02),
+    0 10px 20px rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+}
+
+/* 小箭头 */
+.floating-toolbar-pc__stats-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(255, 255, 255, 0.98);
+}
+
+.floating-toolbar-pc__word-count-tooltip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.floating-toolbar-pc__word-count-tooltip-row + .floating-toolbar-pc__word-count-tooltip-row {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.floating-toolbar-pc__word-count-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  color: #334155;
+  font-weight: 500;
+}
+
+/* 字数统计工具提示的标题 */
+.floating-toolbar-pc__word-count-tooltip-row:first-child {
+  font-weight: 500;
+  color: #0f172a;
 }
 
 .floating-toolbar-pc__color-chip {
