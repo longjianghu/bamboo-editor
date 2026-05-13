@@ -428,15 +428,13 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
         <!-- 编辑模式 -->
         <div v-show="mode === 'edit'" class="bamboo-editor__mode-content">
           <template v-if="editor">
-            <EditorContent :editor="editor" class="bamboo-editor__content" />
+            <EditorContent :editor="editor" class="bamboo-editor__content bamboo-content" />
           </template>
           <div v-else class="bamboo-editor__placeholder">Loading editor...</div>
         </div>
 
         <!-- 预览模式 -->
-        <div v-show="mode === 'preview'" class="bamboo-editor__mode-content bamboo-editor__preview">
-          <div class="bamboo-content" v-html="currentHtml" />
-        </div>
+        <div v-show="mode === 'preview'" class="bamboo-editor__mode-content bamboo-content" v-html="currentHtml" />
 
         <!-- 源码模式 -->
         <div v-show="mode === 'source'" class="bamboo-editor__mode-content bamboo-editor__source">
@@ -1513,6 +1511,12 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* 预览模式 - 与编辑模式 ProseMirror 内边距一致 */
+.bamboo-editor__mode-content.bamboo-content {
+  padding: 10px 12px 56px;
+  overflow-y: auto;
 }
 
 /* 预览模式 */

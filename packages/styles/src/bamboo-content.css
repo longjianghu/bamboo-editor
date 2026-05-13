@@ -11,6 +11,10 @@
   text-align: left;
 }
 
+.bamboo-content > :first-child {
+  margin-top: 0;
+}
+
 .bamboo-content h1,
 .bamboo-content h2,
 .bamboo-content h3 {
@@ -118,6 +122,15 @@
   margin: 1.25em 0;
 }
 
+.bamboo-content blockquote p:first-child {
+  margin-top: 0;
+}
+
+.bamboo-content blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* 图片和视频居中/居右对齐 */
 .bamboo-content img[data-align='center'],
 .bamboo-content video[data-align='center'],
 .bamboo-content audio[data-align='center'] {
