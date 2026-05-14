@@ -433,9 +433,6 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
           <div v-else class="bamboo-editor__placeholder">Loading editor...</div>
         </div>
 
-        <!-- 预览模式 -->
-        <div v-show="mode === 'preview'" class="bamboo-editor__mode-content bamboo-content" v-html="currentHtml" />
-
         <!-- 源码模式 -->
         <div v-show="mode === 'source'" class="bamboo-editor__mode-content bamboo-editor__source">
           <textarea
@@ -466,17 +463,6 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
             >
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-              </svg>
-            </button>
-            <button
-              class="bamboo-editor__mode-btn"
-              :class="{ 'is-active': mode === 'preview' }"
-              title="预览"
-              @click="switchMode('preview')"
-            >
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-                <circle cx="12" cy="12" r="3"/>
               </svg>
             </button>
             <button
@@ -1014,8 +1000,8 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
 
 .bamboo-editor__content :deep(.clean-image-wrapper) {
   position: relative;
-  display: inline-block;
   margin: 1em 0;
+  max-width: 100%;
   line-height: 0;
 }
 
@@ -1184,6 +1170,8 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
 .bamboo-editor__content :deep(.clean-audio-inner) {
   position: relative;
   display: inline-block;
+  width: 400px;
+  max-width: 100%;
   line-height: 0;
 }
 
@@ -1517,20 +1505,6 @@ defineExpose({ clearDraft: draftComposable.clearDraft })
 .bamboo-editor__mode-content.bamboo-content {
   padding: 10px 12px 56px;
   overflow-y: auto;
-}
-
-/* 预览模式 */
-.bamboo-editor__preview {
-  padding: 10px 12px 56px;
-  overflow-y: auto;
-}
-
-.bamboo-editor__preview .bamboo-content > :first-child {
-  margin-top: 0;
-}
-
-.bamboo-editor__preview .bamboo-content {
-  max-width: 100%;
 }
 
 /* 源码模式 */

@@ -29,10 +29,10 @@ const html = ref(`
 </ul>
 
 <p>测试图片</p>
-<img src="https://picsum.photos/seed/bamboo/800/400" width="800" height="400" alt="测试图片" data-align="center">
+<img src="https://picsum.photos/seed/bamboo/800/400" width="400" height="200" alt="测试图片" data-align="center">
 
 <p>测试视频</p>
-<video src="https://www.w3schools.com/html/mov_bbb.mp4" width="800" height="400" controls="controls" data-align="center"></video>
+<video src="https://www.w3schools.com/html/mov_bbb.mp4" width="400" height="200" controls="controls" data-align="center"></video>
 
 <p>测试音频</p>
 <audio src="https://www.w3schools.com/html/horse.mp3" controls data-align="center"></audio>
@@ -135,7 +135,7 @@ async function uploadHandler(file: File) {
       </div>
     </header>
 
-    <section class="playground__content">
+    <section class="playground__grid">
       <BambooEditor
         v-model="html"
         :device="device"
@@ -144,6 +144,22 @@ async function uploadHandler(file: File) {
         :max-length="maxLength"
         :video-options="videoOptions"
       />
+      <div class="panel">
+        <div class="panel__header">
+          <div class="panel__icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </div>
+          <h2 class="panel__title">预览</h2>
+        </div>
+        <div class="panel__content">
+          <div class="preview-view">
+            <div class="bamboo-content" v-html="html"></div>
+          </div>
+        </div>
+      </div>
     </section>
   </main>
 </template>
@@ -349,7 +365,7 @@ body {
 /* ===== Grid ===== */
 .playground__grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 50% 50%;
   grid-template-rows: minmax(0, 1fr);
   gap: var(--pg-space-5);
   flex: 1;
@@ -357,10 +373,8 @@ body {
 }
 
 /* ===== Editor ===== */
-.editor-wrapper {
+.playground__grid > .bamboo-editor {
   min-height: 0;
-  display: flex;
-  flex-direction: column;
 }
 
 /* ===== Panel ===== */
@@ -407,7 +421,7 @@ body {
 
 .panel__content {
   flex: 1;
-  overflow: hidden;
+  overflow: auto;
   position: relative;
 }
 
@@ -478,20 +492,10 @@ body {
 
 .preview-view .bamboo-content {
   padding: var(--pg-space-6);
-  color: #18181b;
-  line-height: 1.6;
 }
 
-.preview-view .bamboo-content h1,
-.preview-view .bamboo-content h2,
-.preview-view .bamboo-content h3 {
-  color: #09090b;
-  margin-top: 0;
-}
-
-.preview-view .bamboo-content p,
-.preview-view .bamboo-content li {
-  color: #18181b;
+.panel__content--output .preview-view .bamboo-content {
+  background: transparent;
 }
 
 /* ===== Fullscreen Button ===== */
@@ -517,31 +521,31 @@ body {
 }
 
 /* ===== Preview Colors ===== */
-.bamboo-content span[data-color='cyan'] {
+.preview-view .bamboo-content span[data-color='cyan'] {
   color: var(--preview-color-cyan, #0891b2);
 }
-.bamboo-content span[data-color='success'] {
+.preview-view .bamboo-content span[data-color='success'] {
   color: var(--preview-color-success, #16a34a);
 }
-.bamboo-content span[data-color='warning'] {
+.preview-view .bamboo-content span[data-color='warning'] {
   color: var(--preview-color-warning, #ea580c);
 }
-.bamboo-content span[data-color='danger'] {
+.preview-view .bamboo-content span[data-color='danger'] {
   color: var(--preview-color-danger, #dc2626);
 }
-.bamboo-content span[data-color='muted'] {
+.preview-view .bamboo-content span[data-color='muted'] {
   color: var(--preview-color-muted, #71717a);
 }
-.bamboo-content span[data-color='purple'] {
+.preview-view .bamboo-content span[data-color='purple'] {
   color: var(--preview-color-purple, #7c3aed);
 }
-.bamboo-content span[data-color='pink'] {
+.preview-view .bamboo-content span[data-color='pink'] {
   color: var(--preview-color-pink, #db2777);
 }
-.bamboo-content span[data-color='yellow'] {
+.preview-view .bamboo-content span[data-color='yellow'] {
   color: var(--preview-color-yellow, #ca8a04);
 }
-.bamboo-content span[data-color='blue'] {
+.preview-view .bamboo-content span[data-color='blue'] {
   color: var(--preview-color-blue, #2563eb);
 }
 

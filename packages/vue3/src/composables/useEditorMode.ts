@@ -2,7 +2,7 @@ import { computed, ref, watch, type Ref } from 'vue'
 import type { Editor } from '@tiptap/vue-3'
 import type { BambooDevice } from './useBambooEditor'
 
-export type EditorMode = 'edit' | 'preview' | 'source'
+export type EditorMode = 'edit' | 'source'
 
 export interface UseEditorModeOptions {
   editor: Ref<Editor | null>
@@ -24,13 +24,6 @@ export function useEditorMode(options: UseEditorModeOptions) {
   // 监听源码变化，实时更新字数
   watch(sourceContent, (html) => {
     if (mode.value === 'source' && options.updateWordCountFromHtml) {
-      options.updateWordCountFromHtml(html)
-    }
-  })
-
-  // 监听 HTML 变化，在预览模式下更新字数
-  watch(currentHtml, (html) => {
-    if (mode.value === 'preview' && options.updateWordCountFromHtml) {
       options.updateWordCountFromHtml(html)
     }
   })
@@ -64,11 +57,6 @@ export function useEditorMode(options: UseEditorModeOptions) {
       if (options.updateWordCountFromHtml) {
         options.updateWordCountFromHtml(sourceContent.value)
       }
-    }
-
-    // 进入预览模式时更新字数
-    if (newMode === 'preview' && options.updateWordCountFromHtml) {
-      options.updateWordCountFromHtml(currentHtml.value)
     }
 
     mode.value = newMode
